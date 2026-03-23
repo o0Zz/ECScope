@@ -1,16 +1,18 @@
 import { create } from "zustand";
 
+export type ActiveTab = "services" | "tasks" | "logs" | "alb" | "nodes" | "database";
+
 interface NavigationState {
   selectedCluster: string | null;
   selectedService: string | null;
   selectedTaskArn: string | null;
-  activeTab: "services" | "tasks" | "logs";
+  activeTab: ActiveTab;
   sidebarCollapsed: boolean;
 
   selectCluster: (clusterName: string) => void;
   selectService: (serviceName: string) => void;
   selectTask: (taskArn: string) => void;
-  setActiveTab: (tab: NavigationState["activeTab"]) => void;
+  setActiveTab: (tab: ActiveTab) => void;
   toggleSidebar: () => void;
   goBack: () => void;
 }

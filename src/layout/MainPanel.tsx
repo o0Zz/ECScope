@@ -4,6 +4,9 @@ import { TabBar } from "./TabBar";
 import { ServiceList } from "@/features/services/ServiceList";
 import { TaskList } from "@/features/tasks/TaskList";
 import { LogsViewer } from "@/features/logs/LogsViewer";
+import { AlbViewer } from "@/features/alb/AlbViewer";
+import { NodeViewer } from "@/features/nodes/NodeViewer";
+import { DatabaseDashboard } from "@/features/database/DatabaseDashboard";
 import { WelcomeView } from "@/features/welcome/WelcomeView";
 
 export function MainPanel() {
@@ -21,6 +24,9 @@ export function MainPanel() {
         {activeTab === "services" && <ServiceList />}
         {activeTab === "tasks" && <TaskList />}
         {activeTab === "logs" && <LogsViewer />}
+        {activeTab === "alb" && <AlbViewer />}
+        {activeTab === "nodes" && <NodeViewer />}
+        {activeTab === "database" && <DatabaseDashboard />}
       </div>
     </div>
   );

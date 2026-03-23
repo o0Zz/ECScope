@@ -1,10 +1,13 @@
-import { useNavigationStore } from "@/store/navigation";
+import { useNavigationStore, type ActiveTab } from "@/store/navigation";
 import { cn } from "@/lib/utils";
 
-const TABS = [
-  { id: "services" as const, label: "Services" },
-  { id: "tasks" as const, label: "Tasks" },
-  { id: "logs" as const, label: "Logs" },
+const TABS: { id: ActiveTab; label: string }[] = [
+  { id: "services", label: "Services" },
+  { id: "tasks", label: "Tasks" },
+  { id: "logs", label: "Logs" },
+  { id: "alb", label: "ALB" },
+  { id: "nodes", label: "Nodes" },
+  { id: "database", label: "Database" },
 ];
 
 export function TabBar() {

@@ -70,11 +70,21 @@ export function ServiceList() {
   const { selectedCluster, selectService } = useNavigationStore();
   const queryClient = useQueryClient();
 
-  const { data: services, isLoading } = useQuery({
+  const { data: services, isLoading, error } = useQuery({
     queryKey: ["services", selectedCluster],
-    queryFn: () => ecsApi.listServices(selectedCluster!),
+    queryFn: () => {
+      console.log("[ServiceList] queryFn called for cluster:", selectedCluster);
+      return ecsApi.listServices(selectedCluster!);
+    },
     enabled: !!selectedCluster,
   });
+
+  if (error) {
+    console.error("[ServiceList] query error:", error);
+  }
+  if (services) {
+    console.log("[ServiceList] services loaded:", services.length);
+  }
 
   const scaleMutation = useMutation({
     mutationFn: ({ serviceName, desiredCount }: { serviceName: string; desiredCount: number }) =>

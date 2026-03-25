@@ -5,8 +5,6 @@
 ECScope is a modern, intuitive UI for exploring, monitoring, and managing your Amazon ECS infrastructure.
 It gives you a clear, real-time view of your clusters, services, and tasks — all in one place.
 
----
-
 ## ✨ Features
 
 ### 🔍 Explore Your Infrastructure
@@ -51,16 +49,22 @@ ECScope provides a **focused, developer-centric interface** to:
 
 > Think of ECScope as your control panel for ECS.
 
----
-
-## 🛠️ Use Cases
-
 * Debug failing tasks or crashing containers
 * Monitor deployments and rollouts
 * Explore infrastructure in real time
 * Improve team visibility on ECS workloads
+* Additional tooling: Coredump, tcpdump, download...
 
 ---
+
+
+## ⚙️ Build
+
+### Prerequisites
+
+ - Install rust: https://rustup.rs/
+ - Install Node: https://nodejs.org/en/download
+
 
 ## 🧱 Architecture (high-level)
 

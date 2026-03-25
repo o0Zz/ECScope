@@ -1,0 +1,12 @@
+[
+    {
+        "profile": "my-profile1",
+        "region": "eu-west-1",
+        "clusterName": "my-cluster"
+    },
+    {
+        "profile": "my-profile2",
+        "region": "eu-west-1",
+        "clusterName": "my-cluster2"
+    }
+]

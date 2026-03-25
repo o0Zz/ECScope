@@ -66,6 +66,9 @@ export function initAwsClients(creds: ResolvedCredentials, clusterName: string) 
     console.log("[aws] AWS clients initialized, configuredCluster =", configuredCluster);
 }
 
+/** Expose SSM client for ssm-diagnostics module */
+export function getSsmClient(): SSMClient { return ssmClient; }
+
 // ─── Helpers ──────────────────────────────────────────────
 
 /** Fetch average CPU and Memory utilization for a service from CloudWatch (last 5 min) */

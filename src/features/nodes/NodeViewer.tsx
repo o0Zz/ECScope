@@ -1,15 +1,20 @@
+import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { ecsApi } from "@/api";
 import { useNavigationStore } from "@/store/navigation";
 import { useConfigStore } from "@/store/config";
 import { StatusBadge } from "@/components/StatusBadge";
-import { Monitor, Terminal } from "lucide-react";
+import { Monitor, Terminal, Stethoscope } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { invoke } from "@tauri-apps/api/core";
+import { DiagnosticsDialog } from "./DiagnosticsDialog";
 
 export function NodeViewer() {
   const { selectedCluster } = useNavigationStore();
   const { activeCluster } = useConfigStore();
+  const storage = useConfigStore((s) => s.storage);
+  const [diagInstanceId, setDiagInstanceId] = useState<string | null>(null);
+  const hasDiagnostics = !!(storage?.s3Bucket && storage?.s3AccessKeyId && storage?.s3SecretAccessKey);
 
   const { data: instances, isLoading } = useQuery({
     queryKey: ["nodes", selectedCluster],
@@ -71,6 +76,16 @@ export function NodeViewer() {
                   <Terminal className="h-3.5 w-3.5" />
                   Connect
                 </button>
+                {hasDiagnostics && (
+                  <button
+                    onClick={() => setDiagInstanceId(inst.ec2InstanceId)}
+                    className="rounded-md border border-border px-2.5 py-1.5 text-xs font-medium text-foreground hover:bg-accent transition-colors flex items-center gap-1.5"
+                    title={`Run diagnostics on ${inst.ec2InstanceId}`}
+                  >
+                    <Stethoscope className="h-3.5 w-3.5" />
+                    Diagnostics
+                  </button>
+                )}
                 <StatusBadge status={inst.status} />
               </div>
 
@@ -114,6 +129,13 @@ export function NodeViewer() {
           );
         })}
       </div>
+
+      {diagInstanceId && (
+        <DiagnosticsDialog
+          instanceId={diagInstanceId}
+          onClose={() => setDiagInstanceId(null)}
+        />
+      )}
     </div>
   );
 }

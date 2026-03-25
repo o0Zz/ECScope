@@ -1,5 +1,5 @@
 import { STSClient, AssumeRoleCommand } from "@aws-sdk/client-sts";
-import type { AppConfig, AwsFiles } from "./config";
+import type { ClusterConfig, AwsFiles } from "./config";
 
 export interface ResolvedCredentials {
     accessKeyId: string;
@@ -41,7 +41,7 @@ function parseIniFile(content: string): IniFile {
 }
 
 export async function resolveCredentials(
-    appConfig: AppConfig,
+    appConfig: ClusterConfig,
     awsFiles: AwsFiles,
 ): Promise<ResolvedCredentials> {
     const credSections = parseIniFile(awsFiles.credentials);

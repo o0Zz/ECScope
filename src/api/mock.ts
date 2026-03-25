@@ -10,6 +10,9 @@ import type {
   AlbInfo,
   ContainerInstance,
   DatabaseInstance,
+  TcpdumpParams,
+  CoredumpParams,
+  DiagnosticResult,
 } from "./types";
 
 const delay = (ms: number) => new Promise((r) => setTimeout(r, ms));
@@ -382,5 +385,74 @@ export const mockApi = {
       ],
     };
     return dbsByCluster[clusterName] ?? [];
+  },
+};
+
+// ─── Mock Diagnostics ─────────────────────────────────
+
+export const mockDiagnostics = {
+  async startTcpdump(params: TcpdumpParams): Promise<{ commandId: string }> {
+    void params;
+    await delay(300);
+    return { commandId: `mock-cmd-${Date.now()}` };
+  },
+
+  async startCoredump(params: CoredumpParams): Promise<{ commandId: string }> {
+    void params;
+    await delay(300);
+    return { commandId: `mock-cmd-${Date.now()}` };
+  },
+
+  async pollDiagnostic(commandId: string, instanceId: string): Promise<DiagnosticResult> {
+    // Always return completed after a short delay in mock mode
+    await delay(500);
+    return {
+      commandId,
+      instanceId,
+      status: "completed",
+      s3Key: `ecscope/${instanceId}/mock-capture-${Date.now()}.pcap`,
+    };
+  },
+
+  async downloadDiagnosticFile(_bucket: string, _s3Key: string): Promise<void> {
+    await delay(300);
+    console.log("[mock] downloadDiagnosticFile: simulated download");
+  },
+
+  async runTcpdumpAndDownload(
+    params: TcpdumpParams,
+    onProgress?: (status: DiagnosticResult) => void,
+  ): Promise<void> {
+    const commandId = `mock-cmd-${Date.now()}`;
+    // Simulate progress over a few ticks
+    for (let i = 0; i < 3; i++) {
+      await delay(1000);
+      onProgress?.({ commandId, instanceId: params.instanceId, status: "running" });
+    }
+    onProgress?.({
+      commandId,
+      instanceId: params.instanceId,
+      status: "completed",
+      s3Key: `ecscope/${params.instanceId}/mock-capture.pcap`,
+    });
+    console.log("[mock] runTcpdumpAndDownload completed");
+  },
+
+  async runCoredumpAndDownload(
+    params: CoredumpParams,
+    onProgress?: (status: DiagnosticResult) => void,
+  ): Promise<void> {
+    const commandId = `mock-cmd-${Date.now()}`;
+    for (let i = 0; i < 3; i++) {
+      await delay(1000);
+      onProgress?.({ commandId, instanceId: params.instanceId, status: "running" });
+    }
+    onProgress?.({
+      commandId,
+      instanceId: params.instanceId,
+      status: "completed",
+      s3Key: `ecscope/${params.instanceId}/mock-core.dump`,
+    });
+    console.log("[mock] runCoredumpAndDownload completed");
   },
 };

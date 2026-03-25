@@ -1,12 +1,20 @@
-[
-    {
-        "profile": "my-profile1",
-        "region": "eu-west-1",
-        "clusterName": "my-cluster"
-    },
-    {
-        "profile": "my-profile2",
-        "region": "eu-west-1",
-        "clusterName": "my-cluster2"
+{
+    "clusters": [
+        {
+            "profile": "my-profile1",
+            "region": "eu-west-1",
+            "clusterName": "my-cluster"
+        },
+        {
+            "profile": "my-profile2",
+            "region": "eu-west-1",
+            "clusterName": "my-cluster2"
+        }
+    ],
+    "storage": {
+        "s3Bucket": "my-diagnostics-bucket",
+        "s3AccessKeyId": "AKIA...",
+        "s3SecretAccessKey": "wJalr...",
+        "s3Region": "eu-west-1"
     }
-]
+}

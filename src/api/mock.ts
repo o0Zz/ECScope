@@ -108,6 +108,8 @@ function makeTasks(clusterName: string, serviceName: string, count: number): Ecs
     group: `service:${serviceName}`,
     containers: [makeContainer(serviceName, `123456789.dkr.ecr.us-east-1.amazonaws.com/${serviceName}:latest`)],
     healthStatus: "HEALTHY",
+    containerInstanceArn: "",
+    ec2InstanceId: "",
   }));
 }
 

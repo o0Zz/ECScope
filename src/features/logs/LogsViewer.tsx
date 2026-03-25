@@ -6,17 +6,29 @@ import { cn } from "@/lib/utils";
 export function LogsViewer() {
   const { selectedTaskArn } = useNavigationStore();
 
-  const { data: logs, isLoading } = useQuery({
+  const { data: logs, isLoading, error } = useQuery({
     queryKey: ["logs", selectedTaskArn],
     queryFn: () => ecsApi.getTaskLogs(selectedTaskArn!),
     enabled: !!selectedTaskArn,
     refetchInterval: 5000,
+    retry: false,
   });
 
   if (isLoading) {
     return (
       <div className="flex items-center justify-center py-12 text-sm text-muted-foreground">
         Loading logs…
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex flex-col items-center justify-center gap-3 py-12 px-8">
+        <span className="text-sm font-medium text-destructive">Failed to fetch logs</span>
+        <pre className="max-w-2xl whitespace-pre-wrap rounded-lg border border-border bg-muted/30 p-4 text-xs text-muted-foreground">
+          {error instanceof Error ? error.message : String(error)}
+        </pre>
       </div>
     );
   }

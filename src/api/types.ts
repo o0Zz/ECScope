@@ -62,6 +62,8 @@ export interface EcsTask {
   group: string;
   containers: EcsContainer[];
   healthStatus: string;
+  containerInstanceArn: string;
+  ec2InstanceId: string;
 }
 
 export interface EcsContainer {

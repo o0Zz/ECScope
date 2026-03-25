@@ -4,6 +4,11 @@
 
 ECScope is a modern, intuitive UI for exploring, monitoring, and managing your Amazon ECS infrastructure.
 It gives you a clear, real-time view of your clusters, services, and tasks — all in one place.
+## How to run it
+
+### Dependencies to install
+`winget install Amazon.SessionManagerPlugin`
+
 
 ## ✨ Features
 
@@ -65,6 +70,9 @@ ECScope provides a **focused, developer-centric interface** to:
  - Install rust: https://rustup.rs/
  - Install Node: https://nodejs.org/en/download
 
+### Install dependencies
+
+`npm ci`
 
 ## 🧱 Architecture (high-level)
 

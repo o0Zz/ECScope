@@ -1,12 +1,15 @@
 import { useQuery } from "@tanstack/react-query";
 import { ecsApi } from "@/api";
 import { useNavigationStore } from "@/store/navigation";
+import { useConfigStore } from "@/store/config";
 import { StatusBadge } from "@/components/StatusBadge";
-import { Monitor } from "lucide-react";
+import { Monitor, Terminal } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { invoke } from "@tauri-apps/api/core";
 
 export function NodeViewer() {
   const { selectedCluster } = useNavigationStore();
+  const { activeCluster } = useConfigStore();
 
   const { data: instances, isLoading } = useQuery({
     queryKey: ["nodes", selectedCluster],
@@ -52,6 +55,22 @@ export function NodeViewer() {
                   <div className="truncate font-mono text-sm font-medium text-foreground">{inst.ec2InstanceId}</div>
                   <div className="text-xs text-muted-foreground">{inst.instanceType}</div>
                 </div>
+                <button
+                  onClick={() => {
+                    invoke("open_ssm_session", {
+                      params: {
+                        instance_id: inst.ec2InstanceId,
+                        profile: activeCluster?.profile ?? "",
+                        region: activeCluster?.region ?? "us-east-1",
+                      },
+                    }).catch((err) => console.error("[ECScope] SSM connect failed:", err));
+                  }}
+                  className="rounded-md border border-border px-2.5 py-1.5 text-xs font-medium text-foreground hover:bg-accent transition-colors flex items-center gap-1.5"
+                  title={`SSM connect to ${inst.ec2InstanceId}`}
+                >
+                  <Terminal className="h-3.5 w-3.5" />
+                  Connect
+                </button>
                 <StatusBadge status={inst.status} />
               </div>
 

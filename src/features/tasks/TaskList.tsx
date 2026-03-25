@@ -2,7 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { ecsApi } from "@/api";
 import { useNavigationStore } from "@/store/navigation";
 import { StatusBadge } from "@/components/StatusBadge";
-import { Container, ArrowRight } from "lucide-react";
+import { Container, ArrowRight, Server } from "lucide-react";
 
 export function TaskList() {
   const { selectedCluster, selectedService, selectTask } =
@@ -58,6 +58,9 @@ export function TaskList() {
                 CPU / Memory
               </th>
               <th className="px-4 py-2.5 text-left font-medium text-muted-foreground">
+                Node
+              </th>
+              <th className="px-4 py-2.5 text-left font-medium text-muted-foreground">
                 Started
               </th>
               <th className="px-4 py-2.5 text-left font-medium text-muted-foreground">
@@ -94,6 +97,16 @@ export function TaskList() {
                   </td>
                   <td className="px-4 py-3 font-mono text-xs text-muted-foreground">
                     {task.cpu} / {task.memory} MB
+                  </td>
+                  <td className="px-4 py-3">
+                    {task.ec2InstanceId ? (
+                      <div className="flex items-center gap-1.5">
+                        <Server className="h-3.5 w-3.5 text-muted-foreground" />
+                        <span className="font-mono text-xs text-foreground">{task.ec2InstanceId}</span>
+                      </div>
+                    ) : (
+                      <span className="text-xs text-muted-foreground">Fargate</span>
+                    )}
                   </td>
                   <td className="px-4 py-3 text-xs text-muted-foreground">
                     {new Date(task.startedAt).toLocaleString()}

@@ -19,6 +19,17 @@ import {
     CloudWatchClient,
     GetMetricDataCommand,
 } from "@aws-sdk/client-cloudwatch";
+import {
+    SSMClient,
+    SendCommandCommand,
+    GetCommandInvocationCommand,
+} from "@aws-sdk/client-ssm";
+import {
+    ElasticLoadBalancingV2Client,
+    DescribeTargetGroupsCommand,
+    DescribeTargetHealthCommand,
+    DescribeLoadBalancersCommand,
+} from "@aws-sdk/client-elastic-load-balancing-v2";
 import type { ResolvedCredentials } from "./aws-credentials";
 import type {
     EcsCluster,
@@ -34,6 +45,8 @@ import type {
 let ecsClient: ECSClient;
 let logsClient: CloudWatchLogsClient;
 let cwClient: CloudWatchClient;
+let ssmClient: SSMClient;
+let elbv2Client: ElasticLoadBalancingV2Client;
 let configuredCluster: string;
 
 export function initAwsClients(creds: ResolvedCredentials, clusterName: string) {
@@ -47,6 +60,8 @@ export function initAwsClients(creds: ResolvedCredentials, clusterName: string) 
     ecsClient = new ECSClient({ region: creds.region, credentials });
     logsClient = new CloudWatchLogsClient({ region: creds.region, credentials });
     cwClient = new CloudWatchClient({ region: creds.region, credentials });
+    ssmClient = new SSMClient({ region: creds.region, credentials });
+    elbv2Client = new ElasticLoadBalancingV2Client({ region: creds.region, credentials });
     configuredCluster = clusterName;
     console.log("[aws] AWS clients initialized, configuredCluster =", configuredCluster);
 }
@@ -321,6 +336,8 @@ async function listTasks(
                 startedAt: t.startedAt?.toISOString?.() ?? "",
                 group: t.group ?? "",
                 healthStatus: t.healthStatus ?? "UNKNOWN",
+                containerInstanceArn: t.containerInstanceArn ?? "",
+                ec2InstanceId: "",
                 containers: (t.containers ?? []).map((c) => ({
                     containerArn: c.containerArn ?? "",
                     name: c.name ?? "",
@@ -336,6 +353,26 @@ async function listTasks(
                     })),
                 })),
             });
+        }
+    }
+
+    // Resolve EC2 instance IDs from container instance ARNs
+    const ciArns = [...new Set(allTasks.map((t) => t.containerInstanceArn).filter(Boolean))];
+    if (ciArns.length > 0) {
+        const ciRes = await ecsClient.send(
+            new DescribeContainerInstancesCommand({
+                cluster: clusterName,
+                containerInstances: ciArns,
+            }),
+        );
+        const ciMap = new Map<string, string>();
+        for (const ci of ciRes.containerInstances ?? []) {
+            if (ci.containerInstanceArn && ci.ec2InstanceId) {
+                ciMap.set(ci.containerInstanceArn, ci.ec2InstanceId);
+            }
+        }
+        for (const task of allTasks) {
+            task.ec2InstanceId = ciMap.get(task.containerInstanceArn) ?? "";
         }
     }
 
@@ -443,6 +480,118 @@ async function listContainerInstances(
     });
 }
 
+// ─── SSM Docker Logs Fallback ─────────────────────────────
+
+/** Wait for SSM command to finish and return output */
+async function waitForSsmCommand(commandId: string, instanceId: string): Promise<string> {
+    const maxAttempts = 15;
+    for (let attempt = 0; attempt < maxAttempts; attempt++) {
+        await new Promise((r) => setTimeout(r, 2000));
+        try {
+            const res = await ssmClient.send(
+                new GetCommandInvocationCommand({
+                    CommandId: commandId,
+                    InstanceId: instanceId,
+                }),
+            );
+            if (res.Status === "Success") {
+                return res.StandardOutputContent ?? "";
+            }
+            if (res.Status === "Failed" || res.Status === "Cancelled" || res.Status === "TimedOut") {
+                throw new Error(
+                    `SSM command ${res.Status}: ${res.StandardErrorContent || res.StatusDetails || "unknown error"}`,
+                );
+            }
+            // InProgress / Pending — keep waiting
+        } catch (e: unknown) {
+            // InvocationDoesNotExist means the command hasn't registered yet
+            if (e instanceof Error && e.name === "InvocationDoesNotExist") continue;
+            throw e;
+        }
+    }
+    throw new Error("SSM command timed out after 30s");
+}
+
+/** Fetch container logs from EC2 via SSM SendCommand + docker logs */
+async function getDockerLogsViaSsm(
+    task: { containerInstanceArn?: string; containers?: { runtimeId?: string; name?: string }[] },
+    clusterName: string,
+): Promise<LogEvent[]> {
+    if (!task.containerInstanceArn) {
+        throw new Error(
+            "Task has no containerInstanceArn. This may be a Fargate task — SSM docker logs only works with EC2 launch type.",
+        );
+    }
+
+    // Find a container with a runtimeId (Docker container ID)
+    const container = task.containers?.find((c) => c.runtimeId);
+    if (!container?.runtimeId) {
+        throw new Error(
+            "No container has a Docker runtime ID. The task may not be running yet.",
+        );
+    }
+
+    // Resolve EC2 instance ID from container instance ARN
+    const ciRes = await ecsClient.send(
+        new DescribeContainerInstancesCommand({
+            cluster: clusterName,
+            containerInstances: [task.containerInstanceArn],
+        }),
+    );
+    const ec2InstanceId = ciRes.containerInstances?.[0]?.ec2InstanceId;
+    if (!ec2InstanceId) {
+        throw new Error(
+            `Could not resolve EC2 instance ID for container instance ${task.containerInstanceArn}`,
+        );
+    }
+
+    console.log(
+        `[ECScope] Fetching docker logs via SSM: instance=${ec2InstanceId}, container=${container.runtimeId} (${container.name})`,
+    );
+
+    // Send docker logs command via SSM
+    const sendRes = await ssmClient.send(
+        new SendCommandCommand({
+            InstanceIds: [ec2InstanceId],
+            DocumentName: "AWS-RunShellScript",
+            Parameters: {
+                commands: [`docker logs --tail 200 --timestamps ${container.runtimeId}`],
+            },
+            TimeoutSeconds: 30,
+        }),
+    );
+
+    const commandId = sendRes.Command?.CommandId;
+    if (!commandId) {
+        throw new Error("SSM SendCommand did not return a command ID. Check IAM permissions for ssm:SendCommand.");
+    }
+
+    // Wait for command completion
+    const output = await waitForSsmCommand(commandId, ec2InstanceId);
+
+    // Parse docker logs output (each line: timestamp message)
+    const lines = output.split("\n").filter((l) => l.trim());
+    const now = Date.now();
+
+    return lines.map((line, i) => {
+        // Docker --timestamps format: 2024-01-15T10:30:00.123456789Z message
+        const tsMatch = line.match(/^(\d{4}-\d{2}-\d{2}T[\d:.]+Z?)\s+(.*)/);
+        if (tsMatch) {
+            const ts = new Date(tsMatch[1]).getTime();
+            return {
+                timestamp: isNaN(ts) ? now - (lines.length - i) * 1000 : ts,
+                message: tsMatch[2],
+                ingestionTime: now,
+            };
+        }
+        return {
+            timestamp: now - (lines.length - i) * 1000,
+            message: line,
+            ingestionTime: now,
+        };
+    });
+}
+
 async function getTaskLogs(taskArn: string): Promise<LogEvent[]> {
     // Extract task ID and cluster from ARN
     // ARN format: arn:aws:ecs:region:account:task/cluster-name/task-id
@@ -459,7 +608,9 @@ async function getTaskLogs(taskArn: string): Promise<LogEvent[]> {
     );
 
     const task = descRes.tasks?.[0];
-    if (!task?.taskDefinitionArn) return [];
+    if (!task?.taskDefinitionArn) {
+        throw new Error("Task not found or has no task definition. The task may have been stopped and deregistered.");
+    }
 
     // Get task definition to find log configuration
     const tdRes = await ecsClient.send(
@@ -469,25 +620,45 @@ async function getTaskLogs(taskArn: string): Promise<LogEvent[]> {
     );
 
     const containers = tdRes.taskDefinition?.containerDefinitions ?? [];
-    if (containers.length === 0) return [];
+    if (containers.length === 0) {
+        throw new Error("Task definition has no container definitions.");
+    }
+
+    // Collect log driver info for diagnostics
+    const logDrivers = containers.map((c) => ({
+        name: c.name,
+        driver: c.logConfiguration?.logDriver ?? "none (docker default)",
+        options: c.logConfiguration?.options,
+    }));
+    console.log("[ECScope] Container log configs:", logDrivers);
 
     // Find the first container with awslogs log driver
     const logContainer = containers.find(
         (c) => c.logConfiguration?.logDriver === "awslogs",
-    ) ?? containers[0];
+    );
 
-    const logConfig = logContainer?.logConfiguration;
-    if (!logConfig || logConfig.logDriver !== "awslogs") return [];
+    if (!logContainer) {
+        // No awslogs driver — try SSM + docker logs on the EC2 instance
+        console.log("[ECScope] No awslogs driver, trying SSM docker logs fallback");
+        return getDockerLogsViaSsm(task, clusterName);
+    }
 
+    const logConfig = logContainer.logConfiguration!;
     const logGroup = logConfig.options?.["awslogs-group"];
     const logStreamPrefix = logConfig.options?.["awslogs-stream-prefix"];
 
-    if (!logGroup) return [];
+    if (!logGroup) {
+        throw new Error(
+            `Container "${logContainer.name}" uses awslogs but has no "awslogs-group" option configured.`
+        );
+    }
 
     // Build log stream name: prefix/container-name/task-id
     const streamName = logStreamPrefix
         ? `${logStreamPrefix}/${logContainer.name}/${taskId}`
         : undefined;
+
+    console.log("[ECScope] Looking for logs in group:", logGroup, "stream:", streamName ?? "(searching...)");
 
     try {
         if (streamName) {
@@ -500,29 +671,43 @@ async function getTaskLogs(taskArn: string): Promise<LogEvent[]> {
                 }),
             );
 
-            return (logRes.events ?? []).map((e) => ({
+            const events = (logRes.events ?? []).map((e) => ({
                 timestamp: e.timestamp ?? 0,
                 message: e.message ?? "",
                 ingestionTime: e.ingestionTime ?? 0,
             }));
+            if (events.length > 0) return events;
+            // Stream exists but empty, or stream doesn't exist — fall through to search
         }
+    } catch (e: unknown) {
+        // Stream not found — fall through to broader search
+        console.warn("[ECScope] Direct stream lookup failed:", e instanceof Error ? e.message : e);
+    }
 
-        // Fallback: find the most recent log stream containing the task ID
+    // Fallback: search for log streams matching the task ID
+    try {
         const streamsRes = await logsClient.send(
             new DescribeLogStreamsCommand({
                 logGroupName: logGroup,
                 logStreamNamePrefix: logStreamPrefix ?? undefined,
                 orderBy: "LastEventTime",
                 descending: true,
-                limit: 10,
+                limit: 20,
             }),
         );
+
+        console.log("[ECScope] Found streams:", streamsRes.logStreams?.map((s) => s.logStreamName));
 
         const matchingStream = streamsRes.logStreams?.find((s) =>
             s.logStreamName?.includes(taskId),
         );
 
-        if (!matchingStream?.logStreamName) return [];
+        if (!matchingStream?.logStreamName) {
+            throw new Error(
+                `No log stream found for task ${taskId} in log group "${logGroup}".\n` +
+                `Available streams: ${streamsRes.logStreams?.map((s) => s.logStreamName).join(", ") || "none"}`
+            );
+        }
 
         const logRes = await logsClient.send(
             new GetLogEventsCommand({
@@ -538,14 +723,180 @@ async function getTaskLogs(taskArn: string): Promise<LogEvent[]> {
             message: e.message ?? "",
             ingestionTime: e.ingestionTime ?? 0,
         }));
-    } catch {
-        return [];
+    } catch (e: unknown) {
+        if (e instanceof Error && e.message.startsWith("No log stream found")) throw e;
+        throw new Error(`Failed to fetch logs from CloudWatch: ${e instanceof Error ? e.message : String(e)}`);
     }
 }
 
 // Not yet implemented — return empty arrays
-async function listAlbs(_clusterName: string): Promise<AlbInfo[]> {
-    return [];
+async function listAlbs(clusterName: string): Promise<AlbInfo[]> {
+    console.log("[aws] listAlbs called", { clusterName });
+
+    // 1. Get all services to collect target group ARNs
+    const arns = await listAllServiceArns(clusterName);
+    if (arns.length === 0) return [];
+
+    const rawServices = await describeServicesBatched(clusterName, arns);
+
+    // Collect unique target group ARNs from service load balancer configs
+    const tgArnSet = new Set<string>();
+    for (const svc of rawServices) {
+        for (const lb of (svc as any).loadBalancers ?? []) {
+            if (lb.targetGroupArn) tgArnSet.add(lb.targetGroupArn);
+        }
+    }
+
+    const tgArns = [...tgArnSet];
+    console.log("[aws] listAlbs found target group ARNs:", tgArns);
+    if (tgArns.length === 0) return [];
+
+    // 2. Describe target groups (batches of 20)
+    const allTargetGroups: any[] = [];
+    for (let i = 0; i < tgArns.length; i += 20) {
+        const batch = tgArns.slice(i, i + 20);
+        const tgRes = await elbv2Client.send(
+            new DescribeTargetGroupsCommand({ TargetGroupArns: batch }),
+        );
+        allTargetGroups.push(...(tgRes.TargetGroups ?? []));
+    }
+
+    // 3. Collect unique ALB ARNs from target groups
+    const albArnSet = new Set<string>();
+    for (const tg of allTargetGroups) {
+        for (const lbArn of tg.LoadBalancerArns ?? []) {
+            albArnSet.add(lbArn);
+        }
+    }
+
+    const albArns = [...albArnSet];
+    console.log("[aws] listAlbs found ALB ARNs:", albArns);
+    if (albArns.length === 0) return [];
+
+    // 4. Describe ALBs (batches of 20)
+    const allAlbs: any[] = [];
+    for (let i = 0; i < albArns.length; i += 20) {
+        const batch = albArns.slice(i, i + 20);
+        const albRes = await elbv2Client.send(
+            new DescribeLoadBalancersCommand({ LoadBalancerArns: batch }),
+        );
+        allAlbs.push(...(albRes.LoadBalancers ?? []));
+    }
+
+    // 5. Get target health for each target group in parallel
+    const tgHealthMap = new Map<string, { healthyCount: number; unhealthyCount: number; targets: { targetId: string; port: number; health: string; description: string }[] }>();
+    await Promise.all(
+        allTargetGroups.map(async (tg) => {
+            try {
+                const healthRes = await elbv2Client.send(
+                    new DescribeTargetHealthCommand({ TargetGroupArn: tg.TargetGroupArn }),
+                );
+                let healthyCount = 0;
+                let unhealthyCount = 0;
+                const targets = (healthRes.TargetHealthDescriptions ?? []).map((thd) => {
+                    const state = thd.TargetHealth?.State ?? "unknown";
+                    if (state === "healthy") healthyCount++;
+                    else unhealthyCount++;
+                    return {
+                        targetId: thd.Target?.Id ?? "",
+                        port: thd.Target?.Port ?? 0,
+                        health: state,
+                        description: thd.TargetHealth?.Description ?? "",
+                    };
+                });
+                tgHealthMap.set(tg.TargetGroupArn, { healthyCount, unhealthyCount, targets });
+            } catch (e) {
+                console.warn("[aws] Failed to get target health for", tg.TargetGroupArn, e);
+                tgHealthMap.set(tg.TargetGroupArn, { healthyCount: 0, unhealthyCount: 0, targets: [] });
+            }
+        }),
+    );
+
+    // 6. Build AlbInfo objects
+    // Fetch CloudWatch metrics for request count and latency
+    const now = new Date();
+    const fiveMinAgo = new Date(now.getTime() - 5 * 60 * 1000);
+
+    return Promise.all(
+        allAlbs.map(async (alb) => {
+            const albArn = alb.LoadBalancerArn ?? "";
+            const albName = alb.LoadBalancerName ?? "";
+
+            // Find target groups belonging to this ALB
+            const albTargetGroups = allTargetGroups
+                .filter((tg) => (tg.LoadBalancerArns ?? []).includes(albArn))
+                .map((tg) => {
+                    const health = tgHealthMap.get(tg.TargetGroupArn) ?? { healthyCount: 0, unhealthyCount: 0, targets: [] };
+                    return {
+                        targetGroupArn: tg.TargetGroupArn ?? "",
+                        targetGroupName: tg.TargetGroupName ?? "",
+                        port: tg.Port ?? 0,
+                        protocol: tg.Protocol ?? "",
+                        healthCheckPath: tg.HealthCheckPath ?? "/",
+                        healthyCount: health.healthyCount,
+                        unhealthyCount: health.unhealthyCount,
+                        targets: health.targets,
+                    };
+                });
+
+            // Fetch request count and latency from CloudWatch
+            let requestCount = 0;
+            let avgLatencyMs = 0;
+            try {
+                // ALB dimension uses the short name from ARN: app/my-alb/50dc6c495c0c9188
+                const albDimension = albArn.split(":loadbalancer/")[1] ?? "";
+                const metricsRes = await cwClient.send(
+                    new GetMetricDataCommand({
+                        StartTime: fiveMinAgo,
+                        EndTime: now,
+                        MetricDataQueries: [
+                            {
+                                Id: "requests",
+                                MetricStat: {
+                                    Metric: {
+                                        Namespace: "AWS/ApplicationELB",
+                                        MetricName: "RequestCount",
+                                        Dimensions: [{ Name: "LoadBalancer", Value: albDimension }],
+                                    },
+                                    Period: 300,
+                                    Stat: "Sum",
+                                },
+                            },
+                            {
+                                Id: "latency",
+                                MetricStat: {
+                                    Metric: {
+                                        Namespace: "AWS/ApplicationELB",
+                                        MetricName: "TargetResponseTime",
+                                        Dimensions: [{ Name: "LoadBalancer", Value: albDimension }],
+                                    },
+                                    Period: 300,
+                                    Stat: "Average",
+                                },
+                            },
+                        ],
+                    }),
+                );
+                const reqValues = metricsRes.MetricDataResults?.find((r) => r.Id === "requests")?.Values ?? [];
+                const latValues = metricsRes.MetricDataResults?.find((r) => r.Id === "latency")?.Values ?? [];
+                requestCount = reqValues.length > 0 ? Math.round(reqValues[0]) : 0;
+                avgLatencyMs = latValues.length > 0 ? Math.round(latValues[0] * 1000) : 0;
+            } catch (e) {
+                console.warn("[aws] Failed to get ALB metrics for", albName, e);
+            }
+
+            return {
+                albArn,
+                albName,
+                dnsName: alb.DNSName ?? "",
+                scheme: alb.Scheme ?? "unknown",
+                status: alb.State?.Code ?? "unknown",
+                targetGroups: albTargetGroups,
+                requestCount,
+                avgLatencyMs,
+            };
+        }),
+    );
 }
 
 async function listDatabases(_clusterName: string): Promise<DatabaseInstance[]> {

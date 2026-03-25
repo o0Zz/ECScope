@@ -1,6 +1,7 @@
 use serde::Serialize;
+use serde::Deserialize;
 use std::fs;
-use std::path::PathBuf;
+use std::process::Command;
 
 #[derive(Serialize)]
 struct AwsFiles {
@@ -53,6 +54,59 @@ fn read_aws_files() -> Result<AwsFiles, String> {
     })
 }
 
+#[derive(Deserialize)]
+struct SsmConnectParams {
+    instance_id: String,
+    profile: String,
+    region: String,
+}
+
+#[tauri::command]
+fn open_ssm_session(params: SsmConnectParams) -> Result<(), String> {
+    let ssm_cmd = format!(
+        "aws ssm start-session --target {} --profile {} --region {}",
+        params.instance_id, params.profile, params.region
+    );
+
+    #[cfg(target_os = "windows")]
+    {
+        Command::new("cmd")
+            .args(["/c", "start", "cmd", "/k", &ssm_cmd])
+            .spawn()
+            .map_err(|e| format!("Failed to open terminal: {}", e))?;
+    }
+
+    #[cfg(target_os = "macos")]
+    {
+        let script = format!("tell application \"Terminal\" to do script \"{}\"", ssm_cmd);
+        Command::new("osascript")
+            .args(["-e", &script])
+            .spawn()
+            .map_err(|e| format!("Failed to open terminal: {}", e))?;
+    }
+
+    #[cfg(target_os = "linux")]
+    {
+        let terminals = ["x-terminal-emulator", "gnome-terminal", "xterm"];
+        let mut launched = false;
+        for term in &terminals {
+            if Command::new(term)
+                .args(["--", "sh", "-c", &ssm_cmd])
+                .spawn()
+                .is_ok()
+            {
+                launched = true;
+                break;
+            }
+        }
+        if !launched {
+            return Err("No terminal emulator found".to_string());
+        }
+    }
+
+    Ok(())
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
@@ -66,7 +120,7 @@ pub fn run() {
             }
             Ok(())
         })
-        .invoke_handler(tauri::generate_handler![read_app_config, read_aws_files])
+        .invoke_handler(tauri::generate_handler![read_app_config, read_aws_files, open_ssm_session])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }

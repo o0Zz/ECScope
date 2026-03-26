@@ -1,6 +1,6 @@
 import { create } from "zustand";
 
-export type ActiveTab = "services" | "tasks" | "alb" | "nodes" | "database";
+export type ActiveTab = "services" | "tasks" | "albnlb" | "nodes" | "database";
 
 interface NavigationState {
   selectedCluster: string | null;

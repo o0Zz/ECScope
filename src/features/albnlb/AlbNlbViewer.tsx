@@ -157,7 +157,7 @@ function TargetGroupRow({ tg }: { tg: AlbInfo["targetGroups"][number] }) {
   );
 }
 
-export function AlbViewer() {
+export function AlbNlbViewer() {
   const { selectedCluster } = useNavigationStore();
   const refreshIntervalMs = useConfigStore((s) => s.refreshIntervalMs);
 

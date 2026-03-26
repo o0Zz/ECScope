@@ -4,7 +4,7 @@ import { cn } from "@/lib/utils";
 const TABS: { id: ActiveTab; label: string }[] = [
   { id: "services", label: "Services" },
   { id: "tasks", label: "Tasks" },
-  { id: "alb", label: "ALB / NLB" },
+  { id: "albnlb", label: "ALB / NLB" },
   { id: "nodes", label: "Nodes" },
   { id: "database", label: "Database" },
 ];

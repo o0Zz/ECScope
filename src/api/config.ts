@@ -23,7 +23,10 @@ export interface AwsFiles {
 export interface ParsedConfig {
     clusters: ClusterConfig[];
     storage: StorageConfig | null;
+    refreshPeriodSeconds: number;
 }
+
+const DEFAULT_REFRESH_PERIOD = 10;
 
 export async function loadConfig(): Promise<ParsedConfig> {
     const raw = await invoke<string>("read_app_config");
@@ -33,13 +36,16 @@ export async function loadConfig(): Promise<ParsedConfig> {
     if (parsed && !Array.isArray(parsed) && Array.isArray(parsed.clusters)) {
         const clusters = parseClusterEntries(parsed.clusters);
         const storage = parseStorage(parsed.storage);
-        return { clusters, storage };
+        const refreshPeriodSeconds = typeof parsed.refreshPeriodSeconds === "number" && parsed.refreshPeriodSeconds > 0
+            ? parsed.refreshPeriodSeconds
+            : DEFAULT_REFRESH_PERIOD;
+        return { clusters, storage, refreshPeriodSeconds };
     }
 
     // Legacy format: array of cluster configs (or single object)
     const entries: unknown[] = Array.isArray(parsed) ? parsed : [parsed];
     const clusters = parseClusterEntries(entries);
-    return { clusters, storage: null };
+    return { clusters, storage: null, refreshPeriodSeconds: DEFAULT_REFRESH_PERIOD };
 }
 
 function parseClusterEntries(entries: unknown[]): ClusterConfig[] {

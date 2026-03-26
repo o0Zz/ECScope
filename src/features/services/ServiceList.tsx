@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { ecsApi } from "@/api";
 import { useNavigationStore } from "@/store/navigation";
+import { useConfigStore } from "@/store/config";
 import { StatusBadge } from "@/components/StatusBadge";
 import { Cog, ArrowRight, Plus, Minus } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -20,10 +21,11 @@ function MetricBar({ value, label, color }: { value: number; label: string; colo
 }
 
 function ClusterOverview({ clusterName }: { clusterName: string }) {
+  const refreshIntervalMs = useConfigStore((s) => s.refreshIntervalMs);
   const { data: metrics } = useQuery({
     queryKey: ["clusterMetrics", clusterName],
     queryFn: () => ecsApi.getClusterMetrics(clusterName),
-    refetchInterval: 15000,
+    refetchInterval: refreshIntervalMs,
   });
 
   if (!metrics) return null;
@@ -68,6 +70,7 @@ function ClusterOverview({ clusterName }: { clusterName: string }) {
 
 export function ServiceList() {
   const { selectedCluster, selectService } = useNavigationStore();
+  const refreshIntervalMs = useConfigStore((s) => s.refreshIntervalMs);
   const queryClient = useQueryClient();
 
   const { data: services, isLoading, error } = useQuery({
@@ -77,6 +80,7 @@ export function ServiceList() {
       return ecsApi.listServices(selectedCluster!);
     },
     enabled: !!selectedCluster,
+    refetchInterval: refreshIntervalMs,
   });
 
   if (error) {

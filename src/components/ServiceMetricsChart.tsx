@@ -1,5 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { ecsApi } from "@/api";
+import { useConfigStore } from "@/store/config";
 import type { MetricsDataPoint } from "@/api/types";
 import { Cpu, MemoryStick } from "lucide-react";
 
@@ -7,6 +8,8 @@ interface ServiceMetricsChartProps {
     clusterName: string;
     serviceName: string;
 }
+
+const Y_TICKS = [0, 25, 50, 75, 100];
 
 function MiniChart({
     data,
@@ -29,23 +32,42 @@ function MiniChart({
     const current = values[values.length - 1];
     const avg = Math.round((values.reduce((a, b) => a + b, 0) / values.length) * 10) / 10;
 
-    const W = 400;
-    const H = 100;
-    const padX = 0;
-    const padY = 4;
+    // Chart dimensions — leave left margin for Y-axis labels
+    const W = 460;
+    const H = 120;
+    const marginLeft = 32;
+    const marginRight = 4;
+    const marginTop = 4;
+    const marginBottom = 18;
+    const chartW = W - marginLeft - marginRight;
+    const chartH = H - marginTop - marginBottom;
 
-    // Scale to 0-100% range always
     const scaleMax = 100;
-    const points = data
-        .map((d, i) => {
-            const x = padX + (i / (data.length - 1)) * (W - 2 * padX);
-            const y = H - padY - ((d[dataKey] / scaleMax) * (H - 2 * padY));
-            return `${x},${y}`;
-        })
-        .join(" ");
 
-    const firstX = padX;
-    const lastX = padX + ((data.length - 1) / (data.length - 1)) * (W - 2 * padX);
+    const toX = (i: number) => marginLeft + (i / (data.length - 1)) * chartW;
+    const toY = (v: number) => marginTop + chartH - (v / scaleMax) * chartH;
+
+    const points = data.map((d, i) => `${toX(i)},${toY(d[dataKey])}`).join(" ");
+
+    // X-axis ticks: generate hourly labels
+    const firstTs = data[0].timestamp;
+    const lastTs = data[data.length - 1].timestamp;
+    const totalMs = lastTs - firstTs;
+    const xTicks: { x: number; label: string }[] = [];
+    // Start from the first whole hour after firstTs
+    const firstHour = new Date(firstTs);
+    firstHour.setMinutes(0, 0, 0);
+    if (firstHour.getTime() < firstTs) firstHour.setHours(firstHour.getHours() + 1);
+    // Step: pick 3h intervals for 24h range, 1h for shorter
+    const stepHours = totalMs > 12 * 3600_000 ? 3 : 1;
+    for (let t = firstHour.getTime(); t <= lastTs; t += stepHours * 3600_000) {
+        const ratio = (t - firstTs) / totalMs;
+        if (ratio < 0 || ratio > 1) continue;
+        xTicks.push({
+            x: marginLeft + ratio * chartW,
+            label: new Date(t).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+        });
+    }
 
     return (
         <div className="flex-1 rounded-lg border border-border bg-card p-3">
@@ -69,47 +91,80 @@ function MiniChart({
                     </span>
                 </div>
             </div>
-            <svg viewBox={`0 0 ${W} ${H}`} className="h-24 w-full" preserveAspectRatio="none">
-                {/* Grid lines at 25%, 50%, 75% */}
-                {[25, 50, 75].map((pct) => {
-                    const y = H - padY - (pct / scaleMax) * (H - 2 * padY);
+            <svg viewBox={`0 0 ${W} ${H}`} className="h-32 w-full">
+                {/* Y-axis labels + grid lines */}
+                {Y_TICKS.map((pct) => {
+                    const y = toY(pct);
                     return (
+                        <g key={pct}>
+                            <text
+                                x={marginLeft - 4}
+                                y={y}
+                                textAnchor="end"
+                                dominantBaseline="middle"
+                                className="fill-muted-foreground"
+                                fontSize={8}
+                            >
+                                {pct}%
+                            </text>
+                            <line
+                                x1={marginLeft}
+                                y1={y}
+                                x2={W - marginRight}
+                                y2={y}
+                                stroke="currentColor"
+                                className="text-border"
+                                strokeDasharray={pct === 0 ? "none" : "4 4"}
+                                strokeWidth={0.5}
+                            />
+                        </g>
+                    );
+                })}
+                {/* X-axis tick lines + labels */}
+                {xTicks.map((tick, i) => (
+                    <g key={i}>
                         <line
-                            key={pct}
-                            x1={0}
-                            y1={y}
-                            x2={W}
-                            y2={y}
+                            x1={tick.x}
+                            y1={marginTop}
+                            x2={tick.x}
+                            y2={marginTop + chartH}
                             stroke="currentColor"
                             className="text-border"
                             strokeDasharray="4 4"
-                            strokeWidth={0.5}
+                            strokeWidth={0.3}
                         />
-                    );
-                })}
+                        <text
+                            x={tick.x}
+                            y={H - 2}
+                            textAnchor="middle"
+                            className="fill-muted-foreground"
+                            fontSize={7}
+                        >
+                            {tick.label}
+                        </text>
+                    </g>
+                ))}
                 {/* Area fill */}
-                <polygon points={`${firstX},${H - padY} ${points} ${lastX},${H - padY}`} fill={color} opacity={0.1} />
+                <polygon
+                    points={`${toX(0)},${toY(0)} ${points} ${toX(data.length - 1)},${toY(0)}`}
+                    fill={color}
+                    opacity={0.1}
+                />
                 {/* Line */}
                 <polyline points={points} fill="none" stroke={color} strokeWidth={1.5} strokeLinejoin="round" />
                 {/* Current value dot */}
-                {data.length > 0 && (() => {
-                    const lastY = H - padY - ((current / scaleMax) * (H - 2 * padY));
-                    return <circle cx={lastX} cy={lastY} r={2.5} fill={color} />;
-                })()}
+                <circle cx={toX(data.length - 1)} cy={toY(current)} r={2.5} fill={color} />
             </svg>
-            <div className="mt-1 flex justify-between text-[10px] text-muted-foreground">
-                <span>{new Date(data[0].timestamp).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</span>
-                <span>{new Date(data[data.length - 1].timestamp).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</span>
-            </div>
         </div>
     );
 }
 
 export function ServiceMetricsChart({ clusterName, serviceName }: ServiceMetricsChartProps) {
+    const refreshIntervalMs = useConfigStore((s) => s.refreshIntervalMs);
     const { data, isLoading } = useQuery({
         queryKey: ["serviceMetricsHistory", clusterName, serviceName],
         queryFn: () => ecsApi.getServiceMetricsHistory(clusterName, serviceName),
-        refetchInterval: 60_000,
+        refetchInterval: refreshIntervalMs,
     });
 
     if (isLoading) {
@@ -130,7 +185,7 @@ export function ServiceMetricsChart({ clusterName, serviceName }: ServiceMetrics
 
     return (
         <div className="mt-4">
-            <h3 className="mb-2 text-sm font-semibold text-foreground">Service Metrics (last hour)</h3>
+            <h3 className="mb-2 text-sm font-semibold text-foreground">Service Metrics (last 24h)</h3>
             <div className="flex gap-3">
                 <MiniChart data={data} dataKey="cpuUtilization" color="oklch(0.6 0.15 250)" label="CPU Usage" icon={Cpu} />
                 <MiniChart data={data} dataKey="memoryUtilization" color="oklch(0.6 0.18 145)" label="Memory Usage" icon={MemoryStick} />

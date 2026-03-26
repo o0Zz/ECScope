@@ -9,10 +9,25 @@ import { cn } from "@/lib/utils";
 import { invoke } from "@tauri-apps/api/core";
 import { DiagnosticsDialog } from "./DiagnosticsDialog";
 
+function MetricBar({ value, label, color }: { value: number; label: string; color: string }) {
+  return (
+    <div className="flex items-center gap-2">
+      <div className="h-2 w-20 overflow-hidden rounded-full bg-muted">
+        <div
+          className={cn("h-full rounded-full transition-all", color)}
+          style={{ width: `${Math.min(100, value)}%` }}
+        />
+      </div>
+      <span className="text-xs text-muted-foreground">{value}% {label}</span>
+    </div>
+  );
+}
+
 export function NodeViewer() {
   const { selectedCluster } = useNavigationStore();
   const { activeCluster } = useConfigStore();
   const storage = useConfigStore((s) => s.storage);
+  const refreshIntervalMs = useConfigStore((s) => s.refreshIntervalMs);
   const [diagInstanceId, setDiagInstanceId] = useState<string | null>(null);
   const hasDiagnostics = !!(storage?.s3Bucket && storage?.s3AccessKeyId && storage?.s3SecretAccessKey);
 
@@ -20,6 +35,7 @@ export function NodeViewer() {
     queryKey: ["nodes", selectedCluster],
     queryFn: () => ecsApi.listContainerInstances(selectedCluster!),
     enabled: !!selectedCluster,
+    refetchInterval: refreshIntervalMs,
   });
 
   if (isLoading) {
@@ -45,89 +61,98 @@ export function NodeViewer() {
         <span className="ml-2 text-sm font-normal text-muted-foreground">({instances.length})</span>
       </h2>
 
-      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-        {instances.map((inst) => {
-          const cpuUsed = inst.cpuRegistered - inst.cpuAvailable;
-          const cpuPct = Math.round((cpuUsed / inst.cpuRegistered) * 100);
-          const memUsed = inst.memoryRegistered - inst.memoryAvailable;
-          const memPct = Math.round((memUsed / inst.memoryRegistered) * 100);
+      <div className="overflow-hidden rounded-lg border border-border">
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="border-b border-border bg-muted/50">
+              <th className="px-4 py-2.5 text-left font-medium text-muted-foreground">Instance</th>
+              <th className="px-4 py-2.5 text-left font-medium text-muted-foreground">Type</th>
+              <th className="px-4 py-2.5 text-left font-medium text-muted-foreground">Status</th>
+              <th className="px-4 py-2.5 text-center font-medium text-muted-foreground">Tasks</th>
+              <th className="px-4 py-2.5 text-left font-medium text-muted-foreground">CPU</th>
+              <th className="px-4 py-2.5 text-left font-medium text-muted-foreground">Memory</th>
+              <th className="px-4 py-2.5 text-left font-medium text-muted-foreground">Agent</th>
+              <th className="px-4 py-2.5 text-right font-medium text-muted-foreground">Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {instances.map((inst) => {
+              const cpuUsed = inst.cpuRegistered - inst.cpuAvailable;
+              const cpuPct = Math.round((cpuUsed / inst.cpuRegistered) * 100);
+              const memUsed = inst.memoryRegistered - inst.memoryAvailable;
+              const memPct = Math.round((memUsed / inst.memoryRegistered) * 100);
 
-          return (
-            <div key={inst.containerInstanceArn} className="rounded-lg border border-border bg-card p-4">
-              <div className="flex items-center gap-3">
-                <Monitor className="h-5 w-5 text-info" />
-                <div className="min-w-0 flex-1">
-                  <div className="truncate font-mono text-sm font-medium text-foreground">{inst.ec2InstanceId}</div>
-                  <div className="text-xs text-muted-foreground">{inst.instanceType}</div>
-                </div>
-                <button
-                  onClick={() => {
-                    invoke("open_ssm_session", {
-                      params: {
-                        instance_id: inst.ec2InstanceId,
-                        profile: activeCluster?.profile ?? "",
-                        region: activeCluster?.region ?? "us-east-1",
-                      },
-                    }).catch((err) => console.error("[ECScope] SSM connect failed:", err));
-                  }}
-                  className="rounded-md border border-border px-2.5 py-1.5 text-xs font-medium text-foreground hover:bg-accent transition-colors flex items-center gap-1.5"
-                  title={`SSM connect to ${inst.ec2InstanceId}`}
+              return (
+                <tr
+                  key={inst.containerInstanceArn}
+                  className="border-b border-border last:border-b-0 hover:bg-accent/50"
                 >
-                  <Terminal className="h-3.5 w-3.5" />
-                  Connect
-                </button>
-                {hasDiagnostics && (
-                  <button
-                    onClick={() => setDiagInstanceId(inst.ec2InstanceId)}
-                    className="rounded-md border border-border px-2.5 py-1.5 text-xs font-medium text-foreground hover:bg-accent transition-colors flex items-center gap-1.5"
-                    title={`Run diagnostics on ${inst.ec2InstanceId}`}
-                  >
-                    <Stethoscope className="h-3.5 w-3.5" />
-                    Diagnostics
-                  </button>
-                )}
-                <StatusBadge status={inst.status} />
-              </div>
-
-              {/* CPU bar */}
-              <div className="mt-4">
-                <div className="flex items-center justify-between text-xs">
-                  <span className="text-muted-foreground">CPU</span>
-                  <span className="text-foreground">{cpuUsed} / {inst.cpuRegistered} units ({cpuPct}%)</span>
-                </div>
-                <div className="mt-1 h-2 w-full overflow-hidden rounded-full bg-muted">
-                  <div
-                    className={cn("h-full rounded-full", cpuPct > 80 ? "bg-destructive" : cpuPct > 60 ? "bg-warning" : "bg-info")}
-                    style={{ width: `${cpuPct}%` }}
-                  />
-                </div>
-              </div>
-
-              {/* Memory bar */}
-              <div className="mt-3">
-                <div className="flex items-center justify-between text-xs">
-                  <span className="text-muted-foreground">Memory</span>
-                  <span className="text-foreground">{memUsed} / {inst.memoryRegistered} MB ({memPct}%)</span>
-                </div>
-                <div className="mt-1 h-2 w-full overflow-hidden rounded-full bg-muted">
-                  <div
-                    className={cn("h-full rounded-full", memPct > 80 ? "bg-destructive" : memPct > 60 ? "bg-warning" : "bg-primary")}
-                    style={{ width: `${memPct}%` }}
-                  />
-                </div>
-              </div>
-
-              {/* Details */}
-              <div className="mt-3 flex gap-4 text-xs text-muted-foreground">
-                <span>Tasks: <span className="text-foreground">{inst.runningTasksCount} running</span></span>
-                {inst.pendingTasksCount > 0 && (
-                  <span className="text-warning">{inst.pendingTasksCount} pending</span>
-                )}
-                <span>Agent: {inst.agentVersion}</span>
-              </div>
-            </div>
-          );
-        })}
+                  <td className="px-4 py-3">
+                    <div className="flex items-center gap-2">
+                      <Monitor className="h-4 w-4 text-info" />
+                      <span className="font-mono text-xs font-medium text-foreground">{inst.ec2InstanceId}</span>
+                    </div>
+                  </td>
+                  <td className="px-4 py-3 text-muted-foreground">{inst.instanceType}</td>
+                  <td className="px-4 py-3">
+                    <StatusBadge status={inst.status} />
+                  </td>
+                  <td className="px-4 py-3 text-center text-foreground">
+                    {inst.runningTasksCount}
+                    {inst.pendingTasksCount > 0 && (
+                      <span className="ml-1 text-warning">+{inst.pendingTasksCount}</span>
+                    )}
+                  </td>
+                  <td className="px-4 py-3">
+                    <MetricBar
+                      value={cpuPct}
+                      label={`${cpuUsed}/${inst.cpuRegistered}`}
+                      color={cpuPct > 80 ? "bg-destructive" : cpuPct > 60 ? "bg-warning" : "bg-info"}
+                    />
+                  </td>
+                  <td className="px-4 py-3">
+                    <MetricBar
+                      value={memPct}
+                      label={`${memUsed}/${inst.memoryRegistered}MB`}
+                      color={memPct > 80 ? "bg-destructive" : memPct > 60 ? "bg-warning" : "bg-primary"}
+                    />
+                  </td>
+                  <td className="px-4 py-3 text-xs text-muted-foreground">{inst.agentVersion}</td>
+                  <td className="px-4 py-3">
+                    <div className="flex items-center justify-end gap-1.5">
+                      <button
+                        onClick={() => {
+                          invoke("open_ssm_session", {
+                            params: {
+                              instance_id: inst.ec2InstanceId,
+                              profile: activeCluster?.profile ?? "",
+                              region: activeCluster?.region ?? "us-east-1",
+                            },
+                          }).catch((err) => console.error("[ECScope] SSM connect failed:", err));
+                        }}
+                        className="rounded-md border border-border px-2 py-1 text-xs font-medium text-foreground hover:bg-accent transition-colors flex items-center gap-1"
+                        title={`SSM connect to ${inst.ec2InstanceId}`}
+                      >
+                        <Terminal className="h-3 w-3" />
+                        Connect
+                      </button>
+                      {hasDiagnostics && (
+                        <button
+                          onClick={() => setDiagInstanceId(inst.ec2InstanceId)}
+                          className="rounded-md border border-border px-2 py-1 text-xs font-medium text-foreground hover:bg-accent transition-colors flex items-center gap-1"
+                          title={`Run diagnostics on ${inst.ec2InstanceId}`}
+                        >
+                          <Stethoscope className="h-3 w-3" />
+                          Diagnostics
+                        </button>
+                      )}
+                    </div>
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
       </div>
 
       {diagInstanceId && (

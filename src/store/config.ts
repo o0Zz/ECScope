@@ -10,6 +10,8 @@ interface ConfigState {
     clusters: ClusterConfig[];
     /** Global S3 storage config for diagnostics */
     storage: StorageConfig | null;
+    /** Auto-refresh interval in milliseconds */
+    refreshIntervalMs: number;
     /** Currently active cluster config (after selection) */
     activeCluster: ClusterConfig | null;
     credentials: ResolvedCredentials | null;
@@ -25,6 +27,7 @@ interface ConfigState {
 export const useConfigStore = create<ConfigState>((set, get) => ({
     clusters: [],
     storage: null,
+    refreshIntervalMs: 10_000,
     activeCluster: null,
     credentials: null,
     status: "idle",
@@ -37,8 +40,8 @@ export const useConfigStore = create<ConfigState>((set, get) => ({
 
         try {
             const config = await loadConfig();
-            console.log("[config-store] initialize: loaded clusters", config.clusters.map(c => c.clusterName), "storage:", !!config.storage);
-            set({ clusters: config.clusters, storage: config.storage, status: "idle" });
+            console.log("[config-store] initialize: loaded clusters", config.clusters.map(c => c.clusterName), "storage:", !!config.storage, "refresh:", config.refreshPeriodSeconds);
+            set({ clusters: config.clusters, storage: config.storage, refreshIntervalMs: config.refreshPeriodSeconds * 1000, status: "idle" });
         } catch (err) {
             const message = err instanceof Error ? err.message : String(err);
             console.error("[config-store] initialize ERROR", message);

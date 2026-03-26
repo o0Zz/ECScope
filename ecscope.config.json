@@ -1,4 +1,5 @@
 {
+    "refreshPeriodSeconds": 10,
     "clusters": [
         {
             "profile": "my-profile1",

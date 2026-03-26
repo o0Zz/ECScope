@@ -1,6 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { ecsApi } from "@/api";
 import { useNavigationStore } from "@/store/navigation";
+import { useConfigStore } from "@/store/config";
 import { StatusBadge } from "@/components/StatusBadge";
 import { ServiceMetricsChart } from "@/components/ServiceMetricsChart";
 import { Container, ArrowRight, Server } from "lucide-react";
@@ -8,11 +9,13 @@ import { Container, ArrowRight, Server } from "lucide-react";
 export function TaskList() {
   const { selectedCluster, selectedService, selectTask } =
     useNavigationStore();
+  const refreshIntervalMs = useConfigStore((s) => s.refreshIntervalMs);
 
   const { data: tasks, isLoading } = useQuery({
     queryKey: ["tasks", selectedCluster, selectedService],
     queryFn: () => ecsApi.listTasks(selectedCluster!, selectedService!),
     enabled: !!selectedCluster && !!selectedService,
+    refetchInterval: refreshIntervalMs,
   });
 
   if (isLoading) {

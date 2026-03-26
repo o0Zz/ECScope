@@ -911,12 +911,12 @@ async function getServiceMetricsHistory(
     serviceName: string,
 ): Promise<import("./types").MetricsDataPoint[]> {
     const now = new Date();
-    const oneHourAgo = new Date(now.getTime() - 60 * 60 * 1000);
+    const oneDayAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000);
 
     try {
         const res = await cwClient.send(
             new GetMetricDataCommand({
-                StartTime: oneHourAgo,
+                StartTime: oneDayAgo,
                 EndTime: now,
                 MetricDataQueries: [
                     {
@@ -930,7 +930,7 @@ async function getServiceMetricsHistory(
                                     { Name: "ServiceName", Value: serviceName },
                                 ],
                             },
-                            Period: 120,
+                            Period: 300,
                             Stat: "Average",
                         },
                     },
@@ -945,7 +945,7 @@ async function getServiceMetricsHistory(
                                     { Name: "ServiceName", Value: serviceName },
                                 ],
                             },
-                            Period: 120,
+                            Period: 300,
                             Stat: "Average",
                         },
                     },

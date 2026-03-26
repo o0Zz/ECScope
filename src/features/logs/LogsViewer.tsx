@@ -49,7 +49,7 @@ export function LogsViewer() {
           Auto-refresh every 5s
         </span>
       </div>
-      <div className="flex-1 overflow-auto rounded-lg border border-border bg-[oklch(0.12_0_0)] p-3">
+      <div className="flex-1 overflow-auto rounded-lg border border-border bg-muted/50 p-3">
         <pre className="font-mono text-xs leading-relaxed">
           {logs.map((log, i) => {
             const time = new Date(log.timestamp).toLocaleTimeString();

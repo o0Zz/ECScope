@@ -2,22 +2,43 @@
 
 > **Deep visibility into your AWS ECS workloads**
 
-ECScope is a modern, intuitive UI for exploring, monitoring, and managing your Amazon ECS infrastructure.
-It gives you a clear, real-time view of your clusters, services, and tasks — all in one place.
-## How to run it
+ECScope is a modern, cross-platform desktop application for exploring, monitoring, and managing your Amazon ECS infrastructure. It gives you a clear, real-time view of your clusters, services, tasks, load balancers, nodes, and databases — all in one place.
 
-### 1. ~/.aws/credentials ~/.aws/config 
-Make sure you have `~/.aws/credentials` `~/.aws/config` available, ECScope use it to conenct to your cluster
+![ECScope](doc/ecscope_screenshot.png)
 
-### 2. Install SSM
-`winget install Amazon.SessionManagerPlugin`
+## ✨ Features
 
-### 3. Install AWS Cli
-`msiexec.exe /i https://awscli.amazonaws.com/AWSCLIV2.msi`
+- **Cluster Explorer** — Browse clusters, services, and tasks with intuitive navigation
+- **Service Viewer** — Monitor status, desired/running tasks, CPU & memory usage; one-click scale up/down
+- **Task Inspector** — View task details, container health, environment variables
+- **Live Logs** — Stream and search CloudWatch logs in real time
+- **ALB / NLB Viewer** — Inspect load balancers, target groups, health checks, and metrics
+- **Node Viewer** — See EC2 container instances, resource usage, and running tasks
+- **Database Dashboard** — Monitor RDS/Aurora CPU, memory, connections, and performance insights
+- **Diagnostics** — Coredump, tcpdump, file download/upload via SSM + S3
 
-### 4. ecscope.config.json
-Create your configure file
-```
+
+## 🚀 Getting Started
+
+### Prerequisites
+
+| Tool | Install |
+|------|---------|
+| **AWS CLI** | `msiexec.exe /i https://awscli.amazonaws.com/AWSCLIV2.msi` |
+| **SSM Plugin** | `winget install Amazon.SessionManagerPlugin` |
+
+You also need valid AWS credentials in `~/.aws/credentials` and `~/.aws/config`.
+
+### Installation
+
+In Release section, download the latest release 
+
+
+### Configuration
+
+Create an `ecscope.config.json` file at the project root:
+
+```json
 {
     "refreshPeriodSeconds": 10,
     "clusters": [
@@ -25,9 +46,6 @@ Create your configure file
             "profile": "my-profile1",
             "region": "eu-west-1",
             "clusterName": "my-cluster"
-        },
-        {
-            ...
         }
     ],
     "storage": {
@@ -39,123 +57,52 @@ Create your configure file
 }
 ```
 
-List all your cluster in clusters:
+### Cluster configuration
 
- - `profile`: Profile that match your `~/.aws/config` `[profile]`
- - `region`: Region of your cluster
- - `clusterName`: Name of your cluster in AWS web interface
+| Field | Description |
+|-------|-------------|
+| `profile` | AWS profile name matching a `[profile]` entry in `~/.aws/config` |
+| `region` | AWS region of the cluster |
+| `clusterName` | Name of the ECS cluster as shown in the AWS console |
 
-Define a S3 bucket for download/upload/diagnostic feature. If you plan to use these feature you will have to define a S3 that you ec2 have access.
-ECScope use S3 as temporary storage to extract file from EC2 or push them via S3.
+### Storage configuration (optional)
 
+The `storage` section enables diagnostics features (coredump, tcpdump, file download/upload). ECScope uses S3 as temporary storage to transfer files to and from EC2 instances. The configured bucket must be accessible from your EC2 instances.
 
-## ✨ Features
-
-### 🔍 Explore Your Infrastructure
-
-* Browse clusters, services, and tasks
-* SSH, Logs, Environement varilable, Metrics
-* Clean and intuitive navigation
-
-### 📊 Real-Time Observability
-
-* Task status and health monitoring
-* Deployment tracking
-* Resource usage insights (CPU, memory)
-
-### 📜 Live Logs
-
-* Stream logs in real time
-* Search and filter logs
-* Cntralized access to task logs
-
-### ⚡ Fast & Developer-Friendly
-
-* Lightweight and responsive UI
-* Designed for daily ops workflows
-* Built for clarity and speed
-
----
-
-## 🚀 Why ECScope?
-
-Managing ECS via the AWS Console can be:
-
-* fragmented
-* slow
-* hard to navigate at scale
-
-ECScope provides a **focused, developer-centric interface** to:
-
-* understand what’s running
-* debug issues faster
-* operate ECS with confidence
-
-> Think of ECScope as your control panel for ECS.
-
-* Debug failing tasks or crashing containers
-* Monitor deployments and rollouts
-* Explore infrastructure in real time
-* Improve team visibility on ECS workloads
-* Additional tooling: Coredump, tcpdump, download...
-
----
-
-
-## ⚙️ Build
+## 🚀 Developement
 
 ### Prerequisites
 
- - Install rust: https://rustup.rs/
- - Install Node: https://nodejs.org/en/download
+| Tool | Install |
+|------|---------|
+| **Node.js** | https://nodejs.org/en/download |
+| **Rust** | https://rustup.rs/ |
 
-### Install dependencies
-
-`npm ci`
-
-
-### Build
-
-`npx xxx`
-
----
-
-## ⚙️ Getting Started
-
-### Prerequisites
-
-* AWS account
-* IAM credentials with ECS + CloudWatch access
-
-### Installation
+### Build for development
 
 ```bash
-git clone https://github.com/your-org/ecscope.git
-cd ecscope
+git clone https://github.com/o0Zz/ECScope.git
+cd ECScope
+npm ci
+npx tauri dev
 ```
 
+### Build for production
+
 ```bash
-# install dependencies
-npm install
+npx tauri build
 ```
 
-```bash
-# start the app
-npm run dev
+## 📁 Project Structure
+
 ```
-
----
-
-## 🔐 Configuration
-
-Set your AWS credentials using:
-
-* Environment variables
-* AWS profiles (`~/.aws/credentials`)
-* IAM roles (recommended for production)
-
-Example:
-
-```bash
-export AWS_PROFILE=default
+src/
+├── api/            # AWS SDK clients and API calls
+├── components/     # Shared UI components
+├── config/         # AWS credentials and app configuration
+├── features/       # Feature modules (services, tasks, albnlb, nodes, database)
+├── layout/         # App shell (sidebar, tabs, breadcrumb)
+├── lib/            # Utilities and helpers
+└── store/          # Zustand state stores
+src-tauri/          # Tauri/Rust backend
 ```

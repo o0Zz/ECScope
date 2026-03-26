@@ -5,7 +5,7 @@ const TABS: { id: ActiveTab; label: string }[] = [
   { id: "services", label: "Services" },
   { id: "tasks", label: "Tasks" },
   { id: "logs", label: "Logs" },
-  { id: "alb", label: "ALB" },
+  { id: "alb", label: "ALB / NLB" },
   { id: "nodes", label: "Nodes" },
   { id: "database", label: "Database" },
 ];

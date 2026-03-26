@@ -5,14 +5,38 @@ import type { AlbInfo } from "@/api/types";
 import { useNavigationStore } from "@/store/navigation";
 import { useConfigStore } from "@/store/config";
 import { StatusBadge } from "@/components/StatusBadge";
-import { Globe, Shield, ChevronRight, ChevronDown } from "lucide-react";
+import { Globe, Shield, ChevronRight, ChevronDown, Network } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { AlbMetricsChart } from "@/components/AlbMetricsChart";
+import { NlbMetricsChart } from "@/components/NlbMetricsChart";
 
-function AlbRow({ alb }: { alb: AlbInfo }) {
+function formatBytes(n: number): string {
+  if (n >= 1_073_741_824) return `${(n / 1_073_741_824).toFixed(1)} GB`;
+  if (n >= 1_048_576) return `${(n / 1_048_576).toFixed(1)} MB`;
+  if (n >= 1_024) return `${(n / 1_024).toFixed(1)} KB`;
+  return `${n} B`;
+}
+
+function LbTypeBadge({ type }: { type: AlbInfo["lbType"] }) {
+  return (
+    <span
+      className={cn(
+        "inline-flex items-center rounded px-1.5 py-0.5 text-[10px] font-medium",
+        type === "application"
+          ? "bg-blue-500/15 text-blue-400"
+          : "bg-violet-500/15 text-violet-400",
+      )}
+    >
+      {type === "application" ? "ALB" : "NLB"}
+    </span>
+  );
+}
+
+function LbRow({ alb }: { alb: AlbInfo }) {
   const [expanded, setExpanded] = useState(false);
   const totalHealthy = alb.targetGroups.reduce((s, tg) => s + tg.healthyCount, 0);
   const totalUnhealthy = alb.targetGroups.reduce((s, tg) => s + tg.unhealthyCount, 0);
+  const isNlb = alb.lbType === "network";
 
   return (
     <>
@@ -27,12 +51,15 @@ function AlbRow({ alb }: { alb: AlbInfo }) {
             ) : (
               <ChevronRight className="h-3.5 w-3.5 text-muted-foreground" />
             )}
-            {alb.scheme === "internet-facing" ? (
+            {isNlb ? (
+              <Network className="h-4 w-4 text-violet-400" />
+            ) : alb.scheme === "internet-facing" ? (
               <Globe className="h-4 w-4 text-info" />
             ) : (
               <Shield className="h-4 w-4 text-muted-foreground" />
             )}
             <span className="font-medium text-foreground">{alb.albName}</span>
+            <LbTypeBadge type={alb.lbType} />
           </div>
         </td>
         <td className="px-4 py-3 text-xs text-muted-foreground">{alb.scheme}</td>
@@ -46,18 +73,32 @@ function AlbRow({ alb }: { alb: AlbInfo }) {
             <span className="ml-1 text-destructive">/ {totalUnhealthy}</span>
           )}
         </td>
-        <td className="px-4 py-3 text-center text-foreground">{alb.requestCount.toLocaleString()}</td>
+        <td className="px-4 py-3 text-center text-foreground">
+          {isNlb
+            ? (alb.activeFlowCount ?? 0).toLocaleString()
+            : alb.requestCount.toLocaleString()}
+        </td>
         <td className="px-4 py-3 text-center">
-          <span className={cn("font-mono font-medium", alb.avgLatencyMs > 50 ? "text-warning" : "text-success")}>
-            {alb.avgLatencyMs}ms
-          </span>
+          {isNlb ? (
+            <span className="font-mono font-medium text-foreground">
+              {formatBytes(alb.processedBytes ?? 0)}
+            </span>
+          ) : (
+            <span className={cn("font-mono font-medium", alb.avgLatencyMs > 50 ? "text-warning" : "text-success")}>
+              {alb.avgLatencyMs}ms
+            </span>
+          )}
         </td>
       </tr>
       {expanded && (
         <tr className="border-b border-border">
           <td colSpan={7} className="bg-muted/20 px-4 py-3">
             <div className="mb-1 text-xs font-mono text-muted-foreground truncate">{alb.dnsName}</div>
-            <AlbMetricsChart albArn={alb.albArn} albName={alb.albName} />
+            {isNlb ? (
+              <NlbMetricsChart nlbArn={alb.albArn} nlbName={alb.albName} />
+            ) : (
+              <AlbMetricsChart albArn={alb.albArn} albName={alb.albName} />
+            )}
             <div className="mt-3 space-y-2">
               {alb.targetGroups.map((tg) => (
                 <TargetGroupRow key={tg.targetGroupArn} tg={tg} />
@@ -144,16 +185,21 @@ export function AlbViewer() {
   if (!albs?.length) {
     return (
       <div className="flex items-center justify-center py-12 text-sm text-muted-foreground">
-        No ALBs found.
+        No load balancers found.
       </div>
     );
   }
 
+  const albCount = albs.filter((lb) => lb.lbType === "application").length;
+  const nlbCount = albs.filter((lb) => lb.lbType === "network").length;
+
   return (
     <div className="p-4">
       <h2 className="mb-4 text-lg font-semibold text-foreground">
-        Application Load Balancers
-        <span className="ml-2 text-sm font-normal text-muted-foreground">({albs.length})</span>
+        Load Balancers
+        <span className="ml-2 text-sm font-normal text-muted-foreground">
+          ({albs.length}{albCount > 0 && nlbCount > 0 ? ` · ${albCount} ALB, ${nlbCount} NLB` : ""})
+        </span>
       </h2>
 
       <div className="overflow-hidden rounded-lg border border-border">
@@ -165,13 +211,13 @@ export function AlbViewer() {
               <th className="px-4 py-2.5 text-left font-medium text-muted-foreground">Status</th>
               <th className="px-4 py-2.5 text-center font-medium text-muted-foreground">Target Groups</th>
               <th className="px-4 py-2.5 text-center font-medium text-muted-foreground">Targets</th>
-              <th className="px-4 py-2.5 text-center font-medium text-muted-foreground">Requests</th>
-              <th className="px-4 py-2.5 text-center font-medium text-muted-foreground">Latency</th>
+              <th className="px-4 py-2.5 text-center font-medium text-muted-foreground">Reqs / Flows</th>
+              <th className="px-4 py-2.5 text-center font-medium text-muted-foreground">Latency / Bytes</th>
             </tr>
           </thead>
           <tbody>
             {albs.map((alb) => (
-              <AlbRow key={alb.albArn} alb={alb} />
+              <LbRow key={alb.albArn} alb={alb} />
             ))}
           </tbody>
         </table>

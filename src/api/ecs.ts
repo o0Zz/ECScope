@@ -14,7 +14,7 @@ import {
 import type { ECSClient } from "@aws-sdk/client-ecs";
 import { GetParametersCommand } from "@aws-sdk/client-ssm";
 import { GetSecretValueCommand } from "@aws-sdk/client-secrets-manager";
-import { getEcsClient, getSsmClient, getSmClient, getConfiguredCluster } from "./clients";
+import { getEcsClient, getSsmClient, getSmClient, getEc2Client, getConfiguredCluster } from "./clients";
 import { queryMetrics } from "./cloudwatch";
 import type {
     EcsCluster,
@@ -24,6 +24,7 @@ import type {
     EcsTask,
     ContainerInstance,
 } from "./types";
+import { DescribeInstancesCommand, DescribeSubnetsCommand } from "@aws-sdk/client-ec2";
 
 // ─── Helpers ──────────────────────────────────────────────
 
@@ -646,4 +647,51 @@ export async function listContainerInstances(
             registeredAt: ci.registeredAt ? new Date(ci.registeredAt).getTime() : undefined,
         };
     });
+}
+
+/**
+ * Discover the VPC of an ECS cluster by inspecting its container instances' EC2 data,
+ * or by inspecting the service network configuration subnets.
+ */
+export async function getClusterVpcId(clusterName: string): Promise<string | null> {
+    // Try to get VPC from container instances first (EC2 launch type)
+    const listRes = await getEcsClient().send(
+        new ListContainerInstancesCommand({ cluster: clusterName }),
+    );
+    const ciArns = listRes.containerInstanceArns ?? [];
+
+    if (ciArns.length > 0) {
+        const descRes = await getEcsClient().send(
+            new DescribeContainerInstancesCommand({
+                cluster: clusterName,
+                containerInstances: ciArns.slice(0, 1),
+            }),
+        );
+        const ec2Id = descRes.containerInstances?.[0]?.ec2InstanceId;
+        if (ec2Id) {
+            const ec2Res = await getEc2Client().send(
+                new DescribeInstancesCommand({ InstanceIds: [ec2Id] }),
+            );
+            const vpcId = ec2Res.Reservations?.[0]?.Instances?.[0]?.VpcId;
+            if (vpcId) return vpcId;
+        }
+    }
+
+    // Fallback: look at the first service's awsvpc config subnet to derive VPC
+    const arns = await listAllServiceArns(clusterName);
+    if (arns.length > 0) {
+        const svcRes = await getEcsClient().send(
+            new DescribeServicesCommand({ cluster: clusterName, services: [arns[0]] }),
+        );
+        const subnets = svcRes.services?.[0]?.networkConfiguration?.awsvpcConfiguration?.subnets;
+        if (subnets?.length) {
+            const subnetRes = await getEc2Client().send(
+                new DescribeSubnetsCommand({ SubnetIds: [subnets[0]] }),
+            );
+            const vpcId = subnetRes.Subnets?.[0]?.VpcId;
+            if (vpcId) return vpcId;
+        }
+    }
+
+    return null;
 }

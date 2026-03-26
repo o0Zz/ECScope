@@ -49,7 +49,15 @@ export function Ec2RdsDashboard() {
 
   const { data: instances, isLoading: loadingEc2 } = useQuery({
     queryKey: ["vpcInstances", selectedCluster],
-    queryFn: () => ecsApi.listVpcInstances(selectedCluster!),
+    queryFn: async () => {
+      const [vpcId, containerInstances] = await Promise.all([
+        ecsApi.getClusterVpcId(selectedCluster!),
+        ecsApi.listContainerInstances(selectedCluster!),
+      ]);
+      if (!vpcId) return [];
+      const nodeIds = new Set(containerInstances.map(ci => ci.ec2InstanceId).filter(Boolean));
+      return ecsApi.listEc2(vpcId, nodeIds);
+    },
     enabled: !!selectedCluster,
     refetchInterval: refreshIntervalMs,
   });

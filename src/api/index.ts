@@ -17,11 +17,11 @@ import {
     registerAndDeployTaskDefinition,
     stopTask,
     listContainerInstances,
+    getClusterVpcId,
 } from "./ecs";
 import { getServiceMetricsHistory, getAlbMetricsHistory, getNlbMetricsHistory } from "./cloudwatch";
 import { listAlbs } from "./alb";
-import { listDatabases } from "./database";
-import { listVpcInstances } from "./ec2";
+import { listEc2 } from "./ec2";
 import { getEc2MetricsHistory } from "./cloudwatch";
 
 export const ecsApi = {
@@ -40,8 +40,8 @@ export const ecsApi = {
     stopTask,
     listAlbs,
     listContainerInstances,
-    listDatabases,
-    listVpcInstances,
+    getClusterVpcId,
+    listEc2,
     getEc2MetricsHistory,
     getServiceMetricsHistory,
     getAlbMetricsHistory,

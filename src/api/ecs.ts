@@ -504,6 +504,19 @@ export async function updateServiceDesiredCount(
     return updated;
 }
 
+export async function forceNewDeployment(
+    clusterName: string,
+    serviceName: string,
+): Promise<void> {
+    await getEcsClient().send(
+        new UpdateServiceCommand({
+            cluster: clusterName,
+            service: serviceName,
+            forceNewDeployment: true,
+        }),
+    );
+}
+
 export async function listContainerInstances(
     clusterName: string,
 ): Promise<ContainerInstance[]> {

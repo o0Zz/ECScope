@@ -4,7 +4,7 @@ import { useNavigationStore } from "@/store/navigation";
 import { useConfigStore } from "@/store/config";
 import { StatusBadge } from "@/components/StatusBadge";
 import { MetricBar } from "@/components/MetricBar";
-import { Cog, ArrowRight, Plus, Minus } from "lucide-react";
+import { Cog, ArrowRight, Plus, Minus, RotateCw } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 function ClusterOverview({ clusterName }: { clusterName: string }) {
@@ -86,6 +86,14 @@ export function ServiceList() {
     },
   });
 
+  const redeployMutation = useMutation({
+    mutationFn: (serviceName: string) =>
+      ecsApi.forceNewDeployment(selectedCluster!, serviceName),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["services", selectedCluster] });
+    },
+  });
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center py-12 text-sm text-muted-foreground">
@@ -124,7 +132,7 @@ export function ServiceList() {
               <th className="px-4 py-2.5 text-center font-medium text-muted-foreground">Memory</th>
               <th className="px-4 py-2.5 text-left font-medium text-muted-foreground">Launch Type</th>
               <th className="px-4 py-2.5 text-left font-medium text-muted-foreground">Task Def</th>
-              <th className="w-10 px-4 py-2.5" />
+              <th className="px-4 py-2.5 text-center font-medium text-muted-foreground">Actions</th>
             </tr>
           </thead>
           <tbody>
@@ -186,8 +194,29 @@ export function ServiceList() {
                 <td className="px-4 py-3 font-mono text-xs text-muted-foreground cursor-pointer" onClick={() => selectService(svc.serviceName)}>
                   {svc.taskDefinition}
                 </td>
-                <td className="px-4 py-3 cursor-pointer" onClick={() => selectService(svc.serviceName)}>
-                  <ArrowRight className="h-4 w-4 text-muted-foreground" />
+                <td className="px-4 py-3">
+                  <div className="flex items-center justify-center gap-1">
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        if (confirm(`Force new deployment for ${svc.serviceName}?`)) {
+                          redeployMutation.mutate(svc.serviceName);
+                        }
+                      }}
+                      disabled={redeployMutation.isPending}
+                      className="rounded p-1 text-muted-foreground hover:bg-info/20 hover:text-info disabled:opacity-30"
+                      title="Force new deployment"
+                    >
+                      <RotateCw className={cn("h-3.5 w-3.5", redeployMutation.isPending && "animate-spin")} />
+                    </button>
+                    <button
+                      onClick={() => selectService(svc.serviceName)}
+                      className="rounded p-1 text-muted-foreground hover:bg-accent hover:text-foreground"
+                      title="View tasks"
+                    >
+                      <ArrowRight className="h-4 w-4" />
+                    </button>
+                  </div>
                 </td>
               </tr>
             ))}

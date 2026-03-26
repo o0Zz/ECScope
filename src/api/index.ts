@@ -11,6 +11,7 @@ import {
     listTasks,
     getClusterMetrics,
     updateServiceDesiredCount,
+    forceNewDeployment,
     listContainerInstances,
 } from "./ecs";
 import { getServiceMetricsHistory, getAlbMetricsHistory, getNlbMetricsHistory } from "./cloudwatch";
@@ -26,6 +27,7 @@ export const ecsApi = {
     listTasks,
     getClusterMetrics,
     updateServiceDesiredCount,
+    forceNewDeployment,
     listAlbs,
     listContainerInstances,
     listDatabases,

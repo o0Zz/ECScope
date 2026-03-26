@@ -1,6 +1,6 @@
 import { useState, useCallback } from "react";
 import { diagnosticsApi } from "@/api";
-import type { DiagnosticResult } from "@/api/types";
+import type { SSMCommandResult } from "@/api/types";
 import { useConfigStore } from "@/store/config";
 import { Activity, Cpu, X, Loader2, Download, AlertCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -32,10 +32,10 @@ export function DiagnosticsDialog({ instanceId, onClose }: DiagnosticsDialogProp
 
     // Shared run state
     const [status, setStatus] = useState<"idle" | "running" | "completed" | "failed">("idle");
-    const [progress, setProgress] = useState<DiagnosticResult | null>(null);
+    const [progress, setProgress] = useState<SSMCommandResult | null>(null);
     const [error, setError] = useState<string | null>(null);
 
-    const handleProgress = useCallback((result: DiagnosticResult) => {
+    const handleProgress = useCallback((result: SSMCommandResult) => {
         setProgress(result);
     }, []);
 

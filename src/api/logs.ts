@@ -9,42 +9,12 @@ import {
 } from "@aws-sdk/client-ecs";
 import {
     SendCommandCommand,
-    GetCommandInvocationCommand,
 } from "@aws-sdk/client-ssm";
 import { getEcsClient, getLogsClient, getSsmClient, getConfiguredCluster } from "./clients";
+import { waitForSsmCommand } from "./ssm";
 import type { LogEvent } from "./types";
 
 // ─── SSM Docker Logs Fallback ─────────────────────────────
-
-/** Wait for SSM command to finish and return output */
-async function waitForSsmCommand(commandId: string, instanceId: string): Promise<string> {
-    const maxAttempts = 15;
-    for (let attempt = 0; attempt < maxAttempts; attempt++) {
-        await new Promise((r) => setTimeout(r, 2000));
-        try {
-            const res = await getSsmClient().send(
-                new GetCommandInvocationCommand({
-                    CommandId: commandId,
-                    InstanceId: instanceId,
-                }),
-            );
-            if (res.Status === "Success") {
-                return res.StandardOutputContent ?? "";
-            }
-            if (res.Status === "Failed" || res.Status === "Cancelled" || res.Status === "TimedOut") {
-                throw new Error(
-                    `SSM command ${res.Status}: ${res.StandardErrorContent || res.StatusDetails || "unknown error"}`,
-                );
-            }
-            // InProgress / Pending — keep waiting
-        } catch (e: unknown) {
-            // InvocationDoesNotExist means the command hasn't registered yet
-            if (e instanceof Error && e.name === "InvocationDoesNotExist") continue;
-            throw e;
-        }
-    }
-    throw new Error("SSM command timed out after 30s");
-}
 
 /** Fetch container logs from EC2 via SSM SendCommand + docker logs */
 async function getDockerLogsViaSsm(

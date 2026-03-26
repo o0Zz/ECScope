@@ -5,3 +5,4 @@ export type * from "./ec2";
 export type * from "./database";
 export type * from "./diagnostics";
 export type * from "./metrics";
+export type * from "./ssm";

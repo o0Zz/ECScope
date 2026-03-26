@@ -26,15 +26,3 @@ export interface CoredumpParams {
     /** PID of the process to dump */
     pid: number;
 }
-
-export type DiagnosticStatus = "running" | "completed" | "failed";
-
-export interface DiagnosticResult {
-    commandId: string;
-    instanceId: string;
-    status: DiagnosticStatus;
-    /** S3 key of the result file (set when completed) */
-    s3Key?: string;
-    /** Error message (set when failed) */
-    error?: string;
-}

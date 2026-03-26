@@ -1,10 +1,11 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { ecsApi } from "@/api";
+import { ecsApi, diagnosticsApi } from "@/api";
+import type { S3Credentials } from "@/api/types";
 import { useNavigationStore } from "@/store/navigation";
 import { useConfigStore } from "@/store/config";
 import { StatusBadge } from "@/components/StatusBadge";
-import { Monitor, Terminal, Stethoscope } from "lucide-react";
+import { Monitor, Terminal, Stethoscope, Download, Upload } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { invoke } from "@tauri-apps/api/core";
 import { DiagnosticsDialog } from "./DiagnosticsDialog";
@@ -30,6 +31,44 @@ export function NodeViewer() {
   const refreshIntervalMs = useConfigStore((s) => s.refreshIntervalMs);
   const [diagInstanceId, setDiagInstanceId] = useState<string | null>(null);
   const hasDiagnostics = !!(storage?.s3Bucket && storage?.s3AccessKeyId && storage?.s3SecretAccessKey);
+
+  const getS3Creds = (): S3Credentials => ({
+    accessKeyId: storage!.s3AccessKeyId!,
+    secretAccessKey: storage!.s3SecretAccessKey!,
+    region: storage?.s3Region ?? activeCluster?.region ?? "us-east-1",
+  });
+
+  const handleDownloadFromEc2 = async (instanceId: string) => {
+    const remotePath = window.prompt("Remote file path on EC2 to download:");
+    if (!remotePath?.trim()) return;
+    try {
+      await diagnosticsApi.downloadEc2File({
+        instanceId,
+        credentials: getS3Creds(),
+        s3Bucket: storage!.s3Bucket!,
+        remotePath: remotePath.trim(),
+      });
+    } catch (err) {
+      console.error("[ECScope] Download from EC2 failed:", err);
+      window.alert(`Download failed: ${err instanceof Error ? err.message : String(err)}`);
+    }
+  };
+
+  const handleUploadToEc2 = async (instanceId: string) => {
+    const remotePath = window.prompt("Remote destination path on EC2 (file or directory ending with /):");
+    if (!remotePath?.trim()) return;
+    try {
+      await diagnosticsApi.uploadFile(
+        getS3Creds(),
+        storage!.s3Bucket!,
+        instanceId,
+        remotePath.trim(),
+      );
+    } catch (err) {
+      console.error("[ECScope] Upload to EC2 failed:", err);
+      window.alert(`Upload failed: ${err instanceof Error ? err.message : String(err)}`);
+    }
+  };
 
   const { data: instances, isLoading } = useQuery({
     queryKey: ["nodes", selectedCluster],
@@ -144,6 +183,26 @@ export function NodeViewer() {
                         >
                           <Stethoscope className="h-3 w-3" />
                           Diagnostics
+                        </button>
+                      )}
+                      {hasDiagnostics && (
+                        <button
+                          onClick={() => handleDownloadFromEc2(inst.ec2InstanceId)}
+                          className="rounded-md border border-border px-2 py-1 text-xs font-medium text-foreground hover:bg-accent transition-colors flex items-center gap-1"
+                          title={`Download file from ${inst.ec2InstanceId}`}
+                        >
+                          <Download className="h-3 w-3" />
+                          Download
+                        </button>
+                      )}
+                      {hasDiagnostics && (
+                        <button
+                          onClick={() => handleUploadToEc2(inst.ec2InstanceId)}
+                          className="rounded-md border border-border px-2 py-1 text-xs font-medium text-foreground hover:bg-accent transition-colors flex items-center gap-1"
+                          title={`Upload file to ${inst.ec2InstanceId}`}
+                        >
+                          <Upload className="h-3 w-3" />
+                          Upload
                         </button>
                       )}
                     </div>

@@ -131,8 +131,6 @@ src-tauri/
 ## 🚧 Known Gaps / TODO
 
 - [ ] **Database dashboard** — UI scaffold exists but backend returns empty data (`src/api/database.ts` is stubbed)
-- [ ] **CloudWatch log viewer** — no dedicated log streaming panel; logs are accessed via terminal ECS exec/docker logs
-- [ ] **Upload completion** — SSM upload command dispatched but doesn't wait for completion confirmation
 
 ## 💡 Guidelines
 

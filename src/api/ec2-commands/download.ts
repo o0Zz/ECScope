@@ -1,6 +1,6 @@
 import { save, open } from "@tauri-apps/plugin-dialog";
 import { writeFile, readFile } from "@tauri-apps/plugin-fs";
-import { sendSsmCommand } from "../ssm";
+import { sendSsmCommand, waitForSsmCommand } from "../ssm";
 import { downloadFromS3, deleteFromS3, uploadToS3 } from "../s3";
 import type { S3Credentials } from "../types";
 
@@ -72,6 +72,12 @@ export async function uploadFile(
     ];
 
     console.log(`[upload] SSM: pulling file to ${dest} on ${instanceId} ...`);
-    await sendSsmCommand(instanceId, commands, 120);
+    const commandId = await sendSsmCommand(instanceId, commands, 120);
+    const stdout = await waitForSsmCommand(commandId, instanceId);
+
+    if (!stdout.includes("UPLOADED=")) {
+        throw new Error(`Upload command did not confirm completion. Output: ${stdout.slice(0, 500)}`);
+    }
+
     console.log(`[upload] Done. File available at ${dest} on ${instanceId}`);
 }

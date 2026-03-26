@@ -76,12 +76,6 @@ function parseStorage(raw: any): StorageConfig | null {
     };
 }
 
-/** @deprecated Use loadConfig() instead */
-export async function loadAppConfigs(): Promise<ClusterConfig[]> {
-    const config = await loadConfig();
-    return config.clusters;
-}
-
 export async function loadAwsFiles(): Promise<AwsFiles> {
     return invoke<AwsFiles>("read_aws_files");
 }

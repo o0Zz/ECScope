@@ -23,7 +23,6 @@
   "homepage": "https://github.com/o0Zz/ECScope#readme",
   "dependencies": {
     "@aws-sdk/client-cloudwatch": "^3.1017.0",
-    "@aws-sdk/client-cloudwatch-logs": "^3.1017.0",
     "@aws-sdk/client-ecs": "^3.1017.0",
     "@aws-sdk/client-elastic-load-balancing-v2": "^3.1017.0",
     "@aws-sdk/client-s3": "^3.1017.0",
@@ -34,12 +33,10 @@
     "@tauri-apps/api": "^2.10.1",
     "@tauri-apps/plugin-dialog": "^2.6.0",
     "@tauri-apps/plugin-fs": "^2.4.5",
-    "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "lucide-react": "^1.0.1",
     "react": "^19.2.4",
     "react-dom": "^19.2.4",
-    "react-router-dom": "^7.13.2",
     "tailwind-merge": "^3.5.0",
     "zustand": "^5.0.12"
   },
@@ -49,8 +46,6 @@
     "@types/react": "^19.2.14",
     "@types/react-dom": "^19.2.3",
     "@vitejs/plugin-react": "^6.0.1",
-    "autoprefixer": "^10.4.27",
-    "postcss": "^8.5.8",
     "tailwindcss": "^4.2.2",
     "typescript": "^6.0.2",
     "vite": "^8.0.2"

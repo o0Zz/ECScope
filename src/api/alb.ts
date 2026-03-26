@@ -3,8 +3,8 @@ import {
     DescribeTargetHealthCommand,
     DescribeLoadBalancersCommand,
 } from "@aws-sdk/client-elastic-load-balancing-v2";
-import { GetMetricDataCommand } from "@aws-sdk/client-cloudwatch";
-import { getElbv2Client, getCwClient } from "./clients";
+import { getElbv2Client } from "./clients";
+import { queryMetrics } from "./cloudwatch";
 import { listAllServiceArns, describeServicesBatched } from "./ecs";
 import type { AlbInfo, LoadBalancerType } from "./types";
 
@@ -91,8 +91,7 @@ export async function listAlbs(clusterName: string): Promise<AlbInfo[]> {
     );
 
     // 6. Build AlbInfo objects with CloudWatch metrics
-    const now = new Date();
-    const fiveMinAgo = new Date(now.getTime() - 5 * 60 * 1000);
+    const FIVE_MIN_MS = 5 * 60 * 1000;
 
     return Promise.all(
         allLbs.map(async (lb) => {
@@ -124,96 +123,37 @@ export async function listAlbs(clusterName: string): Promise<AlbInfo[]> {
 
             try {
                 const lbDimension = lbArn.split(":loadbalancer/")[1] ?? "";
+                const dims = [{ Name: "LoadBalancer" as const, Value: lbDimension }];
 
                 if (lbType === "application") {
-                    const metricsRes = await getCwClient().send(
-                        new GetMetricDataCommand({
-                            StartTime: fiveMinAgo,
-                            EndTime: now,
-                            MetricDataQueries: [
-                                {
-                                    Id: "requests",
-                                    MetricStat: {
-                                        Metric: {
-                                            Namespace: "AWS/ApplicationELB",
-                                            MetricName: "RequestCount",
-                                            Dimensions: [{ Name: "LoadBalancer", Value: lbDimension }],
-                                        },
-                                        Period: 300,
-                                        Stat: "Sum",
-                                    },
-                                },
-                                {
-                                    Id: "latency",
-                                    MetricStat: {
-                                        Metric: {
-                                            Namespace: "AWS/ApplicationELB",
-                                            MetricName: "TargetResponseTime",
-                                            Dimensions: [{ Name: "LoadBalancer", Value: lbDimension }],
-                                        },
-                                        Period: 300,
-                                        Stat: "Average",
-                                    },
-                                },
-                            ],
-                        }),
+                    const { values } = await queryMetrics(
+                        [
+                            { id: "requests", namespace: "AWS/ApplicationELB", metricName: "RequestCount", dimensions: dims, stat: "Sum" },
+                            { id: "latency", namespace: "AWS/ApplicationELB", metricName: "TargetResponseTime", dimensions: dims, stat: "Average" },
+                        ],
+                        300,
+                        FIVE_MIN_MS,
                     );
-                    const reqValues = metricsRes.MetricDataResults?.find((r) => r.Id === "requests")?.Values ?? [];
-                    const latValues = metricsRes.MetricDataResults?.find((r) => r.Id === "latency")?.Values ?? [];
-                    requestCount = reqValues.length > 0 ? Math.round(reqValues[0]) : 0;
-                    avgLatencyMs = latValues.length > 0 ? Math.round(latValues[0] * 1000) : 0;
+                    const reqVals = values.get("requests") ?? [];
+                    const latVals = values.get("latency") ?? [];
+                    requestCount = reqVals.length > 0 ? Math.round(reqVals[0]) : 0;
+                    avgLatencyMs = latVals.length > 0 ? Math.round(latVals[0] * 1000) : 0;
                 } else {
-                    // NLB metrics
-                    const metricsRes = await getCwClient().send(
-                        new GetMetricDataCommand({
-                            StartTime: fiveMinAgo,
-                            EndTime: now,
-                            MetricDataQueries: [
-                                {
-                                    Id: "activeFlows",
-                                    MetricStat: {
-                                        Metric: {
-                                            Namespace: "AWS/NetworkELB",
-                                            MetricName: "ActiveFlowCount",
-                                            Dimensions: [{ Name: "LoadBalancer", Value: lbDimension }],
-                                        },
-                                        Period: 300,
-                                        Stat: "Average",
-                                    },
-                                },
-                                {
-                                    Id: "newFlows",
-                                    MetricStat: {
-                                        Metric: {
-                                            Namespace: "AWS/NetworkELB",
-                                            MetricName: "NewFlowCount",
-                                            Dimensions: [{ Name: "LoadBalancer", Value: lbDimension }],
-                                        },
-                                        Period: 300,
-                                        Stat: "Sum",
-                                    },
-                                },
-                                {
-                                    Id: "bytes",
-                                    MetricStat: {
-                                        Metric: {
-                                            Namespace: "AWS/NetworkELB",
-                                            MetricName: "ProcessedBytes",
-                                            Dimensions: [{ Name: "LoadBalancer", Value: lbDimension }],
-                                        },
-                                        Period: 300,
-                                        Stat: "Sum",
-                                    },
-                                },
-                            ],
-                        }),
+                    const { values } = await queryMetrics(
+                        [
+                            { id: "activeFlows", namespace: "AWS/NetworkELB", metricName: "ActiveFlowCount", dimensions: dims, stat: "Average" },
+                            { id: "newFlows", namespace: "AWS/NetworkELB", metricName: "NewFlowCount", dimensions: dims, stat: "Sum" },
+                            { id: "bytes", namespace: "AWS/NetworkELB", metricName: "ProcessedBytes", dimensions: dims, stat: "Sum" },
+                        ],
+                        300,
+                        FIVE_MIN_MS,
                     );
-                    const activeValues = metricsRes.MetricDataResults?.find((r) => r.Id === "activeFlows")?.Values ?? [];
-                    const newValues = metricsRes.MetricDataResults?.find((r) => r.Id === "newFlows")?.Values ?? [];
-                    const bytesValues = metricsRes.MetricDataResults?.find((r) => r.Id === "bytes")?.Values ?? [];
-                    activeFlowCount = activeValues.length > 0 ? Math.round(activeValues[0]) : 0;
-                    newFlowCount = newValues.length > 0 ? Math.round(newValues[0]) : 0;
-                    processedBytes = bytesValues.length > 0 ? Math.round(bytesValues[0]) : 0;
+                    const activeVals = values.get("activeFlows") ?? [];
+                    const newVals = values.get("newFlows") ?? [];
+                    const bytesVals = values.get("bytes") ?? [];
+                    activeFlowCount = activeVals.length > 0 ? Math.round(activeVals[0]) : 0;
+                    newFlowCount = newVals.length > 0 ? Math.round(newVals[0]) : 0;
+                    processedBytes = bytesVals.length > 0 ? Math.round(bytesVals[0]) : 0;
                 }
             } catch (e) {
                 console.warn("[aws] Failed to get LB metrics for", lbName, e);

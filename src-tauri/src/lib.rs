@@ -81,99 +81,24 @@ struct EcsLogsParams {
 
 #[tauri::command]
 fn open_ssm_session(params: SsmConnectParams) -> Result<(), String> {
-    let ssm_cmd = format!(
+    let cmd = format!(
         "aws ssm start-session --target {} --profile {} --region {}",
         params.instance_id, params.profile, params.region
     );
-
-    #[cfg(target_os = "windows")]
-    {
-        Command::new("cmd")
-            .args(["/c", "start", "cmd", "/k", &ssm_cmd])
-            .spawn()
-            .map_err(|e| format!("Failed to open terminal: {}", e))?;
-    }
-
-    #[cfg(target_os = "macos")]
-    {
-        let script = format!("tell application \"Terminal\" to do script \"{}\"", ssm_cmd);
-        Command::new("osascript")
-            .args(["-e", &script])
-            .spawn()
-            .map_err(|e| format!("Failed to open terminal: {}", e))?;
-    }
-
-    #[cfg(target_os = "linux")]
-    {
-        let terminals = ["x-terminal-emulator", "gnome-terminal", "xterm"];
-        let mut launched = false;
-        for term in &terminals {
-            if Command::new(term)
-                .args(["--", "sh", "-c", &ssm_cmd])
-                .spawn()
-                .is_ok()
-            {
-                launched = true;
-                break;
-            }
-        }
-        if !launched {
-            return Err("No terminal emulator found".to_string());
-        }
-    }
-
-    Ok(())
+    open_in_terminal(&cmd, None)
 }
 
 #[tauri::command]
 fn open_ecs_exec(params: EcsExecParams) -> Result<(), String> {
-    let exec_cmd = format!(
+    let cmd = format!(
         "aws ecs execute-command --cluster {} --task {} --container {} --interactive --command \"/bin/sh\" --profile {} --region {}",
         params.cluster, params.task_id, params.container, params.profile, params.region
     );
-
-    #[cfg(target_os = "windows")]
-    {
-        Command::new("cmd")
-            .args(["/c", "start", "cmd", "/k", &exec_cmd])
-            .spawn()
-            .map_err(|e| format!("Failed to open terminal: {}", e))?;
-    }
-
-    #[cfg(target_os = "macos")]
-    {
-        let script = format!("tell application \"Terminal\" to do script \"{}\"", exec_cmd);
-        Command::new("osascript")
-            .args(["-e", &script])
-            .spawn()
-            .map_err(|e| format!("Failed to open terminal: {}", e))?;
-    }
-
-    #[cfg(target_os = "linux")]
-    {
-        let terminals = ["x-terminal-emulator", "gnome-terminal", "xterm"];
-        let mut launched = false;
-        for term in &terminals {
-            if Command::new(term)
-                .args(["--", "sh", "-c", &exec_cmd])
-                .spawn()
-                .is_ok()
-            {
-                launched = true;
-                break;
-            }
-        }
-        if !launched {
-            return Err("No terminal emulator found".to_string());
-        }
-    }
-
-    Ok(())
+    open_in_terminal(&cmd, None)
 }
 
 #[tauri::command]
 fn open_ecs_logs(params: EcsLogsParams) -> Result<(), String> {
-    // Write JSON parameters to a temp file to avoid all shell quoting issues
     let json_params = format!(
         r#"{{"command":["sudo docker logs -f --tail 200 {}"]}}"#,
         params.runtime_id
@@ -183,26 +108,27 @@ fn open_ecs_logs(params: EcsLogsParams) -> Result<(), String> {
         .map_err(|e| format!("Failed to write params file: {}", e))?;
     let params_file_ref = format!("file://{}", params_path.display());
 
+    let cmd = format!(
+        "aws ssm start-session --target {} --document-name AWS-StartInteractiveCommand --parameters {} --profile {} --region {}",
+        params.instance_id, params_file_ref, params.profile, params.region
+    );
+    let title = format!("logs: {}", params.container_name);
+    open_in_terminal(&cmd, Some(&title))
+}
+
+fn open_in_terminal(cmd: &str, title: Option<&str>) -> Result<(), String> {
     #[cfg(target_os = "windows")]
     {
-        let cmd_str = format!(
-            "aws ssm start-session --target {} --document-name AWS-StartInteractiveCommand --parameters {} --profile {} --region {}",
-            params.instance_id, params_file_ref, params.profile, params.region
-        );
-        let title = format!("logs: {}", params.container_name);
+        let t = title.unwrap_or("");
         Command::new("cmd")
-            .args(["/c", "start", &title, "cmd", "/k", &cmd_str])
+            .args(["/c", "start", t, "cmd", "/k", cmd])
             .spawn()
             .map_err(|e| format!("Failed to open terminal: {}", e))?;
     }
 
     #[cfg(target_os = "macos")]
     {
-        let logs_cmd = format!(
-            "aws ssm start-session --target {} --document-name AWS-StartInteractiveCommand --parameters {} --profile {} --region {}",
-            params.instance_id, params_file_ref, params.profile, params.region
-        );
-        let escaped = logs_cmd.replace('\\', "\\\\").replace('"', "\\\"");
+        let escaped = cmd.replace('\\', "\\\\").replace('"', "\\\"");
         let script = format!("tell application \"Terminal\" to do script \"{}\"", escaped);
         Command::new("osascript")
             .args(["-e", &script])
@@ -212,15 +138,11 @@ fn open_ecs_logs(params: EcsLogsParams) -> Result<(), String> {
 
     #[cfg(target_os = "linux")]
     {
-        let logs_cmd = format!(
-            "aws ssm start-session --target {} --document-name AWS-StartInteractiveCommand --parameters {} --profile {} --region {}",
-            params.instance_id, params_file_ref, params.profile, params.region
-        );
         let terminals = ["x-terminal-emulator", "gnome-terminal", "xterm"];
         let mut launched = false;
         for term in &terminals {
             if Command::new(term)
-                .args(["--", "sh", "-c", &logs_cmd])
+                .args(["--", "sh", "-c", cmd])
                 .spawn()
                 .is_ok()
             {

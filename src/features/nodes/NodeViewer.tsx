@@ -5,35 +5,11 @@ import type { S3Credentials } from "@/api/types";
 import { useNavigationStore } from "@/store/navigation";
 import { useConfigStore } from "@/store/config";
 import { StatusBadge } from "@/components/StatusBadge";
+import { MetricBar } from "@/components/MetricBar";
 import { Monitor, Terminal, Stethoscope, Download, Upload } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { formatAge } from "@/lib/format";
 import { invoke } from "@tauri-apps/api/core";
 import { DiagnosticsDialog } from "./DiagnosticsDialog";
-
-function formatAge(registeredAt?: number): string {
-  if (!registeredAt) return "—";
-  const diffMs = Date.now() - registeredAt;
-  const minutes = Math.floor(diffMs / 60_000);
-  if (minutes < 60) return `${minutes}m`;
-  const hours = Math.floor(diffMs / 3_600_000);
-  if (hours < 24) return `${hours}h`;
-  const days = Math.floor(diffMs / 86_400_000);
-  return `${days}d`;
-}
-
-function MetricBar({ value, label, color }: { value: number; label: string; color: string }) {
-  return (
-    <div className="flex items-center gap-2">
-      <div className="h-2 w-20 overflow-hidden rounded-full bg-muted">
-        <div
-          className={cn("h-full rounded-full transition-all", color)}
-          style={{ width: `${Math.min(100, value)}%` }}
-        />
-      </div>
-      <span className="text-xs text-muted-foreground">{value}% {label}</span>
-    </div>
-  );
-}
 
 export function NodeViewer() {
   const { selectedCluster } = useNavigationStore();

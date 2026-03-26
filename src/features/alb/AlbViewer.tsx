@@ -7,15 +7,9 @@ import { useConfigStore } from "@/store/config";
 import { StatusBadge } from "@/components/StatusBadge";
 import { Globe, Shield, ChevronRight, ChevronDown, Network } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { formatBytes } from "@/lib/format";
 import { AlbMetricsChart } from "@/components/AlbMetricsChart";
 import { NlbMetricsChart } from "@/components/NlbMetricsChart";
-
-function formatBytes(n: number): string {
-  if (n >= 1_073_741_824) return `${(n / 1_073_741_824).toFixed(1)} GB`;
-  if (n >= 1_048_576) return `${(n / 1_048_576).toFixed(1)} MB`;
-  if (n >= 1_024) return `${(n / 1_024).toFixed(1)} KB`;
-  return `${n} B`;
-}
 
 function LbTypeBadge({ type }: { type: AlbInfo["lbType"] }) {
   return (

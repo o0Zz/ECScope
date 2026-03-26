@@ -6,16 +6,55 @@ ECScope is a modern, intuitive UI for exploring, monitoring, and managing your A
 It gives you a clear, real-time view of your clusters, services, and tasks — all in one place.
 ## How to run it
 
-### Dependencies to install
+### 1. ~/.aws/credentials ~/.aws/config 
+Make sure you have `~/.aws/credentials` `~/.aws/config` available, ECScope use it to conenct to your cluster
+
+### 2. Install SSM
 `winget install Amazon.SessionManagerPlugin`
+
+### 3. Install AWS Cli
+`msiexec.exe /i https://awscli.amazonaws.com/AWSCLIV2.msi`
+
+### 4. ecscope.config.json
+Create your configure file
+```
+{
+    "refreshPeriodSeconds": 10,
+    "clusters": [
+        {
+            "profile": "my-profile1",
+            "region": "eu-west-1",
+            "clusterName": "my-cluster"
+        },
+        {
+            ...
+        }
+    ],
+    "storage": {
+        "s3Bucket": "my-diagnostics-bucket",
+        "s3AccessKeyId": "AKIA...",
+        "s3SecretAccessKey": "wJalr...",
+        "s3Region": "eu-west-1"
+    }
+}
+```
+
+List all your cluster in clusters:
+
+ - `profile`: Profile that match your `~/.aws/config` `[profile]`
+ - `region`: Region of your cluster
+ - `clusterName`: Name of your cluster in AWS web interface
+
+Define a S3 bucket for download/upload/diagnostic feature. If you plan to use these feature you will have to define a S3 that you ec2 have access.
+ECScope use S3 as temporary storage to extract file from EC2 or push them via S3.
 
 
 ## ✨ Features
 
 ### 🔍 Explore Your Infrastructure
 
-* Browse clusters, services, and tasks بسهولة
-* Drill down from cluster → service → task
+* Browse clusters, services, and tasks
+* SSH, Logs, Environement varilable, Metrics
 * Clean and intuitive navigation
 
 ### 📊 Real-Time Observability
@@ -27,8 +66,8 @@ It gives you a clear, real-time view of your clusters, services, and tasks — a
 ### 📜 Live Logs
 
 * Stream logs in real time
-* Search and filter logs بسهولة
-* Centralized access to task logs
+* Search and filter logs
+* Cntralized access to task logs
 
 ### ⚡ Fast & Developer-Friendly
 
@@ -74,30 +113,10 @@ ECScope provides a **focused, developer-centric interface** to:
 
 `npm ci`
 
-## 🧱 Architecture (high-level)
 
-```text
-[ ECScope UI ]
-       ↓
-[ Backend API / Proxy ]
-       ↓
-[ AWS ECS + CloudWatch APIs ]
-```
+### Build
 
-* UI communicates with a backend service
-* Backend interacts with AWS APIs securely
-* Optional caching for performance
-
----
-
-## 📦 Roadmap
-
-* [ ] CloudWatch metrics integration
-* [ ] Multi-cluster support
-* [ ] Role-based access control (RBAC)
-* [ ] CLI companion
-* [ ] Plugin system
-* [ ] Alerts & notifications
+`npx xxx`
 
 ---
 
@@ -140,31 +159,3 @@ Example:
 ```bash
 export AWS_PROFILE=default
 ```
-
----
-
-## 🤝 Contributing
-
-Contributions are welcome!
-
-1. Fork the repo
-2. Create a feature branch
-3. Submit a pull request
-
----
-
-## 📄 License
-
-MIT
-
----
-
-## 💡 Inspiration
-
-ECScope is inspired by tools like OpenLens, but focused on the AWS ECS ecosystem.
-
----
-
-## ⭐️ Support
-
-If you find ECScope useful, consider giving it a star ⭐

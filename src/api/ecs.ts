@@ -10,10 +10,10 @@ import {
     DescribeContainerInstancesCommand,
 } from "@aws-sdk/client-ecs";
 import type { ECSClient } from "@aws-sdk/client-ecs";
-import { GetMetricDataCommand } from "@aws-sdk/client-cloudwatch";
 import { GetParametersCommand } from "@aws-sdk/client-ssm";
 import { GetSecretValueCommand } from "@aws-sdk/client-secrets-manager";
-import { getEcsClient, getCwClient, getSsmClient, getSmClient, getConfiguredCluster } from "./clients";
+import { getEcsClient, getSsmClient, getSmClient, getConfiguredCluster } from "./clients";
+import { queryMetrics } from "./cloudwatch";
 import type {
     EcsCluster,
     ClusterMetrics,
@@ -29,54 +29,23 @@ async function fetchServiceMetrics(
     clusterName: string,
     serviceName: string,
 ): Promise<{ cpuUtilization: number; memoryUtilization: number }> {
-    const now = new Date();
-    const fiveMinAgo = new Date(now.getTime() - 5 * 60 * 1000);
-
     try {
-        const res = await getCwClient().send(
-            new GetMetricDataCommand({
-                StartTime: fiveMinAgo,
-                EndTime: now,
-                MetricDataQueries: [
-                    {
-                        Id: "cpu",
-                        MetricStat: {
-                            Metric: {
-                                Namespace: "AWS/ECS",
-                                MetricName: "CPUUtilization",
-                                Dimensions: [
-                                    { Name: "ClusterName", Value: clusterName },
-                                    { Name: "ServiceName", Value: serviceName },
-                                ],
-                            },
-                            Period: 300,
-                            Stat: "Average",
-                        },
-                    },
-                    {
-                        Id: "mem",
-                        MetricStat: {
-                            Metric: {
-                                Namespace: "AWS/ECS",
-                                MetricName: "MemoryUtilization",
-                                Dimensions: [
-                                    { Name: "ClusterName", Value: clusterName },
-                                    { Name: "ServiceName", Value: serviceName },
-                                ],
-                            },
-                            Period: 300,
-                            Stat: "Average",
-                        },
-                    },
-                ],
-            }),
+        const dims = [
+            { Name: "ClusterName" as const, Value: clusterName },
+            { Name: "ServiceName" as const, Value: serviceName },
+        ];
+        const { values } = await queryMetrics(
+            [
+                { id: "cpu", namespace: "AWS/ECS", metricName: "CPUUtilization", dimensions: dims, stat: "Average" },
+                { id: "mem", namespace: "AWS/ECS", metricName: "MemoryUtilization", dimensions: dims, stat: "Average" },
+            ],
+            300,
+            5 * 60 * 1000,
         );
-
-        const cpuValues = res.MetricDataResults?.find((r) => r.Id === "cpu")?.Values ?? [];
-        const memValues = res.MetricDataResults?.find((r) => r.Id === "mem")?.Values ?? [];
-
-        const cpu = cpuValues.length > 0 ? Math.round(cpuValues[0] * 10) / 10 : 0;
-        const mem = memValues.length > 0 ? Math.round(memValues[0] * 10) / 10 : 0;
+        const cpuVals = values.get("cpu") ?? [];
+        const memVals = values.get("mem") ?? [];
+        const cpu = cpuVals.length > 0 ? Math.round(cpuVals[0] * 10) / 10 : 0;
+        const mem = memVals.length > 0 ? Math.round(memVals[0] * 10) / 10 : 0;
 
         console.log(`[aws] metrics for ${serviceName}:`, { cpu, mem });
         return { cpuUtilization: cpu, memoryUtilization: mem };

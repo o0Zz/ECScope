@@ -8,18 +8,8 @@ import { StatusBadge } from "@/components/StatusBadge";
 import { ServiceMetricsChart } from "@/components/ServiceMetricsChart";
 import { Container, Server, ChevronDown, FileCode, Copy, Check, KeyRound, Terminal, ScrollText } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { formatAge } from "@/lib/format";
 import { invoke } from "@tauri-apps/api/core";
-
-function formatAge(startedAt: string): string {
-  const diffMs = Date.now() - new Date(startedAt).getTime();
-  if (diffMs < 0) return "—";
-  const minutes = Math.floor(diffMs / 60_000);
-  if (minutes < 60) return `${minutes}m`;
-  const hours = Math.floor(diffMs / 3_600_000);
-  if (hours < 24) return `${hours}h`;
-  const days = Math.floor(diffMs / 86_400_000);
-  return `${days}d`;
-}
 
 function CopyButton({ text }: { text: string }) {
   const [copied, setCopied] = useState(false);

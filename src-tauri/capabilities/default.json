@@ -8,6 +8,20 @@
   "permissions": [
     "core:default",
     "dialog:default",
-    "fs:default"
+    {
+      "identifier": "fs:allow-read-text-file",
+      "allow": [
+        { "path": "$HOME/.aws/**" },
+        { "path": "$APPDATA/ecscope/**" },
+        { "path": "$EXE/ecscope.config.json" }
+      ]
+    },
+    {
+      "identifier": "fs:allow-write-text-file",
+      "allow": [
+        { "path": "$DOWNLOAD/**" },
+        { "path": "$TEMP/**" }
+      ]
+    }
   ]
 }

@@ -2,6 +2,7 @@ use serde::Serialize;
 use serde::Deserialize;
 use std::fs;
 use std::process::Command;
+use std::io::Write;
 
 #[derive(Serialize)]
 struct AwsFiles {
@@ -103,9 +104,18 @@ fn open_ecs_logs(params: EcsLogsParams) -> Result<(), String> {
         r#"{{"command":["sudo docker logs -f --tail 200 {}"]}}"#,
         params.runtime_id
     );
-    let params_path = std::env::temp_dir().join("ecscope_ssm_params.json");
-    fs::write(&params_path, &json_params)
-        .map_err(|e| format!("Failed to write params file: {}", e))?;
+    let unique_id: u64 = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .unwrap_or_default()
+        .as_nanos() as u64;
+    let params_filename = format!("ecscope_ssm_params_{}.json", unique_id);
+    let params_path = std::env::temp_dir().join(&params_filename);
+    {
+        let mut file = fs::File::create(&params_path)
+            .map_err(|e| format!("Failed to create params file: {}", e))?;
+        file.write_all(json_params.as_bytes())
+            .map_err(|e| format!("Failed to write params file: {}", e))?;
+    }
     let params_file_ref = format!("file://{}", params_path.display());
 
     let cmd = format!(

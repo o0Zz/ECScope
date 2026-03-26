@@ -6,6 +6,17 @@ import { StatusBadge } from "@/components/StatusBadge";
 import { ServiceMetricsChart } from "@/components/ServiceMetricsChart";
 import { Container, ArrowRight, Server } from "lucide-react";
 
+function formatAge(startedAt: string): string {
+  const diffMs = Date.now() - new Date(startedAt).getTime();
+  if (diffMs < 0) return "—";
+  const minutes = Math.floor(diffMs / 60_000);
+  if (minutes < 60) return `${minutes}m`;
+  const hours = Math.floor(diffMs / 3_600_000);
+  if (hours < 24) return `${hours}h`;
+  const days = Math.floor(diffMs / 86_400_000);
+  return `${days}d`;
+}
+
 export function TaskList() {
   const { selectedCluster, selectedService, selectTask } =
     useNavigationStore();
@@ -65,7 +76,7 @@ export function TaskList() {
                 Node
               </th>
               <th className="px-4 py-2.5 text-left font-medium text-muted-foreground">
-                Started
+                Age
               </th>
               <th className="px-4 py-2.5 text-left font-medium text-muted-foreground">
                 Containers
@@ -113,7 +124,7 @@ export function TaskList() {
                     )}
                   </td>
                   <td className="px-4 py-3 text-xs text-muted-foreground">
-                    {new Date(task.startedAt).toLocaleString()}
+                    {formatAge(task.startedAt)}
                   </td>
                   <td className="px-4 py-3 text-muted-foreground">
                     {task.containers.length}

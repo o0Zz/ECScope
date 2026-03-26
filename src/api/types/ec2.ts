@@ -11,4 +11,5 @@ export interface ContainerInstance {
     memoryAvailable: number;
     agentVersion: string;
     launchType: "EC2" | "FARGATE";
+    registeredAt?: number;
 }

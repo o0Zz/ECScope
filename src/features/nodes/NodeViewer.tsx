@@ -10,6 +10,17 @@ import { cn } from "@/lib/utils";
 import { invoke } from "@tauri-apps/api/core";
 import { DiagnosticsDialog } from "./DiagnosticsDialog";
 
+function formatAge(registeredAt?: number): string {
+  if (!registeredAt) return "—";
+  const diffMs = Date.now() - registeredAt;
+  const minutes = Math.floor(diffMs / 60_000);
+  if (minutes < 60) return `${minutes}m`;
+  const hours = Math.floor(diffMs / 3_600_000);
+  if (hours < 24) return `${hours}h`;
+  const days = Math.floor(diffMs / 86_400_000);
+  return `${days}d`;
+}
+
 function MetricBar({ value, label, color }: { value: number; label: string; color: string }) {
   return (
     <div className="flex items-center gap-2">
@@ -111,6 +122,7 @@ export function NodeViewer() {
               <th className="px-4 py-2.5 text-left font-medium text-muted-foreground">CPU</th>
               <th className="px-4 py-2.5 text-left font-medium text-muted-foreground">Memory</th>
               <th className="px-4 py-2.5 text-left font-medium text-muted-foreground">Agent</th>
+              <th className="px-4 py-2.5 text-left font-medium text-muted-foreground">Age</th>
               <th className="px-4 py-2.5 text-right font-medium text-muted-foreground">Actions</th>
             </tr>
           </thead>
@@ -157,6 +169,7 @@ export function NodeViewer() {
                     />
                   </td>
                   <td className="px-4 py-3 text-xs text-muted-foreground">{inst.agentVersion}</td>
+                  <td className="px-4 py-3 text-xs text-muted-foreground">{formatAge(inst.registeredAt)}</td>
                   <td className="px-4 py-3">
                     <div className="flex items-center justify-end gap-1.5">
                       <button

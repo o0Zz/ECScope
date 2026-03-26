@@ -423,6 +423,7 @@ export async function listContainerInstances(
             memoryAvailable: memRem?.integerValue ?? 0,
             agentVersion: ci.versionInfo?.agentVersion ?? "",
             launchType: "EC2" as const,
+            registeredAt: ci.registeredAt ? new Date(ci.registeredAt).getTime() : undefined,
         };
     });
 }

@@ -66,6 +66,12 @@ export interface EcsTask {
     ec2InstanceId: string;
 }
 
+export interface EcsServiceEvent {
+    id: string;
+    createdAt: string;
+    message: string;
+}
+
 export interface EcsContainer {
     containerArn: string;
     name: string;

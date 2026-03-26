@@ -18,6 +18,7 @@ import type {
     EcsCluster,
     ClusterMetrics,
     EcsService,
+    EcsServiceEvent,
     EcsTask,
     ContainerInstance,
 } from "./types";
@@ -224,6 +225,26 @@ export async function getService(
             memoryReservedMB,
         },
     };
+}
+
+export async function getServiceEvents(
+    clusterName: string,
+    serviceName: string,
+    limit = 20,
+): Promise<EcsServiceEvent[]> {
+    const res = await getEcsClient().send(
+        new DescribeServicesCommand({
+            cluster: clusterName,
+            services: [serviceName],
+        }),
+    );
+
+    const events = res.services?.[0]?.events ?? [];
+    return events.slice(0, limit).map((e) => ({
+        id: e.id ?? "",
+        createdAt: e.createdAt?.toISOString?.() ?? "",
+        message: e.message ?? "",
+    }));
 }
 
 export async function listTasks(

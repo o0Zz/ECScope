@@ -1,5 +1,5 @@
 import { useState, useCallback } from "react";
-import { diagnosticsApi } from "@/api";
+import { ec2Commands } from "@/api";
 import type { SSMCommandResult } from "@/api/types";
 import { useConfigStore } from "@/store/config";
 import { Activity, Cpu, X, Loader2, Download, AlertCircle } from "lucide-react";
@@ -45,7 +45,7 @@ export function DiagnosticsDialog({ instanceId, onClose }: DiagnosticsDialogProp
         setError(null);
         setProgress(null);
         try {
-            await diagnosticsApi.runTcpdumpAndDownload(
+            await ec2Commands.runTcpdumpAndDownload(
                 {
                     instanceId,
                     s3Bucket,
@@ -78,7 +78,7 @@ export function DiagnosticsDialog({ instanceId, onClose }: DiagnosticsDialogProp
         setError(null);
         setProgress(null);
         try {
-            await diagnosticsApi.runCoredumpAndDownload(
+            await ec2Commands.runCoredumpAndDownload(
                 {
                     instanceId,
                     s3Bucket,

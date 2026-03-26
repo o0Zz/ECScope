@@ -7,6 +7,7 @@ import {
     getCluster,
     listServices,
     getService,
+    getServiceEvents,
     listTasks,
     getClusterMetrics,
     updateServiceDesiredCount,
@@ -21,6 +22,7 @@ export const ecsApi = {
     getCluster,
     listServices,
     getService,
+    getServiceEvents,
     listTasks,
     getClusterMetrics,
     updateServiceDesiredCount,
@@ -32,5 +34,4 @@ export const ecsApi = {
     getNlbMetricsHistory,
 };
 
-import * as ec2Commands from "./ec2-commands";
-export const diagnosticsApi = ec2Commands;
+export * as ec2Commands from "./ec2-commands";

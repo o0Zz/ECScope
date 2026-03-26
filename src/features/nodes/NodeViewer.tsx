@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { ecsApi, diagnosticsApi } from "@/api";
+import { ecsApi, ec2Commands } from "@/api";
 import type { S3Credentials } from "@/api/types";
 import { useNavigationStore } from "@/store/navigation";
 import { useConfigStore } from "@/store/config";
@@ -29,7 +29,7 @@ export function NodeViewer() {
     const remotePath = window.prompt("Remote file path on EC2 to download:");
     if (!remotePath?.trim()) return;
     try {
-      await diagnosticsApi.downloadEc2File({
+      await ec2Commands.downloadEc2File({
         instanceId,
         credentials: getS3Creds(),
         s3Bucket: storage!.s3Bucket!,
@@ -45,7 +45,7 @@ export function NodeViewer() {
     const remotePath = window.prompt("Remote destination path on EC2 (file or directory ending with /):");
     if (!remotePath?.trim()) return;
     try {
-      await diagnosticsApi.uploadFile(
+      await ec2Commands.uploadFile(
         getS3Creds(),
         storage!.s3Bucket!,
         instanceId,

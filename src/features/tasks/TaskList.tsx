@@ -6,6 +6,7 @@ import { useNavigationStore } from "@/store/navigation";
 import { useConfigStore } from "@/store/config";
 import { StatusBadge } from "@/components/StatusBadge";
 import { ServiceMetricsChart } from "@/components/ServiceMetricsChart";
+import { ServiceEventsTimeline } from "@/components/ServiceEventsTimeline";
 import { Container, Server, ChevronDown, FileCode, Copy, Check, KeyRound, Terminal, ScrollText } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { formatAge } from "@/lib/format";
@@ -333,6 +334,12 @@ export function TaskList() {
 
       {/* CPU & Memory usage chart */}
       <ServiceMetricsChart
+        clusterName={selectedCluster!}
+        serviceName={selectedService!}
+      />
+
+      {/* Service events timeline */}
+      <ServiceEventsTimeline
         clusterName={selectedCluster!}
         serviceName={selectedService!}
       />

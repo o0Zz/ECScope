@@ -42,10 +42,12 @@ export interface EcsService {
 export interface EcsDeployment {
     id: string;
     status: string;
+    taskDefinition: string;
     desiredCount: number;
     runningCount: number;
     pendingCount: number;
     rolloutState: string;
+    rolloutStateReason: string;
     createdAt: string;
 }
 

@@ -7,11 +7,13 @@ import { useConfigStore } from "@/store/config";
 import { StatusBadge } from "@/components/StatusBadge";
 import { ServiceMetricsChart } from "@/components/ServiceMetricsChart";
 import { ServiceEventsTimeline } from "@/components/ServiceEventsTimeline";
-import { Container, Server, ChevronDown, FileCode, Copy, Check, KeyRound, Terminal, ScrollText, Square, AlertTriangle } from "lucide-react";
+import { DeploymentStatusPanel } from "@/components/DeploymentStatusPanel";
+import { Container, Server, ChevronDown, FileCode, Copy, Check, KeyRound, Terminal, ScrollText, Square, AlertTriangle, Pencil } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { formatAge } from "@/lib/format";
 import { invoke } from "@tauri-apps/api/core";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
+import { TaskDefinitionEditor } from "@/components/TaskDefinitionEditor";
 
 function CopyButton({ text }: { text: string }) {
   const [copied, setCopied] = useState(false);
@@ -287,6 +289,7 @@ export function TaskList() {
   const refreshIntervalMs = useConfigStore((s) => s.refreshIntervalMs);
   const [expandedTask, setExpandedTask] = useState<string | null>(null);
   const [confirmStopTask, setConfirmStopTask] = useState<string | null>(null);
+  const [showTaskDefEditor, setShowTaskDefEditor] = useState(false);
   const queryClient = useQueryClient();
 
   const stopMutation = useMutation({
@@ -327,12 +330,22 @@ export function TaskList() {
 
   return (
     <div className="p-4">
-      <h2 className="mb-4 text-lg font-semibold text-foreground">
-        Tasks
-        <span className="ml-2 text-sm font-normal text-muted-foreground">
-          ({tasks.length})
-        </span>
-      </h2>
+      <div className="mb-4 flex items-center justify-between">
+        <h2 className="text-lg font-semibold text-foreground">
+          Tasks
+          <span className="ml-2 text-sm font-normal text-muted-foreground">
+            ({tasks.length})
+          </span>
+        </h2>
+        <button
+          onClick={() => setShowTaskDefEditor(true)}
+          className="inline-flex items-center gap-1.5 rounded-md border border-border px-2.5 py-1.5 text-xs font-medium text-muted-foreground hover:bg-accent hover:text-foreground transition-colors"
+          title="Edit Task Definition"
+        >
+          <Pencil className="h-3.5 w-3.5" />
+          Edit Task Definition
+        </button>
+      </div>
       <div className="overflow-hidden rounded-lg border border-border">
         <table className="w-full text-sm">
           <thead>
@@ -398,6 +411,12 @@ export function TaskList() {
         onCancel={() => setConfirmStopTask(null)}
       />
 
+      {/* Deployment status & rollback */}
+      <DeploymentStatusPanel
+        clusterName={selectedCluster!}
+        serviceName={selectedService!}
+      />
+
       {/* CPU & Memory usage chart */}
       <ServiceMetricsChart
         clusterName={selectedCluster!}
@@ -409,6 +428,16 @@ export function TaskList() {
         clusterName={selectedCluster!}
         serviceName={selectedService!}
       />
+
+      {/* Task definition editor modal */}
+      {showTaskDefEditor && tasks[0] && (
+        <TaskDefinitionEditor
+          clusterName={selectedCluster!}
+          serviceName={selectedService!}
+          taskDefinition={tasks[0].taskDefinitionArn}
+          onClose={() => setShowTaskDefEditor(false)}
+        />
+      )}
     </div>
   );
 }

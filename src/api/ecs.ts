@@ -7,6 +7,7 @@ import {
     DescribeTaskDefinitionCommand,
     UpdateServiceCommand,
     StopTaskCommand,
+    RegisterTaskDefinitionCommand,
     ListContainerInstancesCommand,
     DescribeContainerInstancesCommand,
 } from "@aws-sdk/client-ecs";
@@ -160,10 +161,12 @@ export async function listServices(clusterName: string): Promise<EcsService[]> {
                 deployments: (s.deployments ?? []).map((d: any) => ({
                     id: d.id ?? "",
                     status: d.status ?? "",
+                    taskDefinition: d.taskDefinition?.split("/").pop() ?? d.taskDefinition ?? "",
                     desiredCount: d.desiredCount ?? 0,
                     runningCount: d.runningCount ?? 0,
                     pendingCount: d.pendingCount ?? 0,
                     rolloutState: d.rolloutState ?? "",
+                    rolloutStateReason: d.rolloutStateReason ?? "",
                     createdAt: d.createdAt?.toISOString?.() ?? "",
                 })),
                 createdAt: s.createdAt?.toISOString?.() ?? "",
@@ -212,10 +215,12 @@ export async function getService(
         deployments: (s.deployments ?? []).map((d) => ({
             id: d.id ?? "",
             status: d.status ?? "",
+            taskDefinition: d.taskDefinition?.split("/").pop() ?? d.taskDefinition ?? "",
             desiredCount: d.desiredCount ?? 0,
             runningCount: d.runningCount ?? 0,
             pendingCount: d.pendingCount ?? 0,
             rolloutState: d.rolloutState ?? "",
+            rolloutStateReason: d.rolloutStateReason ?? "",
             createdAt: d.createdAt?.toISOString?.() ?? "",
         })),
         createdAt: s.createdAt?.toISOString?.() ?? "",
@@ -529,6 +534,20 @@ export async function stopTask(
     );
 }
 
+export async function rollbackService(
+    clusterName: string,
+    serviceName: string,
+    taskDefinition: string,
+): Promise<void> {
+    await getEcsClient().send(
+        new UpdateServiceCommand({
+            cluster: clusterName,
+            service: serviceName,
+            taskDefinition,
+        }),
+    );
+}
+
 export async function forceNewDeployment(
     clusterName: string,
     serviceName: string,
@@ -540,6 +559,52 @@ export async function forceNewDeployment(
             forceNewDeployment: true,
         }),
     );
+}
+
+/** Fetch the raw task definition JSON (stripping read-only fields) */
+export async function getTaskDefinitionJson(
+    taskDefinition: string,
+): Promise<Record<string, unknown>> {
+    const res = await getEcsClient().send(
+        new DescribeTaskDefinitionCommand({ taskDefinition }),
+    );
+    const td = res.taskDefinition;
+    if (!td) throw new Error(`Task definition ${taskDefinition} not found`);
+
+    // Convert to plain object and strip read-only fields that can't be passed to RegisterTaskDefinition
+    const raw = { ...td } as Record<string, unknown>;
+    delete raw.taskDefinitionArn;
+    delete raw.revision;
+    delete raw.status;
+    delete raw.requiresAttributes;
+    delete raw.compatibilities;
+    delete raw.registeredAt;
+    delete raw.registeredBy;
+    delete raw.deregisteredAt;
+    return raw;
+}
+
+/** Register a new task definition revision from JSON and update the service */
+export async function registerAndDeployTaskDefinition(
+    clusterName: string,
+    serviceName: string,
+    taskDefJson: Record<string, unknown>,
+): Promise<string> {
+    const regRes = await getEcsClient().send(
+        new RegisterTaskDefinitionCommand(taskDefJson as any),
+    );
+    const newArn = regRes.taskDefinition?.taskDefinitionArn;
+    if (!newArn) throw new Error("Failed to register task definition");
+
+    await getEcsClient().send(
+        new UpdateServiceCommand({
+            cluster: clusterName,
+            service: serviceName,
+            taskDefinition: newArn,
+            forceNewDeployment: true,
+        }),
+    );
+    return newArn;
 }
 
 export async function listContainerInstances(

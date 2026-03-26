@@ -59,6 +59,8 @@ export interface EcsTask {
     cpu: string;
     memory: string;
     startedAt: string;
+    stoppedAt: string;
+    stoppedReason: string;
     group: string;
     containers: EcsContainer[];
     healthStatus: string;
@@ -81,6 +83,8 @@ export interface EcsContainer {
     cpu: string;
     memory: string;
     runtimeId: string;
+    reason: string;
+    exitCode: number | null;
     networkBindings: { containerPort: number; hostPort: number; protocol: string }[];
     environment: { name: string; value: string }[];
     secrets: { name: string; valueFrom: string; resolvedValue?: string }[];

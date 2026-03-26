@@ -252,14 +252,20 @@ export async function listTasks(
     clusterName: string,
     serviceName: string,
 ): Promise<EcsTask[]> {
-    const listRes = await getEcsClient().send(
-        new ListTasksCommand({
-            cluster: clusterName,
-            serviceName,
-        }),
-    );
+    // Fetch both RUNNING and STOPPED tasks
+    const [runningRes, stoppedRes] = await Promise.all([
+        getEcsClient().send(
+            new ListTasksCommand({ cluster: clusterName, serviceName, desiredStatus: "RUNNING" }),
+        ),
+        getEcsClient().send(
+            new ListTasksCommand({ cluster: clusterName, serviceName, desiredStatus: "STOPPED" }),
+        ),
+    ]);
 
-    const taskArns = listRes.taskArns ?? [];
+    const taskArns = [
+        ...(runningRes.taskArns ?? []),
+        ...(stoppedRes.taskArns ?? []),
+    ];
     if (taskArns.length === 0) return [];
 
     const allTasks: EcsTask[] = [];
@@ -280,6 +286,8 @@ export async function listTasks(
                 cpu: t.cpu ?? "0",
                 memory: t.memory ?? "0",
                 startedAt: t.startedAt?.toISOString?.() ?? "",
+                stoppedAt: t.stoppedAt?.toISOString?.() ?? "",
+                stoppedReason: t.stoppedReason ?? "",
                 group: t.group ?? "",
                 healthStatus: t.healthStatus ?? "UNKNOWN",
                 containerInstanceArn: t.containerInstanceArn ?? "",
@@ -293,6 +301,8 @@ export async function listTasks(
                     cpu: c.cpu ?? "0",
                     memory: c.memory ?? "0",
                     runtimeId: c.runtimeId ?? "",
+                    reason: c.reason ?? "",
+                    exitCode: c.exitCode ?? null,
                     networkBindings: (c.networkBindings ?? []).map((nb) => ({
                         containerPort: nb.containerPort ?? 0,
                         hostPort: nb.hostPort ?? 0,

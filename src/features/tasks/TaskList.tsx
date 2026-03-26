@@ -7,7 +7,7 @@ import { useConfigStore } from "@/store/config";
 import { StatusBadge } from "@/components/StatusBadge";
 import { ServiceMetricsChart } from "@/components/ServiceMetricsChart";
 import { ServiceEventsTimeline } from "@/components/ServiceEventsTimeline";
-import { Container, Server, ChevronDown, FileCode, Copy, Check, KeyRound, Terminal, ScrollText, Square } from "lucide-react";
+import { Container, Server, ChevronDown, FileCode, Copy, Check, KeyRound, Terminal, ScrollText, Square, AlertTriangle } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { formatAge } from "@/lib/format";
 import { invoke } from "@tauri-apps/api/core";
@@ -165,6 +165,8 @@ function TaskRow({
     }).catch((err) => console.error("[ECScope] ECS logs failed:", err));
   };
 
+  const isStopped = task.lastStatus === "STOPPED";
+
   return (
     <>
       <tr
@@ -173,13 +175,26 @@ function TaskRow({
         <td className="px-4 py-3">
           <div className="flex items-center gap-2">
             <Container className="h-4 w-4 text-muted-foreground" />
-            <span className="font-mono text-xs font-medium text-foreground">
-              {taskId}
-            </span>
+            <div>
+              <span className="font-mono text-xs font-medium text-foreground">
+                {taskId}
+              </span>
+              {task.lastStatus === "STOPPED" && task.stoppedReason && (
+                <div className="mt-0.5 flex items-start gap-1">
+                  <AlertTriangle className="h-3 w-3 shrink-0 text-warning mt-0.5" />
+                  <span className="text-[11px] text-warning break-words">{task.stoppedReason}</span>
+                </div>
+              )}
+            </div>
           </div>
         </td>
         <td className="px-4 py-3">
           <StatusBadge status={task.lastStatus} />
+          {task.lastStatus === "STOPPED" && task.stoppedAt && (
+            <div className="mt-0.5 text-[11px] text-muted-foreground">
+              {formatAge(task.stoppedAt)} ago
+            </div>
+          )}
         </td>
         <td className="px-4 py-3">
           <StatusBadge status={task.healthStatus} />
@@ -213,7 +228,7 @@ function TaskRow({
                 e.stopPropagation();
                 onStop();
               }}
-              disabled={isStopping || task.lastStatus === "STOPPED"}
+              disabled={isStopping || isStopped}
               className="rounded p-1 transition-colors text-muted-foreground hover:bg-destructive/20 hover:text-destructive disabled:opacity-30 disabled:cursor-not-allowed"
               title="Stop task"
             >
@@ -221,7 +236,11 @@ function TaskRow({
             </button>
             <button
               onClick={handleExec}
-              className="rounded p-1 transition-colors text-muted-foreground hover:bg-accent hover:text-foreground"
+              disabled={isStopped}
+              className={cn(
+                "rounded p-1 transition-colors",
+                isStopped ? "text-muted-foreground/30 cursor-not-allowed" : "text-muted-foreground hover:bg-accent hover:text-foreground",
+              )}
               title={`Shell into ${containerName}`}
             >
               <Terminal className="h-3.5 w-3.5" />
@@ -230,10 +249,10 @@ function TaskRow({
               onClick={handleLogs}
               className={cn(
                 "rounded p-1 transition-colors hover:bg-accent",
-                canStreamLogs ? "text-muted-foreground hover:text-foreground" : "text-muted-foreground/30 cursor-not-allowed",
+                isStopped || !canStreamLogs ? "text-muted-foreground/30 cursor-not-allowed" : "text-muted-foreground hover:text-foreground",
               )}
-              title={canStreamLogs ? `Live logs for ${containerName}` : "Docker logs requires EC2 launch type"}
-              disabled={!canStreamLogs}
+              title={isStopped ? "Task is stopped" : canStreamLogs ? `Live logs for ${containerName}` : "Docker logs requires EC2 launch type"}
+              disabled={isStopped || !canStreamLogs}
             >
               <ScrollText className="h-3.5 w-3.5" />
             </button>

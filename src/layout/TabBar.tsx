@@ -4,22 +4,20 @@ import { cn } from "@/lib/utils";
 const TABS: { id: ActiveTab; label: string }[] = [
   { id: "services", label: "Services" },
   { id: "tasks", label: "Tasks" },
-  { id: "logs", label: "Logs" },
   { id: "alb", label: "ALB / NLB" },
   { id: "nodes", label: "Nodes" },
   { id: "database", label: "Database" },
 ];
 
 export function TabBar() {
-  const { activeTab, setActiveTab, selectedService, selectedTaskArn } =
+  const { activeTab, setActiveTab, selectedService } =
     useNavigationStore();
 
   return (
     <div className="flex border-b border-border bg-card">
       {TABS.map((tab) => {
         const disabled =
-          (tab.id === "tasks" && !selectedService) ||
-          (tab.id === "logs" && !selectedTaskArn);
+          (tab.id === "tasks" && !selectedService);
 
         return (
           <button

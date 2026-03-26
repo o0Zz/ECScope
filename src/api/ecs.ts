@@ -4,13 +4,16 @@ import {
     DescribeServicesCommand,
     ListTasksCommand,
     DescribeTasksCommand,
+    DescribeTaskDefinitionCommand,
     UpdateServiceCommand,
     ListContainerInstancesCommand,
     DescribeContainerInstancesCommand,
 } from "@aws-sdk/client-ecs";
 import type { ECSClient } from "@aws-sdk/client-ecs";
 import { GetMetricDataCommand } from "@aws-sdk/client-cloudwatch";
-import { getEcsClient, getCwClient, getConfiguredCluster } from "./clients";
+import { GetParametersCommand } from "@aws-sdk/client-ssm";
+import { GetSecretValueCommand } from "@aws-sdk/client-secrets-manager";
+import { getEcsClient, getCwClient, getSsmClient, getSmClient, getConfiguredCluster } from "./clients";
 import type {
     EcsCluster,
     ClusterMetrics,
@@ -298,11 +301,14 @@ export async function listTasks(
                     healthStatus: c.healthStatus ?? "UNKNOWN",
                     cpu: c.cpu ?? "0",
                     memory: c.memory ?? "0",
+                    runtimeId: c.runtimeId ?? "",
                     networkBindings: (c.networkBindings ?? []).map((nb) => ({
                         containerPort: nb.containerPort ?? 0,
                         hostPort: nb.hostPort ?? 0,
                         protocol: nb.protocol ?? "tcp",
                     })),
+                    environment: [],
+                    secrets: [],
                 })),
             });
         }
@@ -325,6 +331,127 @@ export async function listTasks(
         }
         for (const task of allTasks) {
             task.ec2InstanceId = ciMap.get(task.containerInstanceArn) ?? "";
+        }
+    }
+
+    // Resolve environment variables from task definitions
+    const tdArns = [...new Set(allTasks.map((t) => t.taskDefinitionArn).filter(Boolean))];
+    const tdEnvMap = new Map<string, Map<string, { env: { name: string; value: string }[]; secrets: { name: string; valueFrom: string }[]; logGroup?: string; logStreamPrefix?: string }>>();
+    await Promise.all(
+        tdArns.map(async (tdArn) => {
+            try {
+                const tdRes = await getEcsClient().send(
+                    new DescribeTaskDefinitionCommand({ taskDefinition: tdArn }),
+                );
+                const containerEnvs = new Map<string, { env: { name: string; value: string }[]; secrets: { name: string; valueFrom: string }[]; logGroup?: string; logStreamPrefix?: string }>();
+                for (const cd of tdRes.taskDefinition?.containerDefinitions ?? []) {
+                    const logOpts = cd.logConfiguration?.logDriver === "awslogs" ? cd.logConfiguration.options : undefined;
+                    containerEnvs.set(cd.name ?? "", {
+                        env: (cd.environment ?? []).map((e) => ({
+                            name: e.name ?? "",
+                            value: e.value ?? "",
+                        })),
+                        secrets: (cd.secrets ?? []).map((s) => ({
+                            name: s.name ?? "",
+                            valueFrom: s.valueFrom ?? "",
+                        })),
+                        logGroup: logOpts?.["awslogs-group"],
+                        logStreamPrefix: logOpts?.["awslogs-stream-prefix"],
+                    });
+                }
+                tdEnvMap.set(tdArn, containerEnvs);
+            } catch (err) {
+                console.warn(`[aws] Failed to describe task definition ${tdArn}:`, err);
+            }
+        }),
+    );
+    for (const task of allTasks) {
+        const containerEnvs = tdEnvMap.get(task.taskDefinitionArn);
+        if (containerEnvs) {
+            for (const container of task.containers) {
+                const defs = containerEnvs.get(container.name);
+                container.environment = defs?.env ?? [];
+                container.secrets = (defs?.secrets ?? []).map((s) => ({
+                    name: s.name,
+                    valueFrom: s.valueFrom,
+                }));
+                container.logGroup = defs?.logGroup;
+                container.logStreamPrefix = defs?.logStreamPrefix;
+            }
+        }
+    }
+
+    // Resolve secret values from SSM Parameter Store and Secrets Manager
+    const allSecretRefs = new Map<string, string>(); // valueFrom -> resolved value
+    const ssmNames: string[] = [];
+    const smArns: string[] = [];
+
+    for (const task of allTasks) {
+        for (const container of task.containers) {
+            for (const secret of container.secrets) {
+                if (allSecretRefs.has(secret.valueFrom)) continue;
+                allSecretRefs.set(secret.valueFrom, "");
+                if (secret.valueFrom.startsWith("arn:aws:secretsmanager:")) {
+                    smArns.push(secret.valueFrom);
+                } else {
+                    // SSM parameter — can be a name or an ARN
+                    ssmNames.push(secret.valueFrom.startsWith("arn:") ? secret.valueFrom : secret.valueFrom);
+                }
+            }
+        }
+    }
+
+    // Resolve SSM parameters in batches of 10
+    for (let i = 0; i < ssmNames.length; i += 10) {
+        const batch = ssmNames.slice(i, i + 10);
+        try {
+            const res = await getSsmClient().send(
+                new GetParametersCommand({ Names: batch, WithDecryption: true }),
+            );
+            for (const p of res.Parameters ?? []) {
+                // Match by Name or ARN
+                const ref = batch.find((n) => n === p.Name || n === p.ARN) ?? p.Name ?? "";
+                if (ref) allSecretRefs.set(ref, p.Value ?? "");
+            }
+        } catch (err) {
+            console.warn("[aws] Failed to resolve SSM parameters:", batch, err);
+        }
+    }
+
+    // Resolve Secrets Manager secrets (one at a time; they don't support batch)
+    await Promise.all(
+        smArns.map(async (arn) => {
+            try {
+                // Handle ARN with JSON key suffix: arn:...:secret-name:key::
+                const baseArn = arn.split(":").length > 7 ? arn.split(":").slice(0, 7).join(":") : arn;
+                const jsonKeyMatch = arn.match(/:([^:]+)::$/);
+                const jsonKey = jsonKeyMatch?.[1];
+
+                const res = await getSmClient().send(
+                    new GetSecretValueCommand({ SecretId: baseArn }),
+                );
+                let value = res.SecretString ?? "";
+                if (jsonKey && value) {
+                    try {
+                        const parsed = JSON.parse(value);
+                        value = typeof parsed[jsonKey] === "string" ? parsed[jsonKey] : JSON.stringify(parsed[jsonKey]);
+                    } catch {
+                        // Not JSON, keep raw value
+                    }
+                }
+                allSecretRefs.set(arn, value);
+            } catch (err) {
+                console.warn("[aws] Failed to resolve Secrets Manager secret:", arn, err);
+            }
+        }),
+    );
+
+    // Apply resolved values to containers
+    for (const task of allTasks) {
+        for (const container of task.containers) {
+            for (const secret of container.secrets) {
+                secret.resolvedValue = allSecretRefs.get(secret.valueFrom) || undefined;
+            }
         }
     }
 

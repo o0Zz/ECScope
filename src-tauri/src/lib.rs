@@ -61,6 +61,24 @@ struct SsmConnectParams {
     region: String,
 }
 
+#[derive(Deserialize)]
+struct EcsExecParams {
+    cluster: String,
+    task_id: String,
+    container: String,
+    profile: String,
+    region: String,
+}
+
+#[derive(Deserialize)]
+struct EcsLogsParams {
+    instance_id: String,
+    runtime_id: String,
+    container_name: String,
+    profile: String,
+    region: String,
+}
+
 #[tauri::command]
 fn open_ssm_session(params: SsmConnectParams) -> Result<(), String> {
     let ssm_cmd = format!(
@@ -107,6 +125,117 @@ fn open_ssm_session(params: SsmConnectParams) -> Result<(), String> {
     Ok(())
 }
 
+#[tauri::command]
+fn open_ecs_exec(params: EcsExecParams) -> Result<(), String> {
+    let exec_cmd = format!(
+        "aws ecs execute-command --cluster {} --task {} --container {} --interactive --command \"/bin/sh\" --profile {} --region {}",
+        params.cluster, params.task_id, params.container, params.profile, params.region
+    );
+
+    #[cfg(target_os = "windows")]
+    {
+        Command::new("cmd")
+            .args(["/c", "start", "cmd", "/k", &exec_cmd])
+            .spawn()
+            .map_err(|e| format!("Failed to open terminal: {}", e))?;
+    }
+
+    #[cfg(target_os = "macos")]
+    {
+        let script = format!("tell application \"Terminal\" to do script \"{}\"", exec_cmd);
+        Command::new("osascript")
+            .args(["-e", &script])
+            .spawn()
+            .map_err(|e| format!("Failed to open terminal: {}", e))?;
+    }
+
+    #[cfg(target_os = "linux")]
+    {
+        let terminals = ["x-terminal-emulator", "gnome-terminal", "xterm"];
+        let mut launched = false;
+        for term in &terminals {
+            if Command::new(term)
+                .args(["--", "sh", "-c", &exec_cmd])
+                .spawn()
+                .is_ok()
+            {
+                launched = true;
+                break;
+            }
+        }
+        if !launched {
+            return Err("No terminal emulator found".to_string());
+        }
+    }
+
+    Ok(())
+}
+
+#[tauri::command]
+fn open_ecs_logs(params: EcsLogsParams) -> Result<(), String> {
+    // Write JSON parameters to a temp file to avoid all shell quoting issues
+    let json_params = format!(
+        r#"{{"command":["sudo docker logs -f --tail 200 {}"]}}"#,
+        params.runtime_id
+    );
+    let params_path = std::env::temp_dir().join("ecscope_ssm_params.json");
+    fs::write(&params_path, &json_params)
+        .map_err(|e| format!("Failed to write params file: {}", e))?;
+    let params_file_ref = format!("file://{}", params_path.display());
+
+    #[cfg(target_os = "windows")]
+    {
+        let cmd_str = format!(
+            "aws ssm start-session --target {} --document-name AWS-StartInteractiveCommand --parameters {} --profile {} --region {}",
+            params.instance_id, params_file_ref, params.profile, params.region
+        );
+        let title = format!("logs: {}", params.container_name);
+        Command::new("cmd")
+            .args(["/c", "start", &title, "cmd", "/k", &cmd_str])
+            .spawn()
+            .map_err(|e| format!("Failed to open terminal: {}", e))?;
+    }
+
+    #[cfg(target_os = "macos")]
+    {
+        let logs_cmd = format!(
+            "aws ssm start-session --target {} --document-name AWS-StartInteractiveCommand --parameters {} --profile {} --region {}",
+            params.instance_id, params_file_ref, params.profile, params.region
+        );
+        let escaped = logs_cmd.replace('\\', "\\\\").replace('"', "\\\"");
+        let script = format!("tell application \"Terminal\" to do script \"{}\"", escaped);
+        Command::new("osascript")
+            .args(["-e", &script])
+            .spawn()
+            .map_err(|e| format!("Failed to open terminal: {}", e))?;
+    }
+
+    #[cfg(target_os = "linux")]
+    {
+        let logs_cmd = format!(
+            "aws ssm start-session --target {} --document-name AWS-StartInteractiveCommand --parameters {} --profile {} --region {}",
+            params.instance_id, params_file_ref, params.profile, params.region
+        );
+        let terminals = ["x-terminal-emulator", "gnome-terminal", "xterm"];
+        let mut launched = false;
+        for term in &terminals {
+            if Command::new(term)
+                .args(["--", "sh", "-c", &logs_cmd])
+                .spawn()
+                .is_ok()
+            {
+                launched = true;
+                break;
+            }
+        }
+        if !launched {
+            return Err("No terminal emulator found".to_string());
+        }
+    }
+
+    Ok(())
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
@@ -122,7 +251,7 @@ pub fn run() {
             }
             Ok(())
         })
-        .invoke_handler(tauri::generate_handler![read_app_config, read_aws_files, open_ssm_session])
+        .invoke_handler(tauri::generate_handler![read_app_config, read_aws_files, open_ssm_session, open_ecs_exec, open_ecs_logs])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }

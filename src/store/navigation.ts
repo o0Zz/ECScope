@@ -1,6 +1,6 @@
 import { create } from "zustand";
 
-export type ActiveTab = "services" | "tasks" | "logs" | "alb" | "nodes" | "database";
+export type ActiveTab = "services" | "tasks" | "alb" | "nodes" | "database";
 
 interface NavigationState {
   selectedCluster: string | null;
@@ -31,7 +31,7 @@ export const useNavigationStore = create<NavigationState>((set) => ({
     set({ selectedService: serviceName, selectedTaskArn: null, activeTab: "tasks" }),
 
   selectTask: (taskArn) =>
-    set({ selectedTaskArn: taskArn, activeTab: "logs" }),
+    set({ selectedTaskArn: taskArn }),
 
   setActiveTab: (tab) => set({ activeTab: tab }),
 

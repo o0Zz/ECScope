@@ -74,5 +74,10 @@ export interface EcsContainer {
     healthStatus: string;
     cpu: string;
     memory: string;
+    runtimeId: string;
     networkBindings: { containerPort: number; hostPort: number; protocol: string }[];
+    environment: { name: string; value: string }[];
+    secrets: { name: string; valueFrom: string; resolvedValue?: string }[];
+    logGroup?: string;
+    logStreamPrefix?: string;
 }

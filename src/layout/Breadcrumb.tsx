@@ -1,20 +1,17 @@
 import { useNavigationStore } from "@/store/navigation";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQueryClient, useIsFetching } from "@tanstack/react-query";
 import { ArrowLeft, RefreshCw } from "lucide-react";
 import { ThemeToggle } from "@/components/ThemeToggle";
-import { useState } from "react";
 import { cn } from "@/lib/utils";
 
 export function Breadcrumb() {
   const { selectedCluster, selectedService, selectedTaskArn, goBack } =
     useNavigationStore();
   const queryClient = useQueryClient();
-  const [refreshing, setRefreshing] = useState(false);
+  const isFetching = useIsFetching();
 
   const handleRefresh = () => {
-    setRefreshing(true);
     queryClient.invalidateQueries();
-    setTimeout(() => setRefreshing(false), 1000);
   };
 
   const parts: string[] = [];
@@ -46,13 +43,19 @@ export function Breadcrumb() {
           </span>
         </span>
       ))}
-      <div className="ml-auto flex items-center gap-1">
+      <div className="ml-auto flex items-center gap-1.5">
+        {isFetching > 0 && (
+          <span className="flex items-center gap-1 text-xs text-muted-foreground">
+            Refreshing…
+          </span>
+        )}
         <button
           onClick={handleRefresh}
           className="rounded p-1.5 text-muted-foreground hover:bg-accent hover:text-foreground transition-colors"
           title="Refresh all data"
         >
-          <RefreshCw className={cn("h-4 w-4", refreshing && "animate-spin")} />
+          <RefreshCw className={cn("h-4 w-4", isFetching > 0 && "animate-spin")} />
+            <span className="sr-only">Refreshing…</span>
         </button>
         <ThemeToggle />
       </div>

@@ -4,12 +4,11 @@ import type { VpcEc2Instance } from "./types";
 
 /**
  * List EC2 instances, optionally filtered by VPC ID.
- * When excludeInstanceIds is provided, those instances are skipped (e.g. ECS nodes).
  */
 export async function listEc2(
-    filterVpcId?: string,
-    excludeInstanceIds?: Set<string>,
+    filterVpcId?: string
 ): Promise<VpcEc2Instance[]> {
+    console.log("[aws] listEc2 called", { filterVpcId });
     const filters = [
         { Name: "instance-state-name", Values: ["running", "stopped", "stopping", "pending"] },
     ];
@@ -28,8 +27,6 @@ export async function listEc2(
         for (const reservation of res.Reservations ?? []) {
             for (const inst of reservation.Instances ?? []) {
                 const instanceId = inst.InstanceId ?? "";
-                if (excludeInstanceIds?.has(instanceId)) continue;
-
                 const name = (inst.Tags ?? []).find(t => t.Key === "Name")?.Value ?? "";
 
                 instances.push({
@@ -50,5 +47,6 @@ export async function listEc2(
         nextToken = res.NextToken;
     } while (nextToken);
 
+    console.log("[aws] listEc2 result", { count: instances.length });
     return instances;
 }

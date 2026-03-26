@@ -189,6 +189,7 @@ export async function getService(
     clusterName: string,
     serviceName: string,
 ): Promise<EcsService | undefined> {
+    console.log("[aws] getService called", { clusterName, serviceName });
     const res = await getEcsClient().send(
         new DescribeServicesCommand({
             cluster: clusterName,
@@ -239,6 +240,7 @@ export async function getServiceEvents(
     serviceName: string,
     limit = 20,
 ): Promise<EcsServiceEvent[]> {
+    console.log("[aws] getServiceEvents called", { clusterName, serviceName, limit });
     const res = await getEcsClient().send(
         new DescribeServicesCommand({
             cluster: clusterName,
@@ -258,6 +260,7 @@ export async function listTasks(
     clusterName: string,
     serviceName: string,
 ): Promise<EcsTask[]> {
+    console.log("[aws] listTasks called", { clusterName, serviceName });
     // Fetch both RUNNING and STOPPED tasks
     const [runningRes, stoppedRes] = await Promise.all([
         getEcsClient().send(
@@ -508,6 +511,7 @@ export async function updateServiceDesiredCount(
     serviceName: string,
     desiredCount: number,
 ): Promise<EcsService> {
+    console.log("[aws] updateServiceDesiredCount called", { clusterName, serviceName, desiredCount });
     await getEcsClient().send(
         new UpdateServiceCommand({
             cluster: clusterName,
@@ -526,6 +530,7 @@ export async function stopTask(
     taskArn: string,
     reason = "Stopped via ECScope",
 ): Promise<void> {
+    console.log("[aws] stopTask called", { clusterName, taskArn });
     await getEcsClient().send(
         new StopTaskCommand({
             cluster: clusterName,
@@ -540,6 +545,7 @@ export async function rollbackService(
     serviceName: string,
     taskDefinition: string,
 ): Promise<void> {
+    console.log("[aws] rollbackService called", { clusterName, serviceName, taskDefinition });
     await getEcsClient().send(
         new UpdateServiceCommand({
             cluster: clusterName,
@@ -553,6 +559,7 @@ export async function forceNewDeployment(
     clusterName: string,
     serviceName: string,
 ): Promise<void> {
+    console.log("[aws] forceNewDeployment called", { clusterName, serviceName });
     await getEcsClient().send(
         new UpdateServiceCommand({
             cluster: clusterName,
@@ -566,6 +573,7 @@ export async function forceNewDeployment(
 export async function getTaskDefinitionJson(
     taskDefinition: string,
 ): Promise<Record<string, unknown>> {
+    console.log("[aws] getTaskDefinitionJson called", { taskDefinition });
     const res = await getEcsClient().send(
         new DescribeTaskDefinitionCommand({ taskDefinition }),
     );
@@ -591,6 +599,7 @@ export async function registerAndDeployTaskDefinition(
     serviceName: string,
     taskDefJson: Record<string, unknown>,
 ): Promise<string> {
+    console.log("[aws] registerAndDeployTaskDefinition called", { clusterName, serviceName });
     const regRes = await getEcsClient().send(
         new RegisterTaskDefinitionCommand(taskDefJson as any),
     );
@@ -611,6 +620,7 @@ export async function registerAndDeployTaskDefinition(
 export async function listContainerInstances(
     clusterName: string,
 ): Promise<ContainerInstance[]> {
+    console.log("[aws] listContainerInstances called", { clusterName });
     const listRes = await getEcsClient().send(
         new ListContainerInstancesCommand({ cluster: clusterName }),
     );
@@ -654,6 +664,7 @@ export async function listContainerInstances(
  * or by inspecting the service network configuration subnets.
  */
 export async function getClusterVpcId(clusterName: string): Promise<string | null> {
+    console.log("[aws] getClusterVpcId called", { clusterName });
     // Try to get VPC from container instances first (EC2 launch type)
     const listRes = await getEcsClient().send(
         new ListContainerInstancesCommand({ cluster: clusterName }),
@@ -693,5 +704,6 @@ export async function getClusterVpcId(clusterName: string): Promise<string | nul
         }
     }
 
+    console.log("[aws] getClusterVpcId: could not determine VPC");
     return null;
 }

@@ -906,6 +906,72 @@ async function listDatabases(_clusterName: string): Promise<DatabaseInstance[]> 
     return [];
 }
 
+async function getServiceMetricsHistory(
+    clusterName: string,
+    serviceName: string,
+): Promise<import("./types").MetricsDataPoint[]> {
+    const now = new Date();
+    const oneHourAgo = new Date(now.getTime() - 60 * 60 * 1000);
+
+    try {
+        const res = await cwClient.send(
+            new GetMetricDataCommand({
+                StartTime: oneHourAgo,
+                EndTime: now,
+                MetricDataQueries: [
+                    {
+                        Id: "cpu",
+                        MetricStat: {
+                            Metric: {
+                                Namespace: "AWS/ECS",
+                                MetricName: "CPUUtilization",
+                                Dimensions: [
+                                    { Name: "ClusterName", Value: clusterName },
+                                    { Name: "ServiceName", Value: serviceName },
+                                ],
+                            },
+                            Period: 120,
+                            Stat: "Average",
+                        },
+                    },
+                    {
+                        Id: "mem",
+                        MetricStat: {
+                            Metric: {
+                                Namespace: "AWS/ECS",
+                                MetricName: "MemoryUtilization",
+                                Dimensions: [
+                                    { Name: "ClusterName", Value: clusterName },
+                                    { Name: "ServiceName", Value: serviceName },
+                                ],
+                            },
+                            Period: 120,
+                            Stat: "Average",
+                        },
+                    },
+                ],
+            }),
+        );
+
+        const cpuResult = res.MetricDataResults?.find((r) => r.Id === "cpu");
+        const memResult = res.MetricDataResults?.find((r) => r.Id === "mem");
+        const timestamps = cpuResult?.Timestamps ?? [];
+        const cpuValues = cpuResult?.Values ?? [];
+        const memValues = memResult?.Values ?? [];
+
+        return timestamps
+            .map((ts, i) => ({
+                timestamp: new Date(ts).getTime(),
+                cpuUtilization: Math.round((cpuValues[i] ?? 0) * 10) / 10,
+                memoryUtilization: Math.round((memValues[i] ?? 0) * 10) / 10,
+            }))
+            .sort((a, b) => a.timestamp - b.timestamp);
+    } catch (err) {
+        console.warn(`[aws] Failed to fetch metrics history for ${serviceName}:`, err);
+        return [];
+    }
+}
+
 export const awsApi = {
     listClusters,
     getCluster,
@@ -918,4 +984,5 @@ export const awsApi = {
     listAlbs,
     listContainerInstances,
     listDatabases,
+    getServiceMetricsHistory,
 };

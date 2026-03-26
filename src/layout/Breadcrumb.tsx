@@ -1,5 +1,6 @@
 import { useNavigationStore } from "@/store/navigation";
 import { ArrowLeft } from "lucide-react";
+import { ThemeToggle } from "@/components/ThemeToggle";
 
 export function Breadcrumb() {
   const { selectedCluster, selectedService, selectedTaskArn, goBack } =
@@ -9,8 +10,6 @@ export function Breadcrumb() {
   if (selectedCluster) parts.push(selectedCluster);
   if (selectedService) parts.push(selectedService);
   if (selectedTaskArn) parts.push(selectedTaskArn.split("/").pop() ?? "task");
-
-  if (parts.length === 0) return null;
 
   return (
     <div className="flex items-center gap-2 border-b border-border bg-card px-4 py-2 text-sm">
@@ -36,6 +35,9 @@ export function Breadcrumb() {
           </span>
         </span>
       ))}
+      <div className="ml-auto">
+        <ThemeToggle />
+      </div>
     </div>
   );
 }

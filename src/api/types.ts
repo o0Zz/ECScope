@@ -201,3 +201,11 @@ export interface DiagnosticResult {
   /** Error message (set when failed) */
   error?: string;
 }
+
+// ─── Metrics History ──────────────────────────────────────
+
+export interface MetricsDataPoint {
+  timestamp: number;
+  cpuUtilization: number;
+  memoryUtilization: number;
+}

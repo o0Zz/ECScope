@@ -2,6 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { ecsApi } from "@/api";
 import { useNavigationStore } from "@/store/navigation";
 import { StatusBadge } from "@/components/StatusBadge";
+import { ServiceMetricsChart } from "@/components/ServiceMetricsChart";
 import { Container, ArrowRight, Server } from "lucide-react";
 
 export function TaskList() {
@@ -123,6 +124,12 @@ export function TaskList() {
           </tbody>
         </table>
       </div>
+
+      {/* CPU & Memory usage chart */}
+      <ServiceMetricsChart
+        clusterName={selectedCluster!}
+        serviceName={selectedService!}
+      />
     </div>
   );
 }

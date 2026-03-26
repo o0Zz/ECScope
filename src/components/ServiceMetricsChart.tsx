@@ -91,7 +91,7 @@ function MiniChart({
                     </span>
                 </div>
             </div>
-            <svg viewBox={`0 0 ${W} ${H}`} className="h-32 w-full">
+            <svg viewBox={`0 0 ${W} ${H}`} className="h-48 w-full">
                 {/* Y-axis labels + grid lines */}
                 {Y_TICKS.map((pct) => {
                     const y = toY(pct);

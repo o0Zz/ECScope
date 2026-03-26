@@ -93,7 +93,7 @@ function MiniLineChart({
                     <span>Total: <span className="font-mono">{formatValue(total)}</span></span>
                 </div>
             </div>
-            <svg viewBox={`0 0 ${W} ${H}`} className="h-20 w-full">
+            <svg viewBox={`0 0 ${W} ${H}`} className="h-60 w-full">
                 {/* Y-axis */}
                 {yTicks.map((v) => {
                     const y = toY(v);

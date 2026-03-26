@@ -62,7 +62,7 @@ export async function listAlbs(clusterName: string): Promise<AlbInfo[]> {
     }
 
     // 5. Get target health for each target group in parallel
-    const tgHealthMap = new Map<string, { healthyCount: number; unhealthyCount: number; targets: { targetId: string; port: number; health: string; description: string }[] }>();
+    const tgHealthMap = new Map<string, { healthyCount: number; unhealthyCount: number; targets: { targetId: string; port: number; health: string; reason: string; description: string }[] }>();
     await Promise.all(
         allTargetGroups.map(async (tg) => {
             try {

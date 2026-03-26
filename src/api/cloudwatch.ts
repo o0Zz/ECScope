@@ -1,6 +1,6 @@
 import { GetMetricDataCommand } from "@aws-sdk/client-cloudwatch";
 import { getCwClient } from "./clients";
-import type { MetricsDataPoint, AlbMetricsDataPoint, NlbMetricsDataPoint } from "./types";
+import type { MetricsDataPoint, AlbMetricsDataPoint, NlbMetricsDataPoint, Ec2MetricsDataPoint } from "./types";
 
 // ─── Generic CloudWatch helper ───────────────────────────
 
@@ -169,6 +169,48 @@ export async function getNlbMetricsHistory(
             .sort((a, b) => a.timestamp - b.timestamp);
     } catch (err) {
         console.warn(`[aws] Failed to fetch NLB metrics history:`, err);
+        return [];
+    }
+}
+
+export async function getEc2MetricsHistory(
+    instanceId: string,
+): Promise<Ec2MetricsDataPoint[]> {
+    const dims = [{ Name: "InstanceId" as const, Value: instanceId }];
+    const ns = "AWS/EC2";
+
+    try {
+        const { timestamps, values } = await queryMetrics(
+            [
+                { id: "cpu", namespace: ns, metricName: "CPUUtilization", dimensions: dims, stat: "Average" },
+                { id: "netIn", namespace: ns, metricName: "NetworkIn", dimensions: dims, stat: "Sum" },
+                { id: "netOut", namespace: ns, metricName: "NetworkOut", dimensions: dims, stat: "Sum" },
+                { id: "diskRead", namespace: ns, metricName: "DiskReadBytes", dimensions: dims, stat: "Sum" },
+                { id: "diskWrite", namespace: ns, metricName: "DiskWriteBytes", dimensions: dims, stat: "Sum" },
+                { id: "statusCheck", namespace: ns, metricName: "StatusCheckFailed", dimensions: dims, stat: "Maximum" },
+            ],
+            300,
+            ONE_DAY_MS,
+        );
+        const cpu = values.get("cpu") ?? [];
+        const netIn = values.get("netIn") ?? [];
+        const netOut = values.get("netOut") ?? [];
+        const diskR = values.get("diskRead") ?? [];
+        const diskW = values.get("diskWrite") ?? [];
+        const sc = values.get("statusCheck") ?? [];
+        return timestamps
+            .map((ts, i) => ({
+                timestamp: ts,
+                cpuUtilization: Math.round((cpu[i] ?? 0) * 10) / 10,
+                networkInBytes: Math.round(netIn[i] ?? 0),
+                networkOutBytes: Math.round(netOut[i] ?? 0),
+                diskReadBytes: Math.round(diskR[i] ?? 0),
+                diskWriteBytes: Math.round(diskW[i] ?? 0),
+                statusCheckFailed: Math.round(sc[i] ?? 0),
+            }))
+            .sort((a, b) => a.timestamp - b.timestamp);
+    } catch (err) {
+        console.warn(`[aws] Failed to fetch EC2 metrics history for ${instanceId}:`, err);
         return [];
     }
 }

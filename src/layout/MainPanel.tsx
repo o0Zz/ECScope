@@ -5,7 +5,7 @@ import { ServiceList } from "@/features/services/ServiceList";
 import { TaskList } from "@/features/tasks/TaskList";
 import { AlbNlbViewer } from "@/features/albnlb/AlbNlbViewer";
 import { NodeViewer } from "@/features/nodes/NodeViewer";
-import { DatabaseDashboard } from "@/features/database/DatabaseDashboard";
+import { Ec2RdsDashboard } from "@/features/ec2rds/Ec2RdsDashboard";
 import { WelcomeView } from "@/features/welcome/WelcomeView";
 
 export function MainPanel() {
@@ -24,7 +24,7 @@ export function MainPanel() {
         {activeTab === "tasks" && <TaskList />}
         {activeTab === "albnlb" && <AlbNlbViewer />}
         {activeTab === "nodes" && <NodeViewer />}
-        {activeTab === "database" && <DatabaseDashboard />}
+        {activeTab === "ec2rds" && <Ec2RdsDashboard />}
       </div>
     </div>
   );

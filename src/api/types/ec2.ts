@@ -13,3 +13,16 @@ export interface ContainerInstance {
     launchType: "EC2" | "FARGATE";
     registeredAt?: number;
 }
+
+export interface VpcEc2Instance {
+    instanceId: string;
+    instanceType: string;
+    state: string;
+    privateIp: string;
+    publicIp: string;
+    subnetId: string;
+    vpcId: string;
+    name: string;
+    launchTime: string;
+    platform: string;
+}

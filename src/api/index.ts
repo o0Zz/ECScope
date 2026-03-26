@@ -21,6 +21,8 @@ import {
 import { getServiceMetricsHistory, getAlbMetricsHistory, getNlbMetricsHistory } from "./cloudwatch";
 import { listAlbs } from "./alb";
 import { listDatabases } from "./database";
+import { listVpcInstances } from "./ec2";
+import { getEc2MetricsHistory } from "./cloudwatch";
 
 export const ecsApi = {
     listClusters,
@@ -39,6 +41,8 @@ export const ecsApi = {
     listAlbs,
     listContainerInstances,
     listDatabases,
+    listVpcInstances,
+    getEc2MetricsHistory,
     getServiceMetricsHistory,
     getAlbMetricsHistory,
     getNlbMetricsHistory,

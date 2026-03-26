@@ -6,7 +6,7 @@ const TABS: { id: ActiveTab; label: string }[] = [
   { id: "tasks", label: "Tasks" },
   { id: "albnlb", label: "ALB / NLB" },
   { id: "nodes", label: "Nodes" },
-  { id: "database", label: "Database" },
+  { id: "ec2rds", label: "EC2 / RDS" },
 ];
 
 export function TabBar() {

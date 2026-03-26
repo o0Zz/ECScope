@@ -20,3 +20,13 @@ export interface NlbMetricsDataPoint {
     tcpClientResetCount: number;
     tcpTargetResetCount: number;
 }
+
+export interface Ec2MetricsDataPoint {
+    timestamp: number;
+    cpuUtilization: number;
+    networkInBytes: number;
+    networkOutBytes: number;
+    diskReadBytes: number;
+    diskWriteBytes: number;
+    statusCheckFailed: number;
+}

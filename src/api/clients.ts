@@ -3,6 +3,7 @@ import { CloudWatchClient } from "@aws-sdk/client-cloudwatch";
 import { SSMClient } from "@aws-sdk/client-ssm";
 import { SecretsManagerClient } from "@aws-sdk/client-secrets-manager";
 import { ElasticLoadBalancingV2Client } from "@aws-sdk/client-elastic-load-balancing-v2";
+import { EC2Client } from "@aws-sdk/client-ec2";
 import type { ResolvedCredentials } from "@/config/aws-credentials";
 
 let ecsClient: ECSClient;
@@ -10,6 +11,7 @@ let cwClient: CloudWatchClient;
 let ssmClient: SSMClient;
 let smClient: SecretsManagerClient;
 let elbv2Client: ElasticLoadBalancingV2Client;
+let ec2Client: EC2Client;
 let configuredCluster: string;
 
 export function initAwsClients(creds: ResolvedCredentials, clusterName: string) {
@@ -25,6 +27,7 @@ export function initAwsClients(creds: ResolvedCredentials, clusterName: string) 
     ssmClient = new SSMClient({ region: creds.region, credentials });
     smClient = new SecretsManagerClient({ region: creds.region, credentials });
     elbv2Client = new ElasticLoadBalancingV2Client({ region: creds.region, credentials });
+    ec2Client = new EC2Client({ region: creds.region, credentials });
     configuredCluster = clusterName;
     console.log("[aws] AWS clients initialized, configuredCluster =", configuredCluster);
 }
@@ -34,4 +37,5 @@ export function getCwClient(): CloudWatchClient { return cwClient; }
 export function getSsmClient(): SSMClient { return ssmClient; }
 export function getSmClient(): SecretsManagerClient { return smClient; }
 export function getElbv2Client(): ElasticLoadBalancingV2Client { return elbv2Client; }
+export function getEc2Client(): EC2Client { return ec2Client; }
 export function getConfiguredCluster(): string { return configuredCluster; }

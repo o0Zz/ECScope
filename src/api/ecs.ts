@@ -6,6 +6,7 @@ import {
     DescribeTasksCommand,
     DescribeTaskDefinitionCommand,
     UpdateServiceCommand,
+    StopTaskCommand,
     ListContainerInstancesCommand,
     DescribeContainerInstancesCommand,
 } from "@aws-sdk/client-ecs";
@@ -502,6 +503,20 @@ export async function updateServiceDesiredCount(
     const updated = await getService(clusterName, serviceName);
     if (!updated) throw new Error(`Service ${serviceName} not found after update`);
     return updated;
+}
+
+export async function stopTask(
+    clusterName: string,
+    taskArn: string,
+    reason = "Stopped via ECScope",
+): Promise<void> {
+    await getEcsClient().send(
+        new StopTaskCommand({
+            cluster: clusterName,
+            task: taskArn,
+            reason,
+        }),
+    );
 }
 
 export async function forceNewDeployment(

@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { ecsApi } from "@/api";
 import { useNavigationStore } from "@/store/navigation";
@@ -6,6 +7,7 @@ import { StatusBadge } from "@/components/StatusBadge";
 import { MetricBar } from "@/components/MetricBar";
 import { Cog, ArrowRight, Plus, Minus, RotateCw } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { ConfirmDialog } from "@/components/ConfirmDialog";
 
 function ClusterOverview({ clusterName }: { clusterName: string }) {
   const refreshIntervalMs = useConfigStore((s) => s.refreshIntervalMs);
@@ -59,6 +61,7 @@ export function ServiceList() {
   const { selectedCluster, selectService } = useNavigationStore();
   const refreshIntervalMs = useConfigStore((s) => s.refreshIntervalMs);
   const queryClient = useQueryClient();
+  const [confirmRedeploy, setConfirmRedeploy] = useState<string | null>(null);
 
   const { data: services, isLoading, error } = useQuery({
     queryKey: ["services", selectedCluster],
@@ -90,6 +93,7 @@ export function ServiceList() {
     mutationFn: (serviceName: string) =>
       ecsApi.forceNewDeployment(selectedCluster!, serviceName),
     onSuccess: () => {
+      setConfirmRedeploy(null);
       queryClient.invalidateQueries({ queryKey: ["services", selectedCluster] });
     },
   });
@@ -199,9 +203,7 @@ export function ServiceList() {
                     <button
                       onClick={(e) => {
                         e.stopPropagation();
-                        if (confirm(`Force new deployment for ${svc.serviceName}?`)) {
-                          redeployMutation.mutate(svc.serviceName);
-                        }
+                        setConfirmRedeploy(svc.serviceName);
                       }}
                       disabled={redeployMutation.isPending}
                       className="rounded p-1 text-muted-foreground hover:bg-info/20 hover:text-info disabled:opacity-30"
@@ -223,6 +225,18 @@ export function ServiceList() {
           </tbody>
         </table>
       </div>
+
+      <ConfirmDialog
+        open={!!confirmRedeploy}
+        title="Force New Deployment"
+        message="Force a new deployment for this service? All tasks will be replaced with fresh ones."
+        detail={confirmRedeploy ?? undefined}
+        confirmLabel="Redeploy"
+        confirmingLabel="Deploying…"
+        isPending={redeployMutation.isPending}
+        onConfirm={() => redeployMutation.mutate(confirmRedeploy!)}
+        onCancel={() => setConfirmRedeploy(null)}
+      />
     </div>
   );
 }

@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { ecsApi } from "@/api";
 import type { EcsTask } from "@/api/types";
 import { useNavigationStore } from "@/store/navigation";
@@ -7,10 +7,11 @@ import { useConfigStore } from "@/store/config";
 import { StatusBadge } from "@/components/StatusBadge";
 import { ServiceMetricsChart } from "@/components/ServiceMetricsChart";
 import { ServiceEventsTimeline } from "@/components/ServiceEventsTimeline";
-import { Container, Server, ChevronDown, FileCode, Copy, Check, KeyRound, Terminal, ScrollText } from "lucide-react";
+import { Container, Server, ChevronDown, FileCode, Copy, Check, KeyRound, Terminal, ScrollText, Square } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { formatAge } from "@/lib/format";
 import { invoke } from "@tauri-apps/api/core";
+import { ConfirmDialog } from "@/components/ConfirmDialog";
 
 function CopyButton({ text }: { text: string }) {
   const [copied, setCopied] = useState(false);
@@ -117,6 +118,8 @@ function TaskRow({
   task,
   expanded,
   onToggleEnv,
+  onStop,
+  isStopping,
   clusterName,
   profile,
   region,
@@ -124,6 +127,8 @@ function TaskRow({
   task: EcsTask;
   expanded: boolean;
   onToggleEnv: () => void;
+  onStop: () => void;
+  isStopping: boolean;
   clusterName: string;
   profile: string;
   region: string;
@@ -204,6 +209,17 @@ function TaskRow({
         <td className="px-4 py-3">
           <div className="flex items-center gap-1">
             <button
+              onClick={(e) => {
+                e.stopPropagation();
+                onStop();
+              }}
+              disabled={isStopping || task.lastStatus === "STOPPED"}
+              className="rounded p-1 transition-colors text-muted-foreground hover:bg-destructive/20 hover:text-destructive disabled:opacity-30 disabled:cursor-not-allowed"
+              title="Stop task"
+            >
+              <Square className="h-3.5 w-3.5" />
+            </button>
+            <button
               onClick={handleExec}
               className="rounded p-1 transition-colors text-muted-foreground hover:bg-accent hover:text-foreground"
               title={`Shell into ${containerName}`}
@@ -251,6 +267,21 @@ export function TaskList() {
   const { activeCluster } = useConfigStore();
   const refreshIntervalMs = useConfigStore((s) => s.refreshIntervalMs);
   const [expandedTask, setExpandedTask] = useState<string | null>(null);
+  const [confirmStopTask, setConfirmStopTask] = useState<string | null>(null);
+  const queryClient = useQueryClient();
+
+  const stopMutation = useMutation({
+    mutationFn: (taskArn: string) =>
+      ecsApi.stopTask(selectedCluster!, taskArn),
+    onSuccess: () => {
+      setConfirmStopTask(null);
+      // Delay refetch so the task doesn't vanish instantly
+      setTimeout(() => {
+        queryClient.invalidateQueries({ queryKey: ["tasks", selectedCluster, selectedService] });
+        queryClient.invalidateQueries({ queryKey: ["services", selectedCluster] });
+      }, 3000);
+    },
+  });
 
   const { data: tasks, isLoading } = useQuery({
     queryKey: ["tasks", selectedCluster, selectedService],
@@ -323,6 +354,8 @@ export function TaskList() {
                 onToggleEnv={() =>
                   setExpandedTask(expandedTask === task.taskArn ? null : task.taskArn)
                 }
+                onStop={() => setConfirmStopTask(task.taskArn)}
+                isStopping={stopMutation.isPending && stopMutation.variables === task.taskArn}
                 clusterName={selectedCluster!}
                 profile={activeCluster?.profile ?? ""}
                 region={activeCluster?.region ?? "us-east-1"}
@@ -331,6 +364,20 @@ export function TaskList() {
           </tbody>
         </table>
       </div>
+
+      {/* Confirmation dialog for stop task */}
+      <ConfirmDialog
+        open={!!confirmStopTask}
+        title="Stop Task"
+        message="Are you sure you want to stop this task?"
+        detail={confirmStopTask?.split("/").pop()}
+        confirmLabel="Stop Task"
+        confirmingLabel="Stopping…"
+        variant="destructive"
+        isPending={stopMutation.isPending}
+        onConfirm={() => stopMutation.mutate(confirmStopTask!)}
+        onCancel={() => setConfirmStopTask(null)}
+      />
 
       {/* CPU & Memory usage chart */}
       <ServiceMetricsChart

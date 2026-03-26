@@ -33,5 +33,6 @@ export interface TargetHealth {
     targetId: string;
     port: number;
     health: string;
+    reason: string;
     description: string;
 }

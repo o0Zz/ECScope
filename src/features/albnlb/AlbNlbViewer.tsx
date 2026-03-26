@@ -5,7 +5,7 @@ import type { AlbInfo } from "@/api/types";
 import { useNavigationStore } from "@/store/navigation";
 import { useConfigStore } from "@/store/config";
 import { StatusBadge } from "@/components/StatusBadge";
-import { Globe, Shield, ChevronRight, ChevronDown, Network } from "lucide-react";
+import { Globe, Shield, ChevronRight, ChevronDown, Network, AlertCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { formatBytes } from "@/lib/format";
 import { AlbMetricsChart } from "@/components/AlbMetricsChart";
@@ -31,6 +31,13 @@ function LbRow({ alb }: { alb: AlbInfo }) {
   const totalHealthy = alb.targetGroups.reduce((s, tg) => s + tg.healthyCount, 0);
   const totalUnhealthy = alb.targetGroups.reduce((s, tg) => s + tg.unhealthyCount, 0);
   const isNlb = alb.lbType === "network";
+
+  const totalTargets = totalHealthy + totalUnhealthy;
+  const healthStatus =
+    alb.status !== "active" ? "INACTIVE"
+    : totalTargets === 0 ? "UNKNOWN"
+    : totalUnhealthy > 0 ? "UNHEALTHY"
+    : "HEALTHY";
 
   return (
     <>
@@ -58,7 +65,7 @@ function LbRow({ alb }: { alb: AlbInfo }) {
         </td>
         <td className="px-4 py-3 text-xs text-muted-foreground">{alb.scheme}</td>
         <td className="px-4 py-3">
-          <StatusBadge status={alb.status.toUpperCase()} />
+          <StatusBadge status={healthStatus} />
         </td>
         <td className="px-4 py-3 text-center text-foreground">{alb.targetGroups.length}</td>
         <td className="px-4 py-3 text-center">
@@ -135,20 +142,41 @@ function TargetGroupRow({ tg }: { tg: AlbInfo["targetGroups"][number] }) {
                 <th className="px-3 py-1 text-left font-medium text-muted-foreground">Target</th>
                 <th className="px-3 py-1 text-left font-medium text-muted-foreground">Port</th>
                 <th className="px-3 py-1 text-left font-medium text-muted-foreground">Health</th>
-                <th className="px-3 py-1 text-left font-medium text-muted-foreground">Description</th>
+                <th className="px-3 py-1 text-left font-medium text-muted-foreground">Reason</th>
               </tr>
             </thead>
             <tbody>
-              {tg.targets.map((target, idx) => (
-                <tr key={idx} className="border-b border-border last:border-b-0">
-                  <td className="px-3 py-1 font-mono text-foreground">{target.targetId}</td>
-                  <td className="px-3 py-1 text-muted-foreground">{target.port}</td>
-                  <td className="px-3 py-1">
-                    <StatusBadge status={target.health.toUpperCase()} />
-                  </td>
-                  <td className="px-3 py-1 text-muted-foreground">{target.description}</td>
-                </tr>
-              ))}
+              {tg.targets.map((target, idx) => {
+                const isUnhealthy = target.health !== "healthy";
+                return (
+                  <tr key={idx} className={cn("border-b border-border last:border-b-0", isUnhealthy && "bg-destructive/5")}>
+                    <td className="px-3 py-1 font-mono text-foreground">{target.targetId}</td>
+                    <td className="px-3 py-1 text-muted-foreground">{target.port}</td>
+                    <td className="px-3 py-1">
+                      <StatusBadge status={target.health.toUpperCase()} />
+                    </td>
+                    <td className="px-3 py-1">
+                      {target.description ? (
+                        <div className="flex items-start gap-1">
+                          {isUnhealthy && <AlertCircle className="h-3 w-3 shrink-0 mt-0.5 text-destructive" />}
+                          <div>
+                            {target.reason && (
+                              <span className={cn("font-mono text-[10px]", isUnhealthy ? "text-destructive" : "text-muted-foreground")}>
+                                {target.reason}
+                              </span>
+                            )}
+                            <span className={cn("block", isUnhealthy ? "text-destructive/80" : "text-muted-foreground")}>
+                              {target.description}
+                            </span>
+                          </div>
+                        </div>
+                      ) : (
+                        <span className="text-muted-foreground">—</span>
+                      )}
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>

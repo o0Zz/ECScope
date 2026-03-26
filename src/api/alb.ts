@@ -79,6 +79,7 @@ export async function listAlbs(clusterName: string): Promise<AlbInfo[]> {
                         targetId: thd.Target?.Id ?? "",
                         port: thd.Target?.Port ?? 0,
                         health: state,
+                        reason: thd.TargetHealth?.Reason ?? "",
                         description: thd.TargetHealth?.Description ?? "",
                     };
                 });

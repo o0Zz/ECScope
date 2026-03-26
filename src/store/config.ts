@@ -1,8 +1,8 @@
 import { create } from "zustand";
-import type { ClusterConfig, StorageConfig } from "@/api/config";
-import type { ResolvedCredentials } from "@/api/aws-credentials";
-import { loadConfig, loadAwsFiles } from "@/api/config";
-import { resolveCredentials } from "@/api/aws-credentials";
+import type { ClusterConfig, StorageConfig } from "@/config/config";
+import type { ResolvedCredentials } from "@/config/aws-credentials";
+import { loadConfig, loadAwsFiles } from "@/config/config";
+import { resolveCredentials } from "@/config/aws-credentials";
 
 type ConnectionStatus = "idle" | "loading" | "connected" | "error";
 

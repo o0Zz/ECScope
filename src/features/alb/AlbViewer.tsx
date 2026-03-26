@@ -7,6 +7,7 @@ import { useConfigStore } from "@/store/config";
 import { StatusBadge } from "@/components/StatusBadge";
 import { Globe, Shield, ChevronRight, ChevronDown } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { AlbMetricsChart } from "@/components/AlbMetricsChart";
 
 function AlbRow({ alb }: { alb: AlbInfo }) {
   const [expanded, setExpanded] = useState(false);
@@ -56,7 +57,8 @@ function AlbRow({ alb }: { alb: AlbInfo }) {
         <tr className="border-b border-border">
           <td colSpan={7} className="bg-muted/20 px-4 py-3">
             <div className="mb-1 text-xs font-mono text-muted-foreground truncate">{alb.dnsName}</div>
-            <div className="space-y-2">
+            <AlbMetricsChart albArn={alb.albArn} albName={alb.albName} />
+            <div className="mt-3 space-y-2">
               {alb.targetGroups.map((tg) => (
                 <TargetGroupRow key={tg.targetGroupArn} tg={tg} />
               ))}

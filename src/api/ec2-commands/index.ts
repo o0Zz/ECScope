@@ -1,14 +1,11 @@
-import { startTcpdump } from "./tcpdump";
-import { startCoredump } from "./coredump";
 import { sendSsmCommand, waitForSsmCommand } from "../ssm";
 import { downloadFile } from "./download";
-import type { S3Credentials, TcpdumpParams, CoredumpParams, SSMCommandResult } from "../types";
+import type { S3Credentials } from "../types";
 
-export { uploadFile } from "./download";
-
+export { downloadFile, uploadFile } from "./download";
 
 /** Upload a file from an EC2 instance to S3 via SSM. Returns the S3 key. */
-export async function uploadEc2ToS3(params: {
+async function uploadEc2ToS3(params: {
     instanceId: string;
     credentials: S3Credentials;
     s3Bucket: string;
@@ -38,30 +35,6 @@ export async function uploadEc2ToS3(params: {
     return {
         s3Key: match[1]
     };
-}
-
-/** Run tcpdump end-to-end: start → wait for SSM → upload from EC2 to S3 → download. */
-export async function runTcpdumpAndDownload(
-    params: TcpdumpParams,
-    onProgress?: (status: SSMCommandResult) => void,
-): Promise<void> {
-    const { commandId, remoteFilePath } = await startTcpdump(params);
-    await waitForSsmCommand(commandId, params.instanceId, onProgress);
-
-    const { s3Key } = await uploadEc2ToS3({ ...params, remoteFileGlob: remoteFilePath });
-    await downloadFile(params.credentials, params.s3Bucket, s3Key);
-}
-
-/** Run coredump end-to-end: start → wait for SSM → upload from EC2 to S3 → download. */
-export async function runCoredumpAndDownload(
-    params: CoredumpParams,
-    onProgress?: (status: SSMCommandResult) => void,
-): Promise<void> {
-    const { commandId, remoteFileGlob } = await startCoredump(params);
-    await waitForSsmCommand(commandId, params.instanceId, onProgress);
-
-    const { s3Key } = await uploadEc2ToS3({ ...params, remoteFileGlob });
-    await downloadFile(params.credentials, params.s3Bucket, s3Key);
 }
 
 /** Download a file from an EC2 instance to the local machine via S3. */

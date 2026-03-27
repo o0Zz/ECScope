@@ -6,7 +6,7 @@ export interface ClusterConfig {
     clusterName: string;
 }
 
-/** Global S3 storage config for SSM diagnostics file transfer */
+/** Global S3 storage config for file transfer */
 export interface StorageConfig {
     s3Bucket: string;
     s3AccessKeyId: string;

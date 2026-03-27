@@ -1,4 +1,3 @@
-import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { ecsApi, ec2Commands } from "@/api";
 import type { S3Credentials } from "@/api/types";
@@ -6,18 +5,16 @@ import { useNavigationStore } from "@/store/navigation";
 import { useConfigStore } from "@/store/config";
 import { StatusBadge } from "@/components/StatusBadge";
 import { MetricBar } from "@/components/MetricBar";
-import { Monitor, Terminal, Stethoscope, Download, Upload } from "lucide-react";
+import { Monitor, Terminal, Download, Upload } from "lucide-react";
 import { formatAge } from "@/lib/format";
 import { invoke } from "@tauri-apps/api/core";
-import { DiagnosticsDialog } from "./DiagnosticsDialog";
 
 export function NodeViewer() {
   const { selectedCluster } = useNavigationStore();
   const { activeCluster } = useConfigStore();
   const storage = useConfigStore((s) => s.storage);
   const refreshIntervalMs = useConfigStore((s) => s.refreshIntervalMs);
-  const [diagInstanceId, setDiagInstanceId] = useState<string | null>(null);
-  const hasDiagnostics = !!(storage?.s3Bucket && storage?.s3AccessKeyId && storage?.s3SecretAccessKey);
+  const hasFileTransfer = !!(storage?.s3Bucket && storage?.s3AccessKeyId && storage?.s3SecretAccessKey);
 
   const getS3Creds = (): S3Credentials => ({
     accessKeyId: storage!.s3AccessKeyId!,
@@ -164,17 +161,7 @@ export function NodeViewer() {
                         <Terminal className="h-3 w-3" />
                         Connect
                       </button>
-                      {hasDiagnostics && (
-                        <button
-                          onClick={() => setDiagInstanceId(inst.ec2InstanceId)}
-                          className="rounded-md border border-border px-2 py-1 text-xs font-medium text-foreground hover:bg-accent transition-colors flex items-center gap-1"
-                          title={`Run diagnostics on ${inst.ec2InstanceId}`}
-                        >
-                          <Stethoscope className="h-3 w-3" />
-                          Diagnostics
-                        </button>
-                      )}
-                      {hasDiagnostics && (
+                      {hasFileTransfer && (
                         <button
                           onClick={() => handleDownloadFromEc2(inst.ec2InstanceId)}
                           className="rounded-md border border-border px-2 py-1 text-xs font-medium text-foreground hover:bg-accent transition-colors flex items-center gap-1"
@@ -184,7 +171,7 @@ export function NodeViewer() {
                           Download
                         </button>
                       )}
-                      {hasDiagnostics && (
+                      {hasFileTransfer && (
                         <button
                           onClick={() => handleUploadToEc2(inst.ec2InstanceId)}
                           className="rounded-md border border-border px-2 py-1 text-xs font-medium text-foreground hover:bg-accent transition-colors flex items-center gap-1"
@@ -202,13 +189,6 @@ export function NodeViewer() {
           </tbody>
         </table>
       </div>
-
-      {diagInstanceId && (
-        <DiagnosticsDialog
-          instanceId={diagInstanceId}
-          onClose={() => setDiagInstanceId(null)}
-        />
-      )}
     </div>
   );
 }

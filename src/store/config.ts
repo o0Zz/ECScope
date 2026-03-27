@@ -8,7 +8,7 @@ type ConnectionStatus = "idle" | "loading" | "connected" | "error";
 
 interface ConfigState {
     clusters: ClusterConfig[];
-    /** Global S3 storage config for diagnostics */
+    /** Global S3 storage config for file transfer */
     storage: StorageConfig | null;
     /** Auto-refresh interval in milliseconds */
     refreshIntervalMs: number;

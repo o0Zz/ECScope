@@ -156,11 +156,11 @@ function TaskRow({
   const handleLogs = (e: React.MouseEvent) => {
     e.stopPropagation();
     if (!canStreamLogs) return;
-    invoke("open_ecs_logs", {
+    invoke("open_ssm_session", {
       params: {
         instance_id: task.ec2InstanceId,
-        runtime_id: container.runtimeId,
-        container_name: container.name,
+        commands: [`sudo docker logs -f --tail 200 ${container.runtimeId}`],
+        title: `logs: ${container.name}`,
         profile,
         region,
       },
@@ -171,11 +171,18 @@ function TaskRow({
   const handleHttpCapture = (e: React.MouseEvent) => {
     e.stopPropagation();
     if (!canHttpCapture) return;
-    invoke("open_http_capture", {
+    const cmd = [
+      "sudo dnf install -y wireshark-cli",
+      `&& sudo nsenter -t $(sudo docker inspect -f '{{.State.Pid}}' ${container.runtimeId}) -n --`,
+      `tshark -i any -Y "http.request or http.response"`,
+      `-T fields -e frame.time_relative -e ip.src -e http.request.method -e http.request.uri -e http.response.code -e http.time`,
+      `-E separator=" | " 2>/dev/null`,
+    ].join(" ");
+    invoke("open_ssm_session", {
       params: {
         instance_id: task.ec2InstanceId,
-        runtime_id: container.runtimeId,
-        container_name: container.name,
+        commands: [cmd],
+        title: `http-capture: ${container.name}`,
         profile,
         region,
       },

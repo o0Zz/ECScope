@@ -5,66 +5,57 @@ import {
 } from "@aws-sdk/client-elastic-load-balancing-v2";
 import { getElbv2Client } from "./clients";
 import { queryMetrics } from "./cloudwatch";
-import { listAllServiceArns, describeServicesBatched } from "./ecs";
+import { getClusterVpcId } from "./ecs";
 import type { AlbInfo, LoadBalancerType } from "./types";
 
 export async function listAlbs(clusterName: string): Promise<AlbInfo[]> {
     console.log("[aws] listAlbs called", { clusterName });
 
-    // 1. Get all services to collect target group ARNs
-    const arns = await listAllServiceArns(clusterName);
-    if (arns.length === 0) return [];
-
-    const rawServices = await describeServicesBatched(clusterName, arns);
-
-    // Collect unique target group ARNs from service load balancer configs
-    const tgArnSet = new Set<string>();
-    for (const svc of rawServices) {
-        for (const lb of (svc as any).loadBalancers ?? []) {
-            if (lb.targetGroupArn) tgArnSet.add(lb.targetGroupArn);
-        }
+    // 1. Resolve the VPC for this cluster
+    const vpcId = await getClusterVpcId(clusterName);
+    if (!vpcId) {
+        console.warn("[aws] listAlbs: could not determine VPC for cluster", clusterName);
+        return [];
     }
+    console.log("[aws] listAlbs: cluster VPC =", vpcId);
 
-    const tgArns = [...tgArnSet];
-    console.log("[aws] listAlbs found target group ARNs:", tgArns);
-    if (tgArns.length === 0) return [];
-
-    // 2. Describe target groups (batches of 20)
-    const allTargetGroups: any[] = [];
-    for (let i = 0; i < tgArns.length; i += 20) {
-        const batch = tgArns.slice(i, i + 20);
-        const tgRes = await getElbv2Client().send(
-            new DescribeTargetGroupsCommand({ TargetGroupArns: batch }),
-        );
-        allTargetGroups.push(...(tgRes.TargetGroups ?? []));
-    }
-
-    // 3. Collect unique load balancer ARNs from target groups
-    const lbArnSet = new Set<string>();
-    for (const tg of allTargetGroups) {
-        for (const lbArn of tg.LoadBalancerArns ?? []) {
-            lbArnSet.add(lbArn);
-        }
-    }
-
-    const lbArns = [...lbArnSet];
-    console.log("[aws] listAlbs found LB ARNs:", lbArns);
-    if (lbArns.length === 0) return [];
-
-    // 4. Describe load balancers (batches of 20)
+    // 2. List ALL load balancers (paginated) and filter by VPC
     const allLbs: any[] = [];
-    for (let i = 0; i < lbArns.length; i += 20) {
-        const batch = lbArns.slice(i, i + 20);
+    let marker: string | undefined;
+    do {
         const lbRes = await getElbv2Client().send(
-            new DescribeLoadBalancersCommand({ LoadBalancerArns: batch }),
+            new DescribeLoadBalancersCommand({ Marker: marker }),
         );
         allLbs.push(...(lbRes.LoadBalancers ?? []));
-    }
+        marker = lbRes.NextMarker;
+    } while (marker);
 
-    // 5. Get target health for each target group in parallel
+    const vpcLbs = allLbs.filter((lb) => lb.VpcId === vpcId);
+    console.log("[aws] listAlbs: found", vpcLbs.length, "LBs in VPC", vpcId, "out of", allLbs.length, "total");
+    if (vpcLbs.length === 0) return [];
+
+    // 3. Get ALL target groups for these load balancers
+    const lbArnSet = new Set(vpcLbs.map((lb) => lb.LoadBalancerArn as string));
+    const allTargetGroups: any[] = [];
+    let tgMarker: string | undefined;
+    do {
+        const tgRes = await getElbv2Client().send(
+            new DescribeTargetGroupsCommand({ Marker: tgMarker }),
+        );
+        allTargetGroups.push(...(tgRes.TargetGroups ?? []));
+        tgMarker = tgRes.NextMarker;
+    } while (tgMarker);
+
+    // Keep only target groups attached to our VPC load balancers
+    const relevantTgs = allTargetGroups.filter((tg) =>
+        (tg.LoadBalancerArns ?? []).some((arn: string) => lbArnSet.has(arn)),
+    );
+    console.log("[aws] listAlbs: found", relevantTgs.length, "target groups for VPC LBs");
+
+    // 4. Get target health for each target group in parallel
     const tgHealthMap = new Map<string, { healthyCount: number; unhealthyCount: number; targets: { targetId: string; port: number; health: string; reason: string; description: string }[] }>();
     await Promise.all(
-        allTargetGroups.map(async (tg) => {
+        relevantTgs.map(async (tg) => {
             try {
                 const healthRes = await getElbv2Client().send(
                     new DescribeTargetHealthCommand({ TargetGroupArn: tg.TargetGroupArn }),
@@ -91,16 +82,16 @@ export async function listAlbs(clusterName: string): Promise<AlbInfo[]> {
         }),
     );
 
-    // 6. Build AlbInfo objects with CloudWatch metrics
+    // 5. Build AlbInfo objects with CloudWatch metrics
     const FIVE_MIN_MS = 5 * 60 * 1000;
 
     return Promise.all(
-        allLbs.map(async (lb) => {
+        vpcLbs.map(async (lb) => {
             const lbArn = lb.LoadBalancerArn ?? "";
             const lbName = lb.LoadBalancerName ?? "";
             const lbType: LoadBalancerType = lb.Type === "network" ? "network" : "application";
 
-            const lbTargetGroups = allTargetGroups
+            const lbTargetGroups = relevantTgs
                 .filter((tg) => (tg.LoadBalancerArns ?? []).includes(lbArn))
                 .map((tg) => {
                     const health = tgHealthMap.get(tg.TargetGroupArn) ?? { healthyCount: 0, unhealthyCount: 0, targets: [] };

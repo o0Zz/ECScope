@@ -4,7 +4,9 @@ import { Container, Server, ChevronDown, FileCode, Terminal, ScrollText, Square,
 import { cn } from "@/lib/utils";
 import { formatAge } from "@/lib/format";
 import { openEcsExec, openTaskLogs, openHttpCapture } from "./TaskActions";
+import { CaptureConfigDialog, type CaptureConfig } from "./CaptureConfigDialog";
 import { EnvVarPanel } from "./EnvVarPanel";
+import { useState } from "react";
 
 export function TaskRow({
     task,
@@ -32,6 +34,7 @@ export function TaskRow({
     const canHttpCapture = !!task.ec2InstanceId && !!container?.runtimeId;
     const isStopped = task.lastStatus === "STOPPED";
     const actionParams = { profile, region };
+    const [captureDialogOpen, setCaptureDialogOpen] = useState(false);
 
     const handleExec = (e: React.MouseEvent) => {
         e.stopPropagation();
@@ -47,7 +50,12 @@ export function TaskRow({
     const handleHttpCapture = (e: React.MouseEvent) => {
         e.stopPropagation();
         if (!canHttpCapture) return;
-        openHttpCapture(task.ec2InstanceId!, container.runtimeId!, container.name, actionParams);
+        setCaptureDialogOpen(true);
+    };
+
+    const handleCaptureConfirm = (config: CaptureConfig) => {
+        setCaptureDialogOpen(false);
+        openHttpCapture(task.ec2InstanceId!, container.runtimeId!, container.name, actionParams, config);
     };
 
     return (
@@ -170,6 +178,13 @@ export function TaskRow({
                     </td>
                 </tr>
             )}
+
+            <CaptureConfigDialog
+                open={captureDialogOpen}
+                containerName={containerName}
+                onConfirm={handleCaptureConfirm}
+                onCancel={() => setCaptureDialogOpen(false)}
+            />
         </>
     );
 }

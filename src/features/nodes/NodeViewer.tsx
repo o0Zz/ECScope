@@ -1,8 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
 import { ecsApi } from "@/api";
-import type { S3Credentials } from "@/api/types";
-import { copyFileFromEc2ToS3, copyFileFromS3ToEc2 } from "@/api/ec2";
-import { downloadFromS3, deleteFromS3, uploadToS3 } from "@/api/s3";
 import { useNavigationStore } from "@/store/navigation";
 import { useConfigStore } from "@/store/config";
 import { StatusBadge } from "@/components/StatusBadge";
@@ -10,81 +7,16 @@ import { MetricBar } from "@/components/MetricBar";
 import { Monitor, Terminal, Download, Upload } from "lucide-react";
 import { formatAge } from "@/lib/format";
 import { invoke } from "@tauri-apps/api/core";
-import { save, open } from "@tauri-apps/plugin-dialog";
-import { writeFile, readFile } from "@tauri-apps/plugin-fs";
+import { useFileTransfer } from "./useFileTransfer";
+import { FileTransferDialog } from "./FileTransferDialog";
 
 export function NodeViewer() {
   const { selectedCluster } = useNavigationStore();
   const { activeCluster } = useConfigStore();
   const storage = useConfigStore((s) => s.storage);
   const refreshIntervalMs = useConfigStore((s) => s.refreshIntervalMs);
-  const hasFileTransfer = !!(storage?.s3Bucket && storage?.s3AccessKeyId && storage?.s3SecretAccessKey);
 
-  const getS3Creds = (): S3Credentials => ({
-    accessKeyId: storage!.s3AccessKeyId!,
-    secretAccessKey: storage!.s3SecretAccessKey!,
-    region: storage?.s3Region ?? activeCluster?.region ?? "us-east-1",
-  });
-
-  const handleDownloadFromEc2 = async (instanceId: string) => {
-    const remotePath = window.prompt("Remote file path on EC2 to download:");
-    if (!remotePath?.trim()) return;
-
-    const filename = remotePath.trim().split("/").pop() ?? "download";
-    const ext = filename.includes(".") ? filename.split(".").pop()! : "*";
-    const savePath = await save({
-      defaultPath: filename,
-      filters: [{ name: "File", extensions: [ext] }],
-      title: "Save File",
-    });
-    if (!savePath) return;
-
-    try {
-      const creds = getS3Creds();
-      const s3Key = await copyFileFromEc2ToS3({
-        instanceId,
-        credentials: creds,
-        s3Bucket: storage!.s3Bucket!,
-        remoteFileGlob: remotePath.trim(),
-      });
-      const data = await downloadFromS3(creds, storage!.s3Bucket!, s3Key);
-      await writeFile(savePath, data);
-      await deleteFromS3(creds, storage!.s3Bucket!, s3Key);
-    } catch (err) {
-      console.error("[ECScope] Download from EC2 failed:", err);
-      window.alert(`Download failed: ${err instanceof Error ? err.message : String(err)}`);
-    }
-  };
-
-  const handleUploadToEc2 = async (instanceId: string) => {
-    const remotePath = window.prompt("Remote destination path on EC2 (file or directory ending with /):");
-    if (!remotePath?.trim()) return;
-
-    const localPath = await open({
-      multiple: false,
-      title: "Select File to Upload",
-    });
-    if (!localPath) return;
-
-    try {
-      const creds = getS3Creds();
-      const filename = localPath.split(/[\\/]/).pop() ?? "upload";
-      const s3Key = `ecscope/${instanceId}/uploads/${Date.now()}-${filename}`;
-      const data = await readFile(localPath);
-      await uploadToS3(creds, storage!.s3Bucket!, s3Key, data);
-      const dest = remotePath.trim().endsWith("/") ? `${remotePath.trim()}${filename}` : remotePath.trim();
-      await copyFileFromS3ToEc2({
-        instanceId,
-        credentials: creds,
-        s3Bucket: storage!.s3Bucket!,
-        s3Key,
-        remotePath: dest,
-      });
-    } catch (err) {
-      console.error("[ECScope] Upload to EC2 failed:", err);
-      window.alert(`Upload failed: ${err instanceof Error ? err.message : String(err)}`);
-    }
-  };
+  const transfer = useFileTransfer(storage, activeCluster);
 
   const { data: instances, isLoading } = useQuery({
     queryKey: ["nodes", selectedCluster],
@@ -193,9 +125,9 @@ export function NodeViewer() {
                         <Terminal className="h-3 w-3" />
                         Connect
                       </button>
-                      {hasFileTransfer && (
+                      {transfer.hasFileTransfer && (
                         <button
-                          onClick={() => handleDownloadFromEc2(inst.ec2InstanceId)}
+                          onClick={() => transfer.startDownload(inst.ec2InstanceId)}
                           className="rounded-md border border-border px-2 py-1 text-xs font-medium text-foreground hover:bg-accent transition-colors flex items-center gap-1"
                           title={`Download file from ${inst.ec2InstanceId}`}
                         >
@@ -203,9 +135,9 @@ export function NodeViewer() {
                           Download
                         </button>
                       )}
-                      {hasFileTransfer && (
+                      {transfer.hasFileTransfer && (
                         <button
-                          onClick={() => handleUploadToEc2(inst.ec2InstanceId)}
+                          onClick={() => transfer.startUpload(inst.ec2InstanceId)}
                           className="rounded-md border border-border px-2 py-1 text-xs font-medium text-foreground hover:bg-accent transition-colors flex items-center gap-1"
                           title={`Upload file to ${inst.ec2InstanceId}`}
                         >
@@ -221,6 +153,20 @@ export function NodeViewer() {
           </tbody>
         </table>
       </div>
+
+      <FileTransferDialog
+        open={transfer.dialogOpen}
+        title={transfer.dialogMode === "download" ? "Download from EC2" : "Upload to EC2"}
+        label={transfer.dialogMode === "download"
+          ? "Remote file path on EC2 to download:"
+          : "Remote destination path on EC2 (file or directory ending with /):"
+        }
+        placeholder={transfer.dialogMode === "download" ? "/var/log/app.log" : "/tmp/"}
+        error={transfer.error}
+        isPending={transfer.isPending}
+        onConfirm={transfer.confirm}
+        onCancel={transfer.cancel}
+      />
     </div>
   );
 }

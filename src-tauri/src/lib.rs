@@ -98,6 +98,43 @@ fn open_ecs_exec(params: EcsExecParams) -> Result<(), String> {
     open_in_terminal(&cmd, None)
 }
 
+#[derive(Deserialize)]
+struct HttpCaptureParams {
+    instance_id: String,
+    runtime_id: String,
+    container_name: String,
+    profile: String,
+    region: String,
+}
+
+#[tauri::command]
+fn open_http_capture(params: HttpCaptureParams) -> Result<(), String> {
+    let json_params = format!(
+        r#"{{"command":["sudo dnf install -y wireshark-cli && sudo nsenter -t $(sudo docker inspect -f '{{{{.State.Pid}}}}' {}) -n -- tshark -i any -Y \"http.request or http.response\" -T fields -e frame.time_relative -e ip.src -e http.request.method -e http.request.uri -e http.response.code -e http.time -E separator=\" | \" 2>/dev/null"]}}"#,
+        params.runtime_id
+    );
+    let unique_id: u64 = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .unwrap_or_default()
+        .as_nanos() as u64;
+    let params_filename = format!("ecscope_ssm_params_{}.json", unique_id);
+    let params_path = std::env::temp_dir().join(&params_filename);
+    {
+        let mut file = fs::File::create(&params_path)
+            .map_err(|e| format!("Failed to create params file: {}", e))?;
+        file.write_all(json_params.as_bytes())
+            .map_err(|e| format!("Failed to write params file: {}", e))?;
+    }
+    let params_file_ref = format!("file://{}", params_path.display());
+
+    let cmd = format!(
+        "aws ssm start-session --target {} --document-name AWS-StartInteractiveCommand --parameters {} --profile {} --region {}",
+        params.instance_id, params_file_ref, params.profile, params.region
+    );
+    let title = format!("http-capture: {}", params.container_name);
+    open_in_terminal(&cmd, Some(&title))
+}
+
 #[tauri::command]
 fn open_ecs_logs(params: EcsLogsParams) -> Result<(), String> {
     let json_params = format!(
@@ -183,7 +220,7 @@ pub fn run() {
             }
             Ok(())
         })
-        .invoke_handler(tauri::generate_handler![read_app_config, read_aws_files, open_ssm_session, open_ecs_exec, open_ecs_logs])
+        .invoke_handler(tauri::generate_handler![read_app_config, read_aws_files, open_ssm_session, open_ecs_exec, open_ecs_logs, open_http_capture])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }

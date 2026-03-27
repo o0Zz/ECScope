@@ -8,7 +8,7 @@ import { StatusBadge } from "@/components/StatusBadge";
 import { ServiceMetricsChart } from "@/components/ServiceMetricsChart";
 import { ServiceEventsTimeline } from "@/components/ServiceEventsTimeline";
 import { DeploymentStatusPanel } from "@/components/DeploymentStatusPanel";
-import { Container, Server, ChevronDown, FileCode, Copy, Check, KeyRound, Terminal, ScrollText, Square, AlertTriangle, Pencil } from "lucide-react";
+import { Container, Server, ChevronDown, FileCode, Copy, Check, KeyRound, Terminal, ScrollText, Square, AlertTriangle, Pencil, Radio } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { formatAge } from "@/lib/format";
 import { invoke } from "@tauri-apps/api/core";
@@ -167,6 +167,21 @@ function TaskRow({
     }).catch((err) => console.error("[ECScope] ECS logs failed:", err));
   };
 
+  const canHttpCapture = !!task.ec2InstanceId && !!container?.runtimeId;
+  const handleHttpCapture = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!canHttpCapture) return;
+    invoke("open_http_capture", {
+      params: {
+        instance_id: task.ec2InstanceId,
+        runtime_id: container.runtimeId,
+        container_name: container.name,
+        profile,
+        region,
+      },
+    }).catch((err) => console.error("[ECScope] HTTP capture failed:", err));
+  };
+
   const isStopped = task.lastStatus === "STOPPED";
 
   return (
@@ -257,6 +272,17 @@ function TaskRow({
               disabled={isStopped || !canStreamLogs}
             >
               <ScrollText className="h-3.5 w-3.5" />
+            </button>
+            <button
+              onClick={handleHttpCapture}
+              className={cn(
+                "rounded p-1 transition-colors hover:bg-accent",
+                isStopped || !canHttpCapture ? "text-muted-foreground/30 cursor-not-allowed" : "text-muted-foreground hover:text-foreground",
+              )}
+              title={isStopped ? "Task is stopped" : canHttpCapture ? `HTTP capture for ${containerName}` : "HTTP capture requires EC2 launch type"}
+              disabled={isStopped || !canHttpCapture}
+            >
+              <Radio className="h-3.5 w-3.5" />
             </button>
             <button
               onClick={(e) => { e.stopPropagation(); onToggleEnv(); }}

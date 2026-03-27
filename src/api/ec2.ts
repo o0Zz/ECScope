@@ -1,6 +1,6 @@
 import { DescribeInstancesCommand } from "@aws-sdk/client-ec2";
 import { getEc2Client } from "./clients";
-import { sendSsmCommand, waitForSsmCommand } from "./ssm";
+import { execSsmCommand } from "./ssm";
 import type { VpcEc2Instance, S3Credentials } from "./types";
 
 /**
@@ -73,8 +73,7 @@ export async function copyFileFromEc2ToS3(params: {
         `echo "S3_KEY=${s3Key}"`,
     ];
 
-    const commandId = await sendSsmCommand(params.instanceId, commands, 120);
-    const stdout = await waitForSsmCommand(commandId, params.instanceId);
+    const stdout = await execSsmCommand(params.instanceId, commands);
 
     const match = stdout.match(/S3_KEY=(\S+)/);
     if (!match) {
@@ -102,8 +101,7 @@ export async function copyFileFromS3ToEc2(params: {
     ];
 
     console.log(`[ec2] SSM: pulling s3://${params.s3Bucket}/${params.s3Key} to ${params.remotePath} on ${params.instanceId} ...`);
-    const commandId = await sendSsmCommand(params.instanceId, commands, 120);
-    const stdout = await waitForSsmCommand(commandId, params.instanceId);
+    const stdout = await execSsmCommand(params.instanceId, commands);
 
     if (!stdout.includes("UPLOADED=")) {
         throw new Error(`Upload command did not confirm completion. Output: ${stdout.slice(0, 500)}`);

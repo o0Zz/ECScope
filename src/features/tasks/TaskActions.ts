@@ -46,7 +46,7 @@ export function openHttpCapture(
     params: TaskActionParams,
 ): void {
     const cmd = [
-        "sudo dnf install -y wireshark-cli",
+        "sudo yum install -y wireshark-cli",
         `&& sudo nsenter -t $(sudo docker inspect -f '{{.State.Pid}}' ${runtimeId}) -n --`,
         `tshark -i any -Y "http.request or http.response"`,
         `-T fields -e frame.time_relative -e ip.src -e http.request.method -e http.request.uri -e http.response.code -e http.time`,

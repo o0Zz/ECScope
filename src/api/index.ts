@@ -1,10 +1,7 @@
 export { initAwsClients } from "./clients";
 export type * from "./types";
 
-// Re-export domain modules as a single ecsApi for backward compatibility
 import {
-    listClusters,
-    getCluster,
     listServices,
     getService,
     getServiceEvents,
@@ -19,14 +16,11 @@ import {
     listContainerInstances,
     getClusterVpcId,
 } from "./ecs";
-import { getServiceMetricsHistory, getAlbMetricsHistory, getNlbMetricsHistory } from "./cloudwatch";
+import { getServiceMetricsHistory, getAlbMetricsHistory, getNlbMetricsHistory, getEc2MetricsHistory } from "./cloudwatch";
 import { listAlbs } from "./alb";
 import { listEc2 } from "./ec2";
-import { getEc2MetricsHistory } from "./cloudwatch";
 
 export const ecsApi = {
-    listClusters,
-    getCluster,
     listServices,
     getService,
     getServiceEvents,

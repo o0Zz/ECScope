@@ -12,7 +12,6 @@ let ssmClient: SSMClient;
 let smClient: SecretsManagerClient;
 let elbv2Client: ElasticLoadBalancingV2Client;
 let ec2Client: EC2Client;
-let configuredCluster: string;
 
 export function initAwsClients(creds: ResolvedCredentials, clusterName: string) {
     console.log("[aws] initAwsClients called", { region: creds.region, clusterName, hasAccessKey: !!creds.accessKeyId, hasSessionToken: !!creds.sessionToken });
@@ -28,8 +27,7 @@ export function initAwsClients(creds: ResolvedCredentials, clusterName: string) 
     smClient = new SecretsManagerClient({ region: creds.region, credentials });
     elbv2Client = new ElasticLoadBalancingV2Client({ region: creds.region, credentials });
     ec2Client = new EC2Client({ region: creds.region, credentials });
-    configuredCluster = clusterName;
-    console.log("[aws] AWS clients initialized, configuredCluster =", configuredCluster);
+    console.log("[aws] AWS clients initialized for cluster", clusterName);
 }
 
 export function getEcsClient(): ECSClient { return ecsClient; }
@@ -38,4 +36,3 @@ export function getSsmClient(): SSMClient { return ssmClient; }
 export function getSmClient(): SecretsManagerClient { return smClient; }
 export function getElbv2Client(): ElasticLoadBalancingV2Client { return elbv2Client; }
 export function getEc2Client(): EC2Client { return ec2Client; }
-export function getConfiguredCluster(): string { return configuredCluster; }

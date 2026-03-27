@@ -58,6 +58,34 @@ export async function queryMetrics(
 
 const ONE_DAY_MS = 24 * 60 * 60 * 1000;
 
+/**
+ * Generic helper: runs a CloudWatch query, then maps each timestamp into one
+ * output object using the caller-supplied `mapper`.
+ */
+async function fetchHistory<T extends { timestamp: number }>(
+    queries: MetricQuery[],
+    mapper: (ts: number, i: number, values: Map<string, number[]>) => T,
+    label: string,
+): Promise<T[]> {
+    try {
+        const { timestamps, values } = await queryMetrics(queries, 300, ONE_DAY_MS);
+        return timestamps
+            .map((ts, i) => mapper(ts, i, values))
+            .sort((a, b) => a.timestamp - b.timestamp);
+    } catch (err) {
+        console.warn(`[aws] Failed to fetch ${label} metrics history:`, err);
+        return [];
+    }
+}
+
+function round1(v: number): number {
+    return Math.round(v * 10) / 10;
+}
+
+function val(values: Map<string, number[]>, id: string, i: number): number {
+    return (values.get(id) ?? [])[i] ?? 0;
+}
+
 function ecsDimensions(clusterName: string, serviceName: string) {
     return [
         { Name: "ClusterName" as const, Value: clusterName },
@@ -69,29 +97,19 @@ export async function getServiceMetricsHistory(
     clusterName: string,
     serviceName: string,
 ): Promise<MetricsDataPoint[]> {
-    try {
-        const dims = ecsDimensions(clusterName, serviceName);
-        const { timestamps, values } = await queryMetrics(
-            [
-                { id: "cpu", namespace: "AWS/ECS", metricName: "CPUUtilization", dimensions: dims, stat: "Average" },
-                { id: "mem", namespace: "AWS/ECS", metricName: "MemoryUtilization", dimensions: dims, stat: "Average" },
-            ],
-            300,
-            ONE_DAY_MS,
-        );
-        const cpu = values.get("cpu") ?? [];
-        const mem = values.get("mem") ?? [];
-        return timestamps
-            .map((ts, i) => ({
-                timestamp: ts,
-                cpuUtilization: Math.round((cpu[i] ?? 0) * 10) / 10,
-                memoryUtilization: Math.round((mem[i] ?? 0) * 10) / 10,
-            }))
-            .sort((a, b) => a.timestamp - b.timestamp);
-    } catch (err) {
-        console.warn(`[aws] Failed to fetch metrics history for ${serviceName}:`, err);
-        return [];
-    }
+    const dims = ecsDimensions(clusterName, serviceName);
+    return fetchHistory(
+        [
+            { id: "cpu", namespace: "AWS/ECS", metricName: "CPUUtilization", dimensions: dims, stat: "Average" },
+            { id: "mem", namespace: "AWS/ECS", metricName: "MemoryUtilization", dimensions: dims, stat: "Average" },
+        ],
+        (ts, i, v) => ({
+            timestamp: ts,
+            cpuUtilization: round1(val(v, "cpu", i)),
+            memoryUtilization: round1(val(v, "mem", i)),
+        }),
+        `service ${serviceName}`,
+    );
 }
 
 export async function getAlbMetricsHistory(
@@ -100,36 +118,24 @@ export async function getAlbMetricsHistory(
     const albDimension = albArn.split(":loadbalancer/")[1] ?? "";
     if (!albDimension) return [];
 
-    try {
-        const dims = [{ Name: "LoadBalancer" as const, Value: albDimension }];
-        const ns = "AWS/ApplicationELB";
-        const { timestamps, values } = await queryMetrics(
-            [
-                { id: "requests", namespace: ns, metricName: "RequestCount", dimensions: dims, stat: "Sum" },
-                { id: "http5xx", namespace: ns, metricName: "HTTPCode_ELB_5XX_Count", dimensions: dims, stat: "Sum" },
-                { id: "http4xx", namespace: ns, metricName: "HTTPCode_ELB_4XX_Count", dimensions: dims, stat: "Sum" },
-                { id: "latency", namespace: ns, metricName: "TargetResponseTime", dimensions: dims, stat: "Average" },
-            ],
-            300,
-            ONE_DAY_MS,
-        );
-        const req = values.get("requests") ?? [];
-        const h5xx = values.get("http5xx") ?? [];
-        const h4xx = values.get("http4xx") ?? [];
-        const lat = values.get("latency") ?? [];
-        return timestamps
-            .map((ts, i) => ({
-                timestamp: ts,
-                requestCount: Math.round(req[i] ?? 0),
-                http5xxCount: Math.round(h5xx[i] ?? 0),
-                http4xxCount: Math.round(h4xx[i] ?? 0),
-                targetResponseTimeMs: Math.round((lat[i] ?? 0) * 1000 * 10) / 10,
-            }))
-            .sort((a, b) => a.timestamp - b.timestamp);
-    } catch (err) {
-        console.warn(`[aws] Failed to fetch ALB metrics history:`, err);
-        return [];
-    }
+    const dims = [{ Name: "LoadBalancer" as const, Value: albDimension }];
+    const ns = "AWS/ApplicationELB";
+    return fetchHistory(
+        [
+            { id: "requests", namespace: ns, metricName: "RequestCount", dimensions: dims, stat: "Sum" },
+            { id: "http5xx", namespace: ns, metricName: "HTTPCode_ELB_5XX_Count", dimensions: dims, stat: "Sum" },
+            { id: "http4xx", namespace: ns, metricName: "HTTPCode_ELB_4XX_Count", dimensions: dims, stat: "Sum" },
+            { id: "latency", namespace: ns, metricName: "TargetResponseTime", dimensions: dims, stat: "Average" },
+        ],
+        (ts, i, v) => ({
+            timestamp: ts,
+            requestCount: Math.round(val(v, "requests", i)),
+            http5xxCount: Math.round(val(v, "http5xx", i)),
+            http4xxCount: Math.round(val(v, "http4xx", i)),
+            targetResponseTimeMs: round1(val(v, "latency", i) * 1000),
+        }),
+        "ALB",
+    );
 }
 
 export async function getNlbMetricsHistory(
@@ -138,39 +144,26 @@ export async function getNlbMetricsHistory(
     const lbDimension = nlbArn.split(":loadbalancer/")[1] ?? "";
     if (!lbDimension) return [];
 
-    try {
-        const dims = [{ Name: "LoadBalancer" as const, Value: lbDimension }];
-        const ns = "AWS/NetworkELB";
-        const { timestamps, values } = await queryMetrics(
-            [
-                { id: "activeFlows", namespace: ns, metricName: "ActiveFlowCount", dimensions: dims, stat: "Average" },
-                { id: "newFlows", namespace: ns, metricName: "NewFlowCount", dimensions: dims, stat: "Sum" },
-                { id: "bytes", namespace: ns, metricName: "ProcessedBytes", dimensions: dims, stat: "Sum" },
-                { id: "clientResets", namespace: ns, metricName: "TCP_Client_Reset_Count", dimensions: dims, stat: "Sum" },
-                { id: "targetResets", namespace: ns, metricName: "TCP_Target_Reset_Count", dimensions: dims, stat: "Sum" },
-            ],
-            300,
-            ONE_DAY_MS,
-        );
-        const active = values.get("activeFlows") ?? [];
-        const newF = values.get("newFlows") ?? [];
-        const bytes = values.get("bytes") ?? [];
-        const cr = values.get("clientResets") ?? [];
-        const tr = values.get("targetResets") ?? [];
-        return timestamps
-            .map((ts, i) => ({
-                timestamp: ts,
-                activeFlowCount: Math.round(active[i] ?? 0),
-                newFlowCount: Math.round(newF[i] ?? 0),
-                processedBytes: Math.round(bytes[i] ?? 0),
-                tcpClientResetCount: Math.round(cr[i] ?? 0),
-                tcpTargetResetCount: Math.round(tr[i] ?? 0),
-            }))
-            .sort((a, b) => a.timestamp - b.timestamp);
-    } catch (err) {
-        console.warn(`[aws] Failed to fetch NLB metrics history:`, err);
-        return [];
-    }
+    const dims = [{ Name: "LoadBalancer" as const, Value: lbDimension }];
+    const ns = "AWS/NetworkELB";
+    return fetchHistory(
+        [
+            { id: "activeFlows", namespace: ns, metricName: "ActiveFlowCount", dimensions: dims, stat: "Average" },
+            { id: "newFlows", namespace: ns, metricName: "NewFlowCount", dimensions: dims, stat: "Sum" },
+            { id: "bytes", namespace: ns, metricName: "ProcessedBytes", dimensions: dims, stat: "Sum" },
+            { id: "clientResets", namespace: ns, metricName: "TCP_Client_Reset_Count", dimensions: dims, stat: "Sum" },
+            { id: "targetResets", namespace: ns, metricName: "TCP_Target_Reset_Count", dimensions: dims, stat: "Sum" },
+        ],
+        (ts, i, v) => ({
+            timestamp: ts,
+            activeFlowCount: Math.round(val(v, "activeFlows", i)),
+            newFlowCount: Math.round(val(v, "newFlows", i)),
+            processedBytes: Math.round(val(v, "bytes", i)),
+            tcpClientResetCount: Math.round(val(v, "clientResets", i)),
+            tcpTargetResetCount: Math.round(val(v, "targetResets", i)),
+        }),
+        "NLB",
+    );
 }
 
 export async function getEc2MetricsHistory(
@@ -178,39 +171,24 @@ export async function getEc2MetricsHistory(
 ): Promise<Ec2MetricsDataPoint[]> {
     const dims = [{ Name: "InstanceId" as const, Value: instanceId }];
     const ns = "AWS/EC2";
-
-    try {
-        const { timestamps, values } = await queryMetrics(
-            [
-                { id: "cpu", namespace: ns, metricName: "CPUUtilization", dimensions: dims, stat: "Average" },
-                { id: "netIn", namespace: ns, metricName: "NetworkIn", dimensions: dims, stat: "Sum" },
-                { id: "netOut", namespace: ns, metricName: "NetworkOut", dimensions: dims, stat: "Sum" },
-                { id: "diskRead", namespace: ns, metricName: "DiskReadBytes", dimensions: dims, stat: "Sum" },
-                { id: "diskWrite", namespace: ns, metricName: "DiskWriteBytes", dimensions: dims, stat: "Sum" },
-                { id: "statusCheck", namespace: ns, metricName: "StatusCheckFailed", dimensions: dims, stat: "Maximum" },
-            ],
-            300,
-            ONE_DAY_MS,
-        );
-        const cpu = values.get("cpu") ?? [];
-        const netIn = values.get("netIn") ?? [];
-        const netOut = values.get("netOut") ?? [];
-        const diskR = values.get("diskRead") ?? [];
-        const diskW = values.get("diskWrite") ?? [];
-        const sc = values.get("statusCheck") ?? [];
-        return timestamps
-            .map((ts, i) => ({
-                timestamp: ts,
-                cpuUtilization: Math.round((cpu[i] ?? 0) * 10) / 10,
-                networkInBytes: Math.round(netIn[i] ?? 0),
-                networkOutBytes: Math.round(netOut[i] ?? 0),
-                diskReadBytes: Math.round(diskR[i] ?? 0),
-                diskWriteBytes: Math.round(diskW[i] ?? 0),
-                statusCheckFailed: Math.round(sc[i] ?? 0),
-            }))
-            .sort((a, b) => a.timestamp - b.timestamp);
-    } catch (err) {
-        console.warn(`[aws] Failed to fetch EC2 metrics history for ${instanceId}:`, err);
-        return [];
-    }
+    return fetchHistory(
+        [
+            { id: "cpu", namespace: ns, metricName: "CPUUtilization", dimensions: dims, stat: "Average" },
+            { id: "netIn", namespace: ns, metricName: "NetworkIn", dimensions: dims, stat: "Sum" },
+            { id: "netOut", namespace: ns, metricName: "NetworkOut", dimensions: dims, stat: "Sum" },
+            { id: "diskRead", namespace: ns, metricName: "DiskReadBytes", dimensions: dims, stat: "Sum" },
+            { id: "diskWrite", namespace: ns, metricName: "DiskWriteBytes", dimensions: dims, stat: "Sum" },
+            { id: "statusCheck", namespace: ns, metricName: "StatusCheckFailed", dimensions: dims, stat: "Maximum" },
+        ],
+        (ts, i, v) => ({
+            timestamp: ts,
+            cpuUtilization: round1(val(v, "cpu", i)),
+            networkInBytes: Math.round(val(v, "netIn", i)),
+            networkOutBytes: Math.round(val(v, "netOut", i)),
+            diskReadBytes: Math.round(val(v, "diskRead", i)),
+            diskWriteBytes: Math.round(val(v, "diskWrite", i)),
+            statusCheckFailed: Math.round(val(v, "statusCheck", i)),
+        }),
+        `EC2 ${instanceId}`,
+    );
 }

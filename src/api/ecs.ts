@@ -1,5 +1,4 @@
 import {
-    DescribeClustersCommand,
     ListServicesCommand,
     DescribeServicesCommand,
     ListTasksCommand,
@@ -14,10 +13,9 @@ import {
 import type { ECSClient } from "@aws-sdk/client-ecs";
 import { GetParametersCommand } from "@aws-sdk/client-ssm";
 import { GetSecretValueCommand } from "@aws-sdk/client-secrets-manager";
-import { getEcsClient, getSsmClient, getSmClient, getEc2Client, getConfiguredCluster } from "./clients";
+import { getEcsClient, getSsmClient, getSmClient, getEc2Client } from "./clients";
 import { queryMetrics } from "./cloudwatch";
 import type {
-    EcsCluster,
     ClusterMetrics,
     EcsService,
     EcsServiceEvent,
@@ -96,36 +94,6 @@ export async function describeServicesBatched(
 }
 
 // ─── API Implementation ──────────────────────────────────
-
-export async function listClusters(): Promise<EcsCluster[]> {
-    const configuredCluster = getConfiguredCluster();
-    console.log("[aws] listClusters called", { configuredCluster, hasEcsClient: !!getEcsClient() });
-    const desc = await getEcsClient().send(
-        new DescribeClustersCommand({
-            clusters: [configuredCluster],
-            include: ["STATISTICS"],
-        }),
-    );
-    console.log("[aws] DescribeClusters response", { clusters: desc.clusters?.map(c => c.clusterName) });
-
-    return (desc.clusters ?? []).map((c) => ({
-        clusterArn: c.clusterArn ?? "",
-        clusterName: c.clusterName ?? "",
-        status: c.status ?? "UNKNOWN",
-        activeServicesCount: c.activeServicesCount ?? 0,
-        runningTasksCount: c.runningTasksCount ?? 0,
-        pendingTasksCount: c.pendingTasksCount ?? 0,
-        registeredContainerInstancesCount:
-            c.registeredContainerInstancesCount ?? 0,
-    }));
-}
-
-export async function getCluster(
-    clusterName: string,
-): Promise<EcsCluster | undefined> {
-    const clusters = await listClusters();
-    return clusters.find((c) => c.clusterName === clusterName);
-}
 
 export async function listServices(clusterName: string): Promise<EcsService[]> {
     console.log("[aws] listServices called", { clusterName, hasEcsClient: !!getEcsClient() });

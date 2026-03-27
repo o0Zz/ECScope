@@ -1,13 +1,3 @@
-export interface EcsCluster {
-    clusterArn: string;
-    clusterName: string;
-    status: string;
-    activeServicesCount: number;
-    runningTasksCount: number;
-    pendingTasksCount: number;
-    registeredContainerInstancesCount: number;
-}
-
 export interface ClusterMetrics {
     cpuUtilization: number;
     memoryUtilization: number;

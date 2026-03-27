@@ -1,14 +1,12 @@
 import { type ReactNode } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useConfigStore } from "@/store/config";
-import type { LucideIcon } from "lucide-react";
 
 interface MetricsPanelProps<T> {
     queryKey: unknown[];
     queryFn: () => Promise<T[]>;
     loadingText?: string;
     emptyText?: string;
-    emptyIcon?: LucideIcon;
     children: (data: T[]) => ReactNode;
     className?: string;
 }

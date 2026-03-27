@@ -4,10 +4,7 @@ import { sendSsmCommand, waitForSsmCommand } from "../ssm";
 import { downloadFile } from "./download";
 import type { S3Credentials, TcpdumpParams, CoredumpParams, SSMCommandResult } from "../types";
 
-export { startTcpdump } from "./tcpdump";
-export { startCoredump } from "./coredump";
-export { sendSsmCommand, waitForSsmCommand } from "../ssm";
-export { downloadFile, uploadFile } from "./download";
+export { uploadFile } from "./download";
 
 
 /** Upload a file from an EC2 instance to S3 via SSM. Returns the S3 key. */

@@ -55,7 +55,7 @@ export function Breadcrumb() {
           title="Refresh all data"
         >
           <RefreshCw className={cn("h-4 w-4", isFetching > 0 && "animate-spin")} />
-            <span className="sr-only">Refreshing…</span>
+          <span className="sr-only">Refreshing…</span>
         </button>
         <ThemeToggle />
       </div>

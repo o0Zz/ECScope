@@ -59,6 +59,7 @@ jobs:
         uses: tauri-apps/tauri-action@v0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          ECSCOPE_VERSION: ${{ github.ref_name }}
         with:
           args: ${{ matrix.args }}
           tagName: ${{ github.ref_name }}

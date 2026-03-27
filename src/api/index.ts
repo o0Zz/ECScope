@@ -16,9 +16,10 @@ import {
     listContainerInstances,
     getClusterVpcId,
 } from "./ecs";
-import { getServiceMetricsHistory, getAlbMetricsHistory, getNlbMetricsHistory, getEc2MetricsHistory } from "./cloudwatch";
+import { getServiceMetricsHistory, getAlbMetricsHistory, getNlbMetricsHistory, getEc2MetricsHistory, getRdsMetricsHistory } from "./cloudwatch";
 import { listAlbs } from "./alb";
 import { listEc2 } from "./ec2";
+import { listRdsInstances } from "./rds";
 
 export const ecsApi = {
     listServices,
@@ -37,7 +38,9 @@ export const ecsApi = {
     getClusterVpcId,
     listEc2,
     getEc2MetricsHistory,
+    getRdsMetricsHistory,
     getServiceMetricsHistory,
     getAlbMetricsHistory,
     getNlbMetricsHistory,
+    listRdsInstances,
 };

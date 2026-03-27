@@ -1,6 +1,6 @@
 import { GetMetricDataCommand } from "@aws-sdk/client-cloudwatch";
 import { getCwClient } from "./clients";
-import type { MetricsDataPoint, AlbMetricsDataPoint, NlbMetricsDataPoint, Ec2MetricsDataPoint } from "./types";
+import type { MetricsDataPoint, AlbMetricsDataPoint, NlbMetricsDataPoint, Ec2MetricsDataPoint, RdsMetricsDataPoint } from "./types";
 import { log } from "@/lib/logger";
 
 // ─── Generic CloudWatch helper ───────────────────────────
@@ -208,5 +208,36 @@ export async function getEc2MetricsHistory(
             statusCheckFailed: Math.round(val(v, "statusCheck", i)),
         }),
         `EC2 ${instanceId}`,
+    );
+}
+
+export async function getRdsMetricsHistory(
+    dbInstanceIdentifier: string,
+): Promise<RdsMetricsDataPoint[]> {
+    const dims = [{ Name: "DBInstanceIdentifier" as const, Value: dbInstanceIdentifier }];
+    const ns = "AWS/RDS";
+    return fetchHistory(
+        [
+            { id: "cpu", namespace: ns, metricName: "CPUUtilization", dimensions: dims, stat: "Average" },
+            { id: "freeMem", namespace: ns, metricName: "FreeableMemory", dimensions: dims, stat: "Average" },
+            { id: "connections", namespace: ns, metricName: "DatabaseConnections", dimensions: dims, stat: "Average" },
+            { id: "readIops", namespace: ns, metricName: "ReadIOPS", dimensions: dims, stat: "Average" },
+            { id: "writeIops", namespace: ns, metricName: "WriteIOPS", dimensions: dims, stat: "Average" },
+            { id: "readLatency", namespace: ns, metricName: "ReadLatency", dimensions: dims, stat: "Average" },
+            { id: "writeLatency", namespace: ns, metricName: "WriteLatency", dimensions: dims, stat: "Average" },
+            { id: "freeStorage", namespace: ns, metricName: "FreeStorageSpace", dimensions: dims, stat: "Average" },
+        ],
+        (ts, i, v) => ({
+            timestamp: ts,
+            cpuUtilization: round1(val(v, "cpu", i)),
+            freeableMemoryBytes: Math.round(val(v, "freeMem", i)),
+            databaseConnections: Math.round(val(v, "connections", i)),
+            readIOPS: round1(val(v, "readIops", i)),
+            writeIOPS: round1(val(v, "writeIops", i)),
+            readLatencyMs: round1(val(v, "readLatency", i) * 1000),
+            writeLatencyMs: round1(val(v, "writeLatency", i) * 1000),
+            freeStorageSpaceBytes: Math.round(val(v, "freeStorage", i)),
+        }),
+        `RDS ${dbInstanceIdentifier}`,
     );
 }

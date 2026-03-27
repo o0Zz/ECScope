@@ -15,11 +15,6 @@ export function ThemeToggle() {
         localStorage.setItem("ecscope-theme", theme);
     }, [theme]);
 
-    // Set initial class on mount
-    useEffect(() => {
-        document.documentElement.classList.toggle("dark", getInitialTheme() === "dark");
-    }, []);
-
     return (
         <button
             onClick={() => setTheme((t) => (t === "dark" ? "light" : "dark"))}

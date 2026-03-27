@@ -45,12 +45,28 @@ export async function queryMetrics(
     );
 
     const results = res.MetricDataResults ?? [];
-    const first = results[0];
-    const timestamps = (first?.Timestamps ?? []).map((ts) => new Date(ts).getTime());
+
+    // Build a unified sorted set of all timestamps across all metrics
+    const tsSet = new Set<number>();
+    for (const r of results) {
+        for (const ts of r.Timestamps ?? []) {
+            tsSet.add(new Date(ts).getTime());
+        }
+    }
+    const timestamps = Array.from(tsSet).sort((a, b) => a - b);
+
+    // Build a lookup from timestamp -> value for each metric, then align to unified timestamps
     const values = new Map<string, number[]>();
     for (const r of results) {
-        values.set(r.Id ?? "", r.Values ?? []);
+        const tsToVal = new Map<number, number>();
+        const rawTs = r.Timestamps ?? [];
+        const rawVals = r.Values ?? [];
+        for (let i = 0; i < rawTs.length; i++) {
+            tsToVal.set(new Date(rawTs[i]).getTime(), rawVals[i] ?? 0);
+        }
+        values.set(r.Id ?? "", timestamps.map((ts) => tsToVal.get(ts) ?? 0));
     }
+
     return { timestamps, values };
 }
 

@@ -3,6 +3,7 @@ import type { ClusterConfig, StorageConfig } from "@/config/config";
 import type { ResolvedCredentials } from "@/config/aws-credentials";
 import { loadConfig, loadAwsFiles } from "@/config/config";
 import { resolveCredentials } from "@/config/aws-credentials";
+import { initAwsClients } from "@/api/clients";
 
 type ConnectionStatus = "idle" | "loading" | "connected" | "error";
 
@@ -58,7 +59,7 @@ export const useConfigStore = create<ConfigState>((set, get) => ({
             return;
         }
 
-        set({ status: "loading", error: null, activeCluster: clusterConfig });
+        set({ status: "loading", error: null });
         console.log("[config-store] connectToCluster: resolving credentials for profile", clusterConfig.profile);
 
         try {
@@ -66,12 +67,14 @@ export const useConfigStore = create<ConfigState>((set, get) => ({
             console.log("[config-store] connectToCluster: AWS files loaded");
             const credentials = await resolveCredentials(clusterConfig, awsFiles);
             console.log("[config-store] connectToCluster: credentials resolved", { region: credentials.region, hasAccessKey: !!credentials.accessKeyId });
-            set({ credentials, status: "connected" });
+            initAwsClients(credentials, clusterConfig.clusterName);
+            console.log("[config-store] connectToCluster: AWS clients initialized");
+            set({ credentials, activeCluster: clusterConfig, status: "connected" });
             console.log("[config-store] connectToCluster: status set to connected");
         } catch (err) {
             const message = err instanceof Error ? err.message : String(err);
             console.error("[config-store] connectToCluster ERROR", message);
-            set({ status: "error", error: message });
+            set({ status: "error", error: message, activeCluster: null, credentials: null });
         }
     },
 }));

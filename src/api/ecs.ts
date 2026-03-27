@@ -229,20 +229,27 @@ export async function listTasks(
     serviceName: string,
 ): Promise<EcsTask[]> {
     console.log("[aws] listTasks called", { clusterName, serviceName });
-    // Fetch both RUNNING and STOPPED tasks
-    const [runningRes, stoppedRes] = await Promise.all([
-        getEcsClient().send(
-            new ListTasksCommand({ cluster: clusterName, serviceName, desiredStatus: "RUNNING" }),
-        ),
-        getEcsClient().send(
-            new ListTasksCommand({ cluster: clusterName, serviceName, desiredStatus: "STOPPED" }),
-        ),
+
+    // Paginate both RUNNING and STOPPED task ARNs
+    async function paginateTaskArns(desiredStatus: "RUNNING" | "STOPPED"): Promise<string[]> {
+        const arns: string[] = [];
+        let nextToken: string | undefined;
+        do {
+            const res = await getEcsClient().send(
+                new ListTasksCommand({ cluster: clusterName, serviceName, desiredStatus, nextToken }),
+            );
+            if (res.taskArns) arns.push(...res.taskArns);
+            nextToken = res.nextToken;
+        } while (nextToken);
+        return arns;
+    }
+
+    const [runningArns, stoppedArns] = await Promise.all([
+        paginateTaskArns("RUNNING"),
+        paginateTaskArns("STOPPED"),
     ]);
 
-    const taskArns = [
-        ...(runningRes.taskArns ?? []),
-        ...(stoppedRes.taskArns ?? []),
-    ];
+    const taskArns = [...runningArns, ...stoppedArns];
     if (taskArns.length === 0) return [];
 
     const allTasks: EcsTask[] = [];
@@ -589,42 +596,56 @@ export async function listContainerInstances(
     clusterName: string,
 ): Promise<ContainerInstance[]> {
     console.log("[aws] listContainerInstances called", { clusterName });
-    const listRes = await getEcsClient().send(
-        new ListContainerInstancesCommand({ cluster: clusterName }),
-    );
 
-    const ciArns = listRes.containerInstanceArns ?? [];
+    // Paginate all container instance ARNs
+    const ciArns: string[] = [];
+    let nextToken: string | undefined;
+    do {
+        const listRes = await getEcsClient().send(
+            new ListContainerInstancesCommand({ cluster: clusterName, nextToken }),
+        );
+        if (listRes.containerInstanceArns) ciArns.push(...listRes.containerInstanceArns);
+        nextToken = listRes.nextToken;
+    } while (nextToken);
+
     if (ciArns.length === 0) return [];
 
-    const descRes = await getEcsClient().send(
-        new DescribeContainerInstancesCommand({
-            cluster: clusterName,
-            containerInstances: ciArns,
-        }),
-    );
+    // DescribeContainerInstances supports up to 100 per call
+    const allInstances: ContainerInstance[] = [];
+    for (let i = 0; i < ciArns.length; i += 100) {
+        const batch = ciArns.slice(i, i + 100);
+        const descRes = await getEcsClient().send(
+            new DescribeContainerInstancesCommand({
+                cluster: clusterName,
+                containerInstances: batch,
+            }),
+        );
 
-    return (descRes.containerInstances ?? []).map((ci) => {
-        const cpuReg = ci.registeredResources?.find((r) => r.name === "CPU");
-        const memReg = ci.registeredResources?.find((r) => r.name === "MEMORY");
-        const cpuRem = ci.remainingResources?.find((r) => r.name === "CPU");
-        const memRem = ci.remainingResources?.find((r) => r.name === "MEMORY");
+        for (const ci of descRes.containerInstances ?? []) {
+            const cpuReg = ci.registeredResources?.find((r) => r.name === "CPU");
+            const memReg = ci.registeredResources?.find((r) => r.name === "MEMORY");
+            const cpuRem = ci.remainingResources?.find((r) => r.name === "CPU");
+            const memRem = ci.remainingResources?.find((r) => r.name === "MEMORY");
 
-        return {
-            containerInstanceArn: ci.containerInstanceArn ?? "",
-            ec2InstanceId: ci.ec2InstanceId ?? "",
-            instanceType: ci.attributes?.find((a) => a.name === "ecs.instance-type")?.value ?? "unknown",
-            status: ci.status ?? "UNKNOWN",
-            runningTasksCount: ci.runningTasksCount ?? 0,
-            pendingTasksCount: ci.pendingTasksCount ?? 0,
-            cpuRegistered: cpuReg?.integerValue ?? 0,
-            cpuAvailable: cpuRem?.integerValue ?? 0,
-            memoryRegistered: memReg?.integerValue ?? 0,
-            memoryAvailable: memRem?.integerValue ?? 0,
-            agentVersion: ci.versionInfo?.agentVersion ?? "",
-            launchType: "EC2" as const,
-            registeredAt: ci.registeredAt ? new Date(ci.registeredAt).getTime() : undefined,
-        };
-    });
+            allInstances.push({
+                containerInstanceArn: ci.containerInstanceArn ?? "",
+                ec2InstanceId: ci.ec2InstanceId ?? "",
+                instanceType: ci.attributes?.find((a) => a.name === "ecs.instance-type")?.value ?? "unknown",
+                status: ci.status ?? "UNKNOWN",
+                runningTasksCount: ci.runningTasksCount ?? 0,
+                pendingTasksCount: ci.pendingTasksCount ?? 0,
+                cpuRegistered: cpuReg?.integerValue ?? 0,
+                cpuAvailable: cpuRem?.integerValue ?? 0,
+                memoryRegistered: memReg?.integerValue ?? 0,
+                memoryAvailable: memRem?.integerValue ?? 0,
+                agentVersion: ci.versionInfo?.agentVersion ?? "",
+                launchType: "EC2" as const,
+                registeredAt: ci.registeredAt ? new Date(ci.registeredAt).getTime() : undefined,
+            });
+        }
+    }
+
+    return allInstances;
 }
 
 /**

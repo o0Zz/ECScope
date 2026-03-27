@@ -23,9 +23,12 @@ export async function execSsmCommand(
         throw new Error("SSM SendCommand did not return a command ID. Check IAM permissions for ssm:SendCommand.");
     }
 
-    // eslint-disable-next-line no-constant-condition
-    while (true) {
-        await new Promise((r) => setTimeout(r, 3000));
+    const pollIntervalMs = 3000;
+    const maxWaitMs = (timeoutSeconds + 30) * 1000; // SSM timeout + 30s grace for polling lag
+    const deadline = Date.now() + maxWaitMs;
+
+    while (Date.now() < deadline) {
+        await new Promise((r) => setTimeout(r, pollIntervalMs));
 
         try {
             const inv = await getSsmClient().send(
@@ -40,4 +43,6 @@ export async function execSsmCommand(
             if (!(e instanceof Error && e.name === "InvocationDoesNotExist")) throw e;
         }
     }
+
+    throw new Error(`SSM command ${commandId} timed out after ${maxWaitMs / 1000}s of polling`);
 }

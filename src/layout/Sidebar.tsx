@@ -1,6 +1,5 @@
 import { useNavigationStore } from "@/store/navigation";
 import { useConfigStore } from "@/store/config";
-import { initAwsClients } from "@/api";
 import { cn } from "@/lib/utils";
 import {
   Server,
@@ -43,19 +42,14 @@ export function Sidebar() {
 
   const handleSelectCluster = async (clusterName: string) => {
     console.log("[sidebar] handleSelectCluster:", clusterName);
-    // First connect + init AWS clients BEFORE selecting the cluster in nav
     await connectToCluster(clusterName);
-    const { status, credentials, activeCluster } = useConfigStore.getState();
-    console.log("[sidebar] after connectToCluster:", { status, hasCredentials: !!credentials, activeCluster: activeCluster?.clusterName });
-    if (status === "connected" && credentials && activeCluster) {
-      initAwsClients(credentials, activeCluster.clusterName);
-      console.log("[sidebar] AWS clients initialized for", activeCluster.clusterName);
+    const { status } = useConfigStore.getState();
+    if (status === "connected") {
+      selectCluster(clusterName);
+      console.log("[sidebar] cluster selected in navigation:", clusterName);
     } else {
-      console.warn("[sidebar] NOT initializing AWS clients — status:", status);
+      console.warn("[sidebar] connection failed — not selecting cluster");
     }
-    // NOW select the cluster — this triggers ServiceList to mount/query using AWS
-    selectCluster(clusterName);
-    console.log("[sidebar] cluster selected in navigation:", clusterName);
   };
 
   return (

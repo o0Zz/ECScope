@@ -12,6 +12,7 @@ function makeS3Client(creds: S3Credentials): S3Client {
         credentials: {
             accessKeyId: creds.accessKeyId,
             secretAccessKey: creds.secretAccessKey,
+            ...(creds.sessionToken ? { sessionToken: creds.sessionToken } : {}),
         },
     });
 }

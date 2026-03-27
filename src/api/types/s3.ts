@@ -2,6 +2,7 @@
 export interface S3Credentials {
     accessKeyId: string;
     secretAccessKey: string;
+    sessionToken?: string;
     region: string;
 }
 

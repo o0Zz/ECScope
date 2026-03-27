@@ -29,9 +29,8 @@ src/
 │   ├── cloudwatch.ts   # CloudWatch metric queries
 │   ├── ssm.ts          # SSM command send/poll
 │   ├── s3.ts           # S3 transfer helpers
-│   ├── database.ts     # RDS/Aurora (currently stubbed)
+│   ├── ec2.ts          # EC2 instance listing + SSM-driven file transfer
 │   ├── index.ts        # Barrel + ecsApi facade
-│   ├── ec2-commands/   # Diagnostics orchestrators (tcpdump, coredump, download/upload)
 │   └── types/          # Shared TypeScript types per domain
 ├── components/         # Reusable UI primitives (StatusBadge, MetricBar, MetricsChart, etc.)
 ├── config/
@@ -42,8 +41,8 @@ src/
 │   ├── services/       # ServiceList (list, status, CPU/RAM, one-click scaling)
 │   ├── tasks/          # TaskList (details, containers, env/secrets, ECS exec, docker logs)
 │   ├── albnlb/         # AlbNlbViewer (LBs, target groups, health, metrics)
-│   ├── nodes/          # NodeViewer + DiagnosticsDialog (EC2 instances, SSM, diagnostics)
-│   └── database/       # DatabaseDashboard (UI exists, backend stubbed)
+│   ├── nodes/          # NodeViewer (EC2 container instances, SSM, file transfer)
+│   └── ec2rds/         # Ec2RdsDashboard (VPC EC2 instances, metrics)
 ├── layout/
 │   ├── Sidebar.tsx     # Cluster list, connect flow, collapse
 │   ├── MainPanel.tsx   # Tab-based feature switching
@@ -56,7 +55,7 @@ src/
     ├── utils.ts        # cn() helper
     └── format.ts       # Formatting utilities
 src-tauri/
-├── src/lib.rs          # Tauri commands: read_app_config, read_aws_files, open_ssm_session, open_ecs_exec, open_ecs_logs
+├── src/lib.rs          # Tauri commands: read_app_config, read_aws_files, open_ssm_session, open_ecs_exec
 ├── src/main.rs         # Entry point
 ├── tauri.conf.json     # App config, CSP, bundling
 └── capabilities/       # Tauri permissions (filesystem, dialog, shell)
@@ -65,8 +64,8 @@ src-tauri/
 ## 🏗️ Architecture & Patterns
 
 ### State Management
-- **Config store** (`src/store/config.ts`): clusters, storage config, refreshIntervalMs, activeCluster, credentials, connection status/error. Actions: `initialize`, `connectToCluster`.
-- **Navigation store** (`src/store/navigation.ts`): selectedCluster, selectedService, selectedTaskArn, activeTab (services | tasks | albnlb | nodes | database), sidebarCollapsed. Actions: `selectCluster`, `selectService`, `selectTask`, `setActiveTab`, `toggleSidebar`, `goBack`.
+- **Config store** (`src/store/config.ts`): clusters, storage config, refreshIntervalMs, activeCluster, credentials, connection status/error. Actions: `initialize`, `connectToCluster` (includes AWS client initialization).
+- **Navigation store** (`src/store/navigation.ts`): selectedCluster, selectedService, selectedTaskArn, activeTab (services | tasks | albnlb | nodes | ec2rds), sidebarCollapsed. Actions: `selectCluster`, `selectService`, `selectTask`, `setActiveTab`, `toggleSidebar`, `goBack`.
 
 ### Data Fetching
 - TanStack Query for all reads with periodic refetch via `refetchInterval` from config store.
@@ -74,7 +73,7 @@ src-tauri/
 - Mutations use `useMutation` with targeted `queryClient.invalidateQueries`.
 
 ### API Layer
-- Singleton AWS clients initialized once in `src/api/clients.ts` via `initializeClients()`.
+- Singleton AWS clients initialized once in `src/api/clients.ts` via `initAwsClients()`.
 - Domain modules consume client getters (`getEcsClient()`, `getCwClient()`, etc.).
 - `src/api/index.ts` exports an `ecsApi` facade composing all domain modules.
 - Internal types in `src/api/types/` map AWS SDK shapes to app-specific interfaces.
@@ -84,9 +83,9 @@ src-tauri/
 - AWS credential resolution: reads `~/.aws/credentials` + `~/.aws/config` via Tauri command, parses INI, supports static credentials and STS role assumption.
 
 ### Diagnostics (SSM + S3)
-- EC2 commands orchestrate: SSM RunShellScript → poll completion → S3 transfer → local download via Tauri dialog/fs.
-- Features: tcpdump capture, coredump extraction, file download/upload.
-- Rust commands handle terminal sessions: `open_ssm_session`, `open_ecs_exec`, `open_ecs_logs`.
+- EC2 file transfer orchestrate: SSM RunShellScript → poll completion → S3 transfer → local download via Tauri dialog/fs.
+- Features: file download/upload between EC2 and S3.
+- Rust commands handle terminal sessions: `open_ssm_session`, `open_ecs_exec`.
 
 ### Navigation Flow
 1. Sidebar lists configured clusters → user clicks to connect
@@ -108,7 +107,7 @@ src-tauri/
 
 - Dark mode by default (theme toggle available)
 - Sidebar navigation with collapsible cluster list
-- Tab-based feature navigation (Services, Tasks, ALB/NLB, Nodes, Database)
+- Tab-based feature navigation (Services, Tasks, ALB/NLB, Nodes, EC2/RDS)
 - Tables for resource listing with inline actions
 - MetricsChart component for CloudWatch data visualization
 - StatusBadge for health/status indicators
@@ -122,7 +121,7 @@ src-tauri/
 - [x] Task inspector — details, containers, health, env/secrets, ECS exec, docker logs via SSM
 - [x] ALB/NLB viewer — load balancers, target groups, health checks, request/latency metrics
 - [x] Node viewer — EC2 container instances, SSM connect, diagnostics, file transfer
-- [x] Diagnostics — tcpdump, coredump, download/upload via SSM + S3
+- [x] Diagnostics — file download/upload via SSM + S3
 - [x] Metrics charting — generic framework with domain specializations (service, ALB, NLB)
 - [x] Multi-cluster config — multiple clusters with per-cluster profile/region
 - [x] AWS credential resolution — static credentials + STS role assumption
@@ -130,7 +129,7 @@ src-tauri/
 
 ## 🚧 Known Gaps / TODO
 
-- [ ] **Database dashboard** — UI scaffold exists but backend returns empty data (`src/api/database.ts` is stubbed)
+- [ ] **EC2/RDS dashboard** — EC2 instances shown, RDS backend not yet implemented
 
 ## 💡 Guidelines
 

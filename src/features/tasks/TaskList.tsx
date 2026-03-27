@@ -75,7 +75,7 @@ export function TaskList() {
           Edit Task Definition
         </button>
       </div>
-      <div className="overflow-hidden rounded-lg border border-border">
+      <div className="overflow-x-auto rounded-lg border border-border">
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-border bg-muted/50">
@@ -88,20 +88,20 @@ export function TaskList() {
               <th className="px-4 py-2.5 text-left font-medium text-muted-foreground">
                 Health
               </th>
-              <th className="px-4 py-2.5 text-left font-medium text-muted-foreground">
-                Launch Type
+              <th className="px-3 py-2.5 text-left font-medium text-muted-foreground">
+                Launch
               </th>
-              <th className="px-4 py-2.5 text-left font-medium text-muted-foreground">
-                CPU / Memory
+              <th className="px-3 py-2.5 text-left font-medium text-muted-foreground">
+                CPU/Mem
               </th>
-              <th className="px-4 py-2.5 text-left font-medium text-muted-foreground">
+              <th className="px-3 py-2.5 text-left font-medium text-muted-foreground">
                 Node
               </th>
-              <th className="px-4 py-2.5 text-left font-medium text-muted-foreground">
+              <th className="px-3 py-2.5 text-left font-medium text-muted-foreground">
                 Age
               </th>
-              <th className="px-4 py-2.5 text-left font-medium text-muted-foreground">
-                Containers
+              <th className="px-3 py-2.5 text-left font-medium text-muted-foreground" title="Containers">
+                #
               </th>
               <th className="w-10 px-4 py-2.5" />
             </tr>

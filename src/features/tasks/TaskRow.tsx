@@ -82,13 +82,13 @@ export function TaskRow({
                 <td className="px-4 py-3">
                     <StatusBadge status={task.healthStatus} />
                 </td>
-                <td className="px-4 py-3 text-muted-foreground">
+                <td className="px-3 py-3 text-muted-foreground">
                     {task.launchType}
                 </td>
-                <td className="px-4 py-3 font-mono text-xs text-muted-foreground">
+                <td className="px-3 py-3 font-mono text-xs text-muted-foreground whitespace-nowrap">
                     {task.cpu} / {task.memory} MB
                 </td>
-                <td className="px-4 py-3">
+                <td className="px-3 py-3">
                     {task.ec2InstanceId ? (
                         <div className="flex items-center gap-1.5">
                             <Server className="h-3.5 w-3.5 text-muted-foreground" />
@@ -98,10 +98,10 @@ export function TaskRow({
                         <span className="text-xs text-muted-foreground">Fargate</span>
                     )}
                 </td>
-                <td className="px-4 py-3 text-xs text-muted-foreground">
+                <td className="px-3 py-3 text-xs text-muted-foreground whitespace-nowrap">
                     {formatAge(task.startedAt)}
                 </td>
-                <td className="px-4 py-3 text-muted-foreground">
+                <td className="px-3 py-3 text-muted-foreground">
                     {task.containers.length}
                 </td>
                 <td className="px-4 py-3">

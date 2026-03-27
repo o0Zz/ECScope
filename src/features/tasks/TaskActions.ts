@@ -1,4 +1,6 @@
-import { invoke } from "@tauri-apps/api/core";
+import { invoke, createLogger } from "@/lib/logger";
+
+const logger = createLogger("TaskActions");
 
 interface TaskActionParams {
     profile: string;
@@ -19,7 +21,7 @@ export function openEcsExec(
             profile: params.profile,
             region: params.region,
         },
-    }).catch((err) => console.error("[ECScope] ECS exec failed:", err));
+    }).catch((err) => logger.error(`ECS exec into ${containerName} on ${taskId} failed`, err));
 }
 
 export function openTaskLogs(
@@ -36,7 +38,7 @@ export function openTaskLogs(
             profile: params.profile,
             region: params.region,
         },
-    }).catch((err) => console.error("[ECScope] ECS logs failed:", err));
+    }).catch((err) => logger.error(`Docker logs for ${containerName} failed`, err));
 }
 
 export function openHttpCapture(
@@ -61,5 +63,5 @@ export function openHttpCapture(
             profile: params.profile,
             region: params.region,
         },
-    }).catch((err) => console.error("[ECScope] HTTP capture failed:", err));
+    }).catch((err) => logger.error(`HTTP capture for ${containerName} failed`, err));
 }

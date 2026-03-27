@@ -5,6 +5,9 @@ import { copyFileFromEc2ToS3, copyFileFromS3ToEc2 } from "@/api/ec2";
 import { downloadFromS3, deleteFromS3, uploadToS3 } from "@/api/s3";
 import { save, open } from "@tauri-apps/plugin-dialog";
 import { writeFile, readFile } from "@tauri-apps/plugin-fs";
+import { createLogger } from "@/lib/logger";
+
+const logger = createLogger("FileTransfer");
 
 type TransferMode = "download" | "upload";
 
@@ -74,7 +77,7 @@ export function useFileTransfer(storage: StorageConfig | null, activeCluster: Cl
             await deleteFromS3(creds, storage!.s3Bucket!, s3Key);
             setState({ mode: null, instanceId: null, isPending: false, error: null });
         } catch (err) {
-            console.error("[ECScope] Download from EC2 failed:", err);
+            logger.error(`Download from ${instanceId} failed`, err);
             setState((s) => ({
                 ...s,
                 isPending: false,
@@ -110,7 +113,7 @@ export function useFileTransfer(storage: StorageConfig | null, activeCluster: Cl
             });
             setState({ mode: null, instanceId: null, isPending: false, error: null });
         } catch (err) {
-            console.error("[ECScope] Upload to EC2 failed:", err);
+            logger.error(`Upload to ${instanceId} failed`, err);
             setState((s) => ({
                 ...s,
                 isPending: false,

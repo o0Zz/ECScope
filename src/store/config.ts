@@ -4,6 +4,7 @@ import type { ResolvedCredentials } from "@/config/aws-credentials";
 import { loadConfig, loadAwsFiles } from "@/config/config";
 import { resolveCredentials } from "@/config/aws-credentials";
 import { initAwsClients } from "@/api/clients";
+import { log } from "@/lib/logger";
 
 type ConnectionStatus = "idle" | "loading" | "connected" | "error";
 
@@ -36,44 +37,44 @@ export const useConfigStore = create<ConfigState>((set, get) => ({
 
     initialize: async () => {
         if (get().status === "loading") return;
-        console.log("[config-store] initialize: loading configs...");
+        log.config.info(`Loading configuration...`);
         set({ status: "loading", error: null });
 
         try {
             const config = await loadConfig();
-            console.log("[config-store] initialize: loaded clusters", config.clusters.map(c => c.clusterName), "storage:", !!config.storage, "refresh:", config.refreshPeriodSeconds);
+            log.config.info(`Loaded ${config.clusters.length} clusters (refresh: ${config.refreshPeriodSeconds}s)`);
             set({ clusters: config.clusters, storage: config.storage, refreshIntervalMs: config.refreshPeriodSeconds * 1000, status: "idle" });
         } catch (err) {
             const message = err instanceof Error ? err.message : String(err);
-            console.error("[config-store] initialize ERROR", message);
+            log.config.error(`Failed to load configuration: ${message}`);
             set({ status: "error", error: message });
         }
     },
 
     connectToCluster: async (clusterName: string) => {
-        console.log("[config-store] connectToCluster:", clusterName);
+        log.config.info(`Connecting to cluster ${clusterName}`);
         const { clusters } = get();
         const clusterConfig = clusters.find((c) => c.clusterName === clusterName);
         if (!clusterConfig) {
-            console.warn("[config-store] connectToCluster: cluster not found in config!", { clusterName, available: clusters.map(c => c.clusterName) });
+            log.config.warn(`Cluster ${clusterName} not found in config`);
             return;
         }
 
         set({ status: "loading", error: null });
-        console.log("[config-store] connectToCluster: resolving credentials for profile", clusterConfig.profile);
+        log.config.debug(`Resolving credentials for profile ${clusterConfig.profile}`);
 
         try {
             const awsFiles = await loadAwsFiles();
-            console.log("[config-store] connectToCluster: AWS files loaded");
+            log.config.debug(`AWS config files loaded`);
             const credentials = await resolveCredentials(clusterConfig, awsFiles);
-            console.log("[config-store] connectToCluster: credentials resolved", { region: credentials.region, hasAccessKey: !!credentials.accessKeyId });
+            log.config.info(`Credentials resolved for region ${credentials.region}`);
             initAwsClients(credentials, clusterConfig.clusterName);
-            console.log("[config-store] connectToCluster: AWS clients initialized");
+            log.config.info(`AWS clients initialized`);
             set({ credentials, activeCluster: clusterConfig, status: "connected" });
-            console.log("[config-store] connectToCluster: status set to connected");
+            log.config.info(`Connected to cluster ${clusterName}`);
         } catch (err) {
             const message = err instanceof Error ? err.message : String(err);
-            console.error("[config-store] connectToCluster ERROR", message);
+            log.config.error(`Failed to connect to cluster ${clusterName}: ${message}`);
             set({ status: "error", error: message, activeCluster: null, credentials: null });
         }
     },

@@ -63,22 +63,14 @@ export function ServiceList() {
   const queryClient = useQueryClient();
   const [confirmRedeploy, setConfirmRedeploy] = useState<string | null>(null);
 
-  const { data: services, isLoading, error } = useQuery({
+  const { data: services, isLoading } = useQuery({
     queryKey: ["services", selectedCluster],
     queryFn: () => {
-      console.log("[ServiceList] queryFn called for cluster:", selectedCluster);
       return ecsApi.listServices(selectedCluster!);
     },
     enabled: !!selectedCluster,
     refetchInterval: refreshIntervalMs,
   });
-
-  if (error) {
-    console.error("[ServiceList] query error:", error);
-  }
-  if (services) {
-    console.log("[ServiceList] services loaded:", services.length);
-  }
 
   const scaleMutation = useMutation({
     mutationFn: ({ serviceName, desiredCount }: { serviceName: string; desiredCount: number }) =>

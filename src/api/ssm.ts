@@ -3,6 +3,7 @@ import {
     GetCommandInvocationCommand,
 } from "@aws-sdk/client-ssm";
 import { getSsmClient } from "./clients";
+import { log } from "@/lib/logger";
 
 /** Send an SSM RunShellScript command and wait for completion. Returns stdout. */
 export async function execSsmCommand(
@@ -10,6 +11,8 @@ export async function execSsmCommand(
     commands: string[],
     timeoutSeconds = 120,
 ): Promise<string> {
+    log.ssm.debug(`Executing SSM command on instance ${instanceId} with commands: ${commands.join(", ")}`);
+
     const res = await getSsmClient().send(
         new SendCommandCommand({
             InstanceIds: [instanceId],
@@ -37,6 +40,7 @@ export async function execSsmCommand(
 
             if (inv.Status === "Success") return inv.StandardOutputContent ?? "";
             if (inv.Status === "Failed" || inv.Status === "Cancelled" || inv.Status === "TimedOut") {
+                log.ssm.error(`SSM command failed: ${inv.StandardErrorContent || inv.StatusDetails || `Command ${inv.Status}`}`);
                 throw new Error(inv.StandardErrorContent || inv.StatusDetails || `Command ${inv.Status}`);
             }
         } catch (e: unknown) {
@@ -44,5 +48,6 @@ export async function execSsmCommand(
         }
     }
 
+    log.ssm.error(`SSM command ${commandId} timed out after ${maxWaitMs / 1000}s of polling`);
     throw new Error(`SSM command ${commandId} timed out after ${maxWaitMs / 1000}s of polling`);
 }

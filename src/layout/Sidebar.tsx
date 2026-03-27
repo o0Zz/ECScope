@@ -1,12 +1,15 @@
 import { useNavigationStore } from "@/store/navigation";
 import { useConfigStore } from "@/store/config";
 import { cn } from "@/lib/utils";
+import { createLogger } from "@/lib/logger";
 import {
   Server,
   ChevronLeft,
   ChevronRight,
   Box,
 } from "lucide-react";
+
+const logger = createLogger("Sidebar");
 
 function SidebarFooter() {
   const { activeCluster, credentials, status } = useConfigStore();
@@ -41,14 +44,13 @@ export function Sidebar() {
   const { clusters, connectToCluster } = useConfigStore();
 
   const handleSelectCluster = async (clusterName: string) => {
-    console.log("[sidebar] handleSelectCluster:", clusterName);
     await connectToCluster(clusterName);
     const { status } = useConfigStore.getState();
     if (status === "connected") {
       selectCluster(clusterName);
-      console.log("[sidebar] cluster selected in navigation:", clusterName);
+      logger.info(`Cluster selected: ${clusterName}`);
     } else {
-      console.warn("[sidebar] connection failed — not selecting cluster");
+      logger.warn(`Connection failed — not selecting cluster: ${clusterName}`);
     }
   };
 

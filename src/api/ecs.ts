@@ -23,6 +23,7 @@ import type {
     ContainerInstance,
 } from "./types";
 import { DescribeInstancesCommand, DescribeSubnetsCommand } from "@aws-sdk/client-ec2";
+import { log } from "@/lib/logger";
 
 // ─── Helpers ──────────────────────────────────────────────
 
@@ -32,6 +33,8 @@ async function fetchServiceMetrics(
     serviceName: string,
 ): Promise<{ cpuUtilization: number; memoryUtilization: number }> {
     try {
+        log.ecs.debug(`Fetching metrics for ${clusterName}/${serviceName}...`);
+
         const dims = [
             { Name: "ClusterName" as const, Value: clusterName },
             { Name: "ServiceName" as const, Value: serviceName },
@@ -49,28 +52,27 @@ async function fetchServiceMetrics(
         const cpu = cpuVals.length > 0 ? Math.round(cpuVals[0] * 10) / 10 : 0;
         const mem = memVals.length > 0 ? Math.round(memVals[0] * 10) / 10 : 0;
 
-        console.log(`[aws] metrics for ${serviceName}:`, { cpu, mem });
+
         return { cpuUtilization: cpu, memoryUtilization: mem };
     } catch (err) {
-        console.warn(`[aws] Failed to fetch metrics for ${serviceName}:`, err);
+        log.ecs.warn(`Failed to fetch metrics for ${clusterName}/${serviceName}`, err);
         return { cpuUtilization: 0, memoryUtilization: 0 };
     }
 }
 
 /** Paginate ListServices (returns all service ARNs) */
 export async function listAllServiceArns(cluster: string): Promise<string[]> {
-    console.log("[aws] listAllServiceArns called", { cluster });
+    log.ecs.debug(`Listing service ARNs for cluster ${cluster}`);
     const arns: string[] = [];
     let nextToken: string | undefined;
     do {
         const res = await getEcsClient().send(
             new ListServicesCommand({ cluster, nextToken }),
         );
-        console.log("[aws] ListServicesCommand response", { serviceArns: res.serviceArns, nextToken: res.nextToken });
         if (res.serviceArns) arns.push(...res.serviceArns);
         nextToken = res.nextToken;
     } while (nextToken);
-    console.log("[aws] listAllServiceArns result", { totalArns: arns.length, arns });
+    log.ecs.debug(`Found ${arns.length} service ARNs for cluster ${cluster}`);
     return arns;
 }
 
@@ -96,14 +98,12 @@ export async function describeServicesBatched(
 // ─── API Implementation ──────────────────────────────────
 
 export async function listServices(clusterName: string): Promise<EcsService[]> {
-    console.log("[aws] listServices called", { clusterName, hasEcsClient: !!getEcsClient() });
+    log.ecs.debug(`Listing services for cluster ${clusterName}`);
     try {
         const arns = await listAllServiceArns(clusterName);
-        console.log("[aws] listServices got arns", { count: arns.length });
-        if (arns.length === 0) { console.log("[aws] listServices: no service ARNs found, returning []"); return []; }
+        if (arns.length === 0) { log.ecs.debug(`No services found for cluster ${clusterName}`); return []; }
 
         const rawServices = await describeServicesBatched(clusterName, arns);
-        console.log("[aws] listServices described services", { count: rawServices.length });
 
         // Fetch CloudWatch metrics for all services in parallel
         const metricsResults = await Promise.all(
@@ -148,7 +148,7 @@ export async function listServices(clusterName: string): Promise<EcsService[]> {
             };
         });
     } catch (err) {
-        console.error("[aws] listServices ERROR", err);
+        log.ecs.error(`Failed to list services for cluster ${clusterName}`, err);
         throw err;
     }
 }
@@ -157,7 +157,7 @@ export async function getService(
     clusterName: string,
     serviceName: string,
 ): Promise<EcsService | undefined> {
-    console.log("[aws] getService called", { clusterName, serviceName });
+    log.ecs.debug(`Getting service ${clusterName}/${serviceName}...`);
     const res = await getEcsClient().send(
         new DescribeServicesCommand({
             cluster: clusterName,
@@ -208,7 +208,7 @@ export async function getServiceEvents(
     serviceName: string,
     limit = 20,
 ): Promise<EcsServiceEvent[]> {
-    console.log("[aws] getServiceEvents called", { clusterName, serviceName, limit });
+    log.ecs.debug(`Fetching last ${limit} events for ${clusterName}/${serviceName}`);
     const res = await getEcsClient().send(
         new DescribeServicesCommand({
             cluster: clusterName,
@@ -228,7 +228,7 @@ export async function listTasks(
     clusterName: string,
     serviceName: string,
 ): Promise<EcsTask[]> {
-    console.log("[aws] listTasks called", { clusterName, serviceName });
+    log.ecs.debug(`Listing tasks for ${clusterName}/${serviceName}`);
 
     // Paginate both RUNNING and STOPPED task ARNs
     async function paginateTaskArns(desiredStatus: "RUNNING" | "STOPPED"): Promise<string[]> {
@@ -346,7 +346,7 @@ export async function listTasks(
                 }
                 tdEnvMap.set(tdArn, containerEnvs);
             } catch (err) {
-                console.warn(`[aws] Failed to describe task definition ${tdArn}:`, err);
+                log.ecs.warn(`Failed to describe task definition ${tdArn}`, err);
             }
         }),
     );
@@ -399,7 +399,7 @@ export async function listTasks(
                 if (ref) allSecretRefs.set(ref, p.Value ?? "");
             }
         } catch (err) {
-            console.warn("[aws] Failed to resolve SSM parameters:", batch, err);
+            log.ecs.warn(`Failed to resolve SSM parameters [${batch.join(", ")}]`, err);
         }
     }
 
@@ -426,7 +426,7 @@ export async function listTasks(
                 }
                 allSecretRefs.set(arn, value);
             } catch (err) {
-                console.warn("[aws] Failed to resolve Secrets Manager secret:", arn, err);
+                log.ecs.warn(`Failed to resolve secret ${arn}`, err);
             }
         }),
     );
@@ -446,7 +446,7 @@ export async function listTasks(
 export async function getClusterMetrics(
     clusterName: string,
 ): Promise<ClusterMetrics> {
-    console.log("[aws] getClusterMetrics called", { clusterName });
+    log.ecs.debug(`Fetching cluster metrics for ${clusterName}`);
     const services = await listServices(clusterName);
 
     let totalCpu = 0;
@@ -469,8 +469,6 @@ export async function getClusterMetrics(
     const cpuTotal = avgCpu > 0 ? Math.round(totalCpuReserved / (avgCpu / 100)) : totalCpuReserved * 2;
     const memTotal = avgMem > 0 ? Math.round(totalMemReserved / (avgMem / 100)) : totalMemReserved * 2;
 
-    console.log("[aws] getClusterMetrics result", { avgCpu, avgMem, totalCpuReserved, totalMemReserved });
-
     return {
         cpuUtilization: avgCpu,
         memoryUtilization: avgMem,
@@ -486,7 +484,7 @@ export async function updateServiceDesiredCount(
     serviceName: string,
     desiredCount: number,
 ): Promise<EcsService> {
-    console.log("[aws] updateServiceDesiredCount called", { clusterName, serviceName, desiredCount });
+    log.ecs.info(`Updating desired count for service ${clusterName}/${serviceName} to ${desiredCount}`);
     await getEcsClient().send(
         new UpdateServiceCommand({
             cluster: clusterName,
@@ -505,7 +503,7 @@ export async function stopTask(
     taskArn: string,
     reason = "Stopped via ECScope",
 ): Promise<void> {
-    console.log("[aws] stopTask called", { clusterName, taskArn });
+    log.ecs.info(`Stopping task ${taskArn} on cluster ${clusterName}`);
     await getEcsClient().send(
         new StopTaskCommand({
             cluster: clusterName,
@@ -520,7 +518,7 @@ export async function rollbackService(
     serviceName: string,
     taskDefinition: string,
 ): Promise<void> {
-    console.log("[aws] rollbackService called", { clusterName, serviceName, taskDefinition });
+    log.ecs.info(`Rolling back ${clusterName}/${serviceName} to ${taskDefinition}`);
     await getEcsClient().send(
         new UpdateServiceCommand({
             cluster: clusterName,
@@ -534,7 +532,7 @@ export async function forceNewDeployment(
     clusterName: string,
     serviceName: string,
 ): Promise<void> {
-    console.log("[aws] forceNewDeployment called", { clusterName, serviceName });
+    log.ecs.info(`Forcing new deployment for ${clusterName}/${serviceName}`);
     await getEcsClient().send(
         new UpdateServiceCommand({
             cluster: clusterName,
@@ -548,7 +546,7 @@ export async function forceNewDeployment(
 export async function getTaskDefinitionJson(
     taskDefinition: string,
 ): Promise<Record<string, unknown>> {
-    console.log("[aws] getTaskDefinitionJson called", { taskDefinition });
+    log.ecs.debug(`Fetching task definition JSON for ${taskDefinition}`);
     const res = await getEcsClient().send(
         new DescribeTaskDefinitionCommand({ taskDefinition }),
     );
@@ -574,7 +572,7 @@ export async function registerAndDeployTaskDefinition(
     serviceName: string,
     taskDefJson: Record<string, unknown>,
 ): Promise<string> {
-    console.log("[aws] registerAndDeployTaskDefinition called", { clusterName, serviceName });
+    log.ecs.info(`Registering and deploying task definition for ${clusterName}/${serviceName}`);
     const regRes = await getEcsClient().send(
         new RegisterTaskDefinitionCommand(taskDefJson as any),
     );
@@ -595,7 +593,7 @@ export async function registerAndDeployTaskDefinition(
 export async function listContainerInstances(
     clusterName: string,
 ): Promise<ContainerInstance[]> {
-    console.log("[aws] listContainerInstances called", { clusterName });
+    log.ecs.debug(`Listing container instances for cluster ${clusterName}`);
 
     // Paginate all container instance ARNs
     const ciArns: string[] = [];
@@ -653,7 +651,7 @@ export async function listContainerInstances(
  * or by inspecting the service network configuration subnets.
  */
 export async function getClusterVpcId(clusterName: string): Promise<string | null> {
-    console.log("[aws] getClusterVpcId called", { clusterName });
+    log.ecs.debug(`Resolving VPC for cluster ${clusterName}`);
     // Try to get VPC from container instances first (EC2 launch type)
     const listRes = await getEcsClient().send(
         new ListContainerInstancesCommand({ cluster: clusterName }),
@@ -693,6 +691,6 @@ export async function getClusterVpcId(clusterName: string): Promise<string | nul
         }
     }
 
-    console.log("[aws] getClusterVpcId: could not determine VPC");
+    log.ecs.warn(`Could not determine VPC for cluster ${clusterName}`);
     return null;
 }

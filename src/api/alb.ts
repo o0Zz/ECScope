@@ -7,17 +7,18 @@ import { getElbv2Client } from "./clients";
 import { queryMetrics } from "./cloudwatch";
 import { getClusterVpcId } from "./ecs";
 import type { AlbInfo, LoadBalancerType } from "./types";
+import { log } from "@/lib/logger";
 
 export async function listAlbs(clusterName: string): Promise<AlbInfo[]> {
-    console.log("[aws] listAlbs called", { clusterName });
+    log.alb.debug(`Listing ALB/NLBs for cluster ${clusterName}`);
 
     // 1. Resolve the VPC for this cluster
     const vpcId = await getClusterVpcId(clusterName);
     if (!vpcId) {
-        console.warn("[aws] listAlbs: could not determine VPC for cluster", clusterName);
+        log.alb.warn(`Could not determine VPC for cluster ${clusterName}`);
         return [];
     }
-    console.log("[aws] listAlbs: cluster VPC =", vpcId);
+    log.alb.debug(`Cluster ${clusterName} VPC resolved to ${vpcId}`);
 
     // 2. List ALL load balancers (paginated) and filter by VPC
     const allLbs: any[] = [];
@@ -31,7 +32,7 @@ export async function listAlbs(clusterName: string): Promise<AlbInfo[]> {
     } while (marker);
 
     const vpcLbs = allLbs.filter((lb) => lb.VpcId === vpcId);
-    console.log("[aws] listAlbs: found", vpcLbs.length, "LBs in VPC", vpcId, "out of", allLbs.length, "total");
+    log.alb.debug(`Found ${vpcLbs.length}/${allLbs.length} LBs in VPC ${vpcId}`);
     if (vpcLbs.length === 0) return [];
 
     // 3. Get ALL target groups for these load balancers
@@ -50,7 +51,7 @@ export async function listAlbs(clusterName: string): Promise<AlbInfo[]> {
     const relevantTgs = allTargetGroups.filter((tg) =>
         (tg.LoadBalancerArns ?? []).some((arn: string) => lbArnSet.has(arn)),
     );
-    console.log("[aws] listAlbs: found", relevantTgs.length, "target groups for VPC LBs");
+    log.alb.debug(`Found ${relevantTgs.length} target groups for VPC LBs`);
 
     // 4. Get target health for each target group in parallel
     const tgHealthMap = new Map<string, { healthyCount: number; unhealthyCount: number; targets: { targetId: string; port: number; health: string; reason: string; description: string }[] }>();
@@ -76,7 +77,7 @@ export async function listAlbs(clusterName: string): Promise<AlbInfo[]> {
                 });
                 tgHealthMap.set(tg.TargetGroupArn, { healthyCount, unhealthyCount, targets });
             } catch (e) {
-                console.warn("[aws] Failed to get target health for", tg.TargetGroupArn, e);
+                log.alb.warn(`Failed to get target health for ${tg.TargetGroupArn}`, e);
                 tgHealthMap.set(tg.TargetGroupArn, { healthyCount: 0, unhealthyCount: 0, targets: [] });
             }
         }),
@@ -148,7 +149,7 @@ export async function listAlbs(clusterName: string): Promise<AlbInfo[]> {
                     processedBytes = bytesVals.length > 0 ? Math.round(bytesVals[0]) : 0;
                 }
             } catch (e) {
-                console.warn("[aws] Failed to get LB metrics for", lbName, e);
+                log.alb.warn(`Failed to get metrics for LB ${lbName}`, e);
             }
 
             return {

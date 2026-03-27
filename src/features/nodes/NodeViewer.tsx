@@ -6,9 +6,11 @@ import { StatusBadge } from "@/components/StatusBadge";
 import { MetricBar } from "@/components/MetricBar";
 import { Monitor, Terminal, Download, Upload } from "lucide-react";
 import { formatAge } from "@/lib/format";
-import { invoke } from "@tauri-apps/api/core";
+import { invoke, createLogger } from "@/lib/logger";
 import { useFileTransfer } from "./useFileTransfer";
 import { FileTransferDialog } from "./FileTransferDialog";
+
+const logger = createLogger("NodeViewer");
 
 export function NodeViewer() {
   const { selectedCluster } = useNavigationStore();
@@ -117,7 +119,7 @@ export function NodeViewer() {
                               profile: activeCluster?.profile ?? "",
                               region: activeCluster?.region ?? "us-east-1",
                             },
-                          }).catch((err) => console.error("[ECScope] SSM connect failed:", err));
+                          }).catch((err) => logger.error(`SSM connect to ${inst.ec2InstanceId} failed`, err));
                         }}
                         className="rounded-md border border-border px-2 py-1 text-xs font-medium text-foreground hover:bg-accent transition-colors flex items-center gap-1"
                         title={`SSM connect to ${inst.ec2InstanceId}`}

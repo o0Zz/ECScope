@@ -1,6 +1,7 @@
 import { GetMetricDataCommand } from "@aws-sdk/client-cloudwatch";
 import { getCwClient } from "./clients";
 import type { MetricsDataPoint, AlbMetricsDataPoint, NlbMetricsDataPoint, Ec2MetricsDataPoint } from "./types";
+import { log } from "@/lib/logger";
 
 // ─── Generic CloudWatch helper ───────────────────────────
 
@@ -83,13 +84,14 @@ async function fetchHistory<T extends { timestamp: number }>(
     mapper: (ts: number, i: number, values: Map<string, number[]>) => T,
     label: string,
 ): Promise<T[]> {
+    log.cloudwatch.debug(`Fetching ${label} metrics history`);
     try {
         const { timestamps, values } = await queryMetrics(queries, 300, ONE_DAY_MS);
         return timestamps
             .map((ts, i) => mapper(ts, i, values))
             .sort((a, b) => a.timestamp - b.timestamp);
     } catch (err) {
-        console.warn(`[aws] Failed to fetch ${label} metrics history:`, err);
+        log.cloudwatch.warn(`Failed to fetch ${label} metrics history`, err);
         return [];
     }
 }

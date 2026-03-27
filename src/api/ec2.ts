@@ -2,6 +2,7 @@ import { DescribeInstancesCommand } from "@aws-sdk/client-ec2";
 import { getEc2Client } from "./clients";
 import { execSsmCommand } from "./ssm";
 import type { VpcEc2Instance, S3Credentials } from "./types";
+import { log } from "@/lib/logger";
 
 /**
  * List EC2 instances, optionally filtered by VPC ID.
@@ -9,7 +10,7 @@ import type { VpcEc2Instance, S3Credentials } from "./types";
 export async function listEc2(
     filterVpcId?: string
 ): Promise<VpcEc2Instance[]> {
-    console.log("[aws] listEc2 called", { filterVpcId });
+    log.ec2.debug(`Listing EC2 instances${filterVpcId ? ` in VPC ${filterVpcId}` : ""}`);
     const filters = [
         { Name: "instance-state-name", Values: ["running", "stopped", "stopping", "pending"] },
     ];
@@ -48,7 +49,7 @@ export async function listEc2(
         nextToken = res.NextToken;
     } while (nextToken);
 
-    console.log("[aws] listEc2 result", { count: instances.length });
+    log.ec2.debug(`Found ${instances.length} EC2 instances`);
     return instances;
 }
 
@@ -100,7 +101,7 @@ export async function copyFileFromS3ToEc2(params: {
         `echo "UPLOADED=${params.remotePath}"`,
     ];
 
-    console.log(`[ec2] SSM: pulling s3://${params.s3Bucket}/${params.s3Key} to ${params.remotePath} on ${params.instanceId} ...`);
+    log.ec2.debug(`Pulling s3://${params.s3Bucket}/${params.s3Key} to ${params.remotePath} on ${params.instanceId}`);
     const stdout = await execSsmCommand(params.instanceId, commands);
 
     if (!stdout.includes("UPLOADED=")) {

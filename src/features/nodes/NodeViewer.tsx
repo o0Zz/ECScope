@@ -1,6 +1,8 @@
 import { useQuery } from "@tanstack/react-query";
-import { ecsApi, ec2Commands } from "@/api";
+import { ecsApi } from "@/api";
 import type { S3Credentials } from "@/api/types";
+import { copyFileFromEc2ToS3, copyFileFromS3ToEc2 } from "@/api/ec2";
+import { downloadFromS3, deleteFromS3, uploadToS3 } from "@/api/s3";
 import { useNavigationStore } from "@/store/navigation";
 import { useConfigStore } from "@/store/config";
 import { StatusBadge } from "@/components/StatusBadge";
@@ -8,6 +10,8 @@ import { MetricBar } from "@/components/MetricBar";
 import { Monitor, Terminal, Download, Upload } from "lucide-react";
 import { formatAge } from "@/lib/format";
 import { invoke } from "@tauri-apps/api/core";
+import { save, open } from "@tauri-apps/plugin-dialog";
+import { writeFile, readFile } from "@tauri-apps/plugin-fs";
 
 export function NodeViewer() {
   const { selectedCluster } = useNavigationStore();
@@ -25,13 +29,27 @@ export function NodeViewer() {
   const handleDownloadFromEc2 = async (instanceId: string) => {
     const remotePath = window.prompt("Remote file path on EC2 to download:");
     if (!remotePath?.trim()) return;
+
+    const filename = remotePath.trim().split("/").pop() ?? "download";
+    const ext = filename.includes(".") ? filename.split(".").pop()! : "*";
+    const savePath = await save({
+      defaultPath: filename,
+      filters: [{ name: "File", extensions: [ext] }],
+      title: "Save File",
+    });
+    if (!savePath) return;
+
     try {
-      await ec2Commands.downloadEc2File({
+      const creds = getS3Creds();
+      const s3Key = await copyFileFromEc2ToS3({
         instanceId,
-        credentials: getS3Creds(),
+        credentials: creds,
         s3Bucket: storage!.s3Bucket!,
-        remotePath: remotePath.trim(),
+        remoteFileGlob: remotePath.trim(),
       });
+      const data = await downloadFromS3(creds, storage!.s3Bucket!, s3Key);
+      await writeFile(savePath, data);
+      await deleteFromS3(creds, storage!.s3Bucket!, s3Key);
     } catch (err) {
       console.error("[ECScope] Download from EC2 failed:", err);
       window.alert(`Download failed: ${err instanceof Error ? err.message : String(err)}`);
@@ -41,13 +59,27 @@ export function NodeViewer() {
   const handleUploadToEc2 = async (instanceId: string) => {
     const remotePath = window.prompt("Remote destination path on EC2 (file or directory ending with /):");
     if (!remotePath?.trim()) return;
+
+    const localPath = await open({
+      multiple: false,
+      title: "Select File to Upload",
+    });
+    if (!localPath) return;
+
     try {
-      await ec2Commands.uploadFile(
-        getS3Creds(),
-        storage!.s3Bucket!,
+      const creds = getS3Creds();
+      const filename = localPath.split(/[\\/]/).pop() ?? "upload";
+      const s3Key = `ecscope/${instanceId}/uploads/${Date.now()}-${filename}`;
+      const data = await readFile(localPath);
+      await uploadToS3(creds, storage!.s3Bucket!, s3Key, data);
+      const dest = remotePath.trim().endsWith("/") ? `${remotePath.trim()}${filename}` : remotePath.trim();
+      await copyFileFromS3ToEc2({
         instanceId,
-        remotePath.trim(),
-      );
+        credentials: creds,
+        s3Bucket: storage!.s3Bucket!,
+        s3Key,
+        remotePath: dest,
+      });
     } catch (err) {
       console.error("[ECScope] Upload to EC2 failed:", err);
       window.alert(`Upload failed: ${err instanceof Error ? err.message : String(err)}`);

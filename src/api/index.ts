@@ -41,5 +41,3 @@ export const ecsApi = {
     getAlbMetricsHistory,
     getNlbMetricsHistory,
 };
-
-export * as ec2Commands from "./ec2-commands";

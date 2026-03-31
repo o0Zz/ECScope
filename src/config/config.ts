@@ -4,6 +4,8 @@ export interface ClusterConfig {
     profile: string;
     region?: string;
     clusterName: string;
+    /** SSH username for SFTP file transfer (default: "ec2-user") */
+    sshUser?: string;
 }
 
 /** Global S3 storage config for file transfer */

@@ -8,6 +8,10 @@ interface FileTransferDialogProps {
     placeholder?: string;
     error?: string | null;
     isPending?: boolean;
+    /** 0–100, null while connecting before first byte */
+    progress?: number | null;
+    /** e.g. "1.4 MB/s", null while connecting */
+    rate?: string | null;
     onConfirm: (value: string) => void;
     onCancel: () => void;
 }
@@ -19,6 +23,8 @@ export function FileTransferDialog({
     placeholder,
     error,
     isPending = false,
+    progress,
+    rate,
     onConfirm,
     onCancel,
 }: FileTransferDialogProps) {
@@ -29,6 +35,9 @@ export function FileTransferDialog({
     }, [open]);
 
     if (!open) return null;
+
+    const hasProgress = isPending && progress != null;
+    const isConnecting = isPending && progress == null;
 
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
@@ -49,12 +58,41 @@ export function FileTransferDialog({
                     onChange={(e) => setValue(e.target.value)}
                     placeholder={placeholder}
                     autoFocus
+                    disabled={isPending}
                     onKeyDown={(e) => {
-                        if (e.key === "Enter" && value.trim()) onConfirm(value.trim());
+                        if (e.key === "Enter" && value.trim() && !isPending) onConfirm(value.trim());
                         if (e.key === "Escape") onCancel();
                     }}
-                    className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring"
+                    className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring disabled:opacity-50"
                 />
+
+                {/* Progress section — shown while transfer is running */}
+                {isPending && (
+                    <div className="mt-3">
+                        <div className="flex items-center justify-between mb-1.5">
+                            <span className="text-xs text-muted-foreground">
+                                {isConnecting
+                                    ? "Connecting…"
+                                    : `Transferring… ${progress}%`}
+                            </span>
+                            {rate && (
+                                <span className="text-xs font-mono text-foreground">{rate}</span>
+                            )}
+                        </div>
+                        <div className="h-1.5 w-full overflow-hidden rounded-full bg-muted">
+                            {hasProgress ? (
+                                <div
+                                    className="h-full rounded-full bg-primary transition-all duration-200"
+                                    style={{ width: `${progress}%` }}
+                                />
+                            ) : (
+                                /* Indeterminate pulse while connecting / before first byte */
+                                <div className="h-full w-1/3 animate-[slide_1.4s_ease-in-out_infinite] rounded-full bg-primary/60" />
+                            )}
+                        </div>
+                    </div>
+                )}
+
                 {error && (
                     <p className="mt-2 text-xs text-destructive">{error}</p>
                 )}
@@ -62,12 +100,12 @@ export function FileTransferDialog({
                     <button
                         onClick={onCancel}
                         disabled={isPending}
-                        className="rounded-md px-3 py-1.5 text-sm text-muted-foreground hover:bg-accent"
+                        className="rounded-md px-3 py-1.5 text-sm text-muted-foreground hover:bg-accent disabled:opacity-50"
                     >
                         Cancel
                     </button>
                     <button
-                        onClick={() => value.trim() && onConfirm(value.trim())}
+                        onClick={() => value.trim() && !isPending && onConfirm(value.trim())}
                         disabled={isPending || !value.trim()}
                         className="rounded-md px-3 py-1.5 text-sm font-medium bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
                     >

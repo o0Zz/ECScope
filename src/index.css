@@ -63,6 +63,12 @@ body {
   --color-sidebar-accent-foreground: oklch(0.15 0 0);
 }
 
+/* Indeterminate progress bar animation */
+@keyframes slide {
+  0%   { transform: translateX(-100%); }
+  100% { transform: translateX(400%); }
+}
+
 /* Scrollbar styling */
 ::-webkit-scrollbar {
   width: 6px;

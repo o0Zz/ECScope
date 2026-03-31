@@ -1,58 +1,52 @@
 import { useState, useCallback } from "react";
-import type { S3Credentials } from "@/api/types";
-import type { StorageConfig, ClusterConfig } from "@/config/config";
-import { copyFileFromEc2ToS3, copyFileFromS3ToEc2 } from "@/api/ec2";
-import { downloadFromS3, deleteFromS3, uploadToS3 } from "@/api/s3";
+import { listen } from "@tauri-apps/api/event";
+import type { ClusterConfig } from "@/config/config";
+import { execSsmCommand } from "@/api/ssm";
 import { save, open } from "@tauri-apps/plugin-dialog";
-import { writeFile, readFile } from "@tauri-apps/plugin-fs";
-import { createLogger } from "@/lib/logger";
+import { invoke, createLogger } from "@/lib/logger";
 
 const logger = createLogger("FileTransfer");
 
 type TransferMode = "download" | "upload";
 
 interface FileTransferState {
-    /** Which dialog is shown */
     mode: TransferMode | null;
-    /** Target EC2 instance */
     instanceId: string | null;
-    /** Whether a transfer is in progress */
     isPending: boolean;
-    /** Error from the last transfer attempt */
     error: string | null;
+    /** 0–100, null while connecting (before first byte) */
+    progress: number | null;
+    /** e.g. "1.4 MB/s", null while connecting */
+    rate: string | null;
 }
 
-export function useFileTransfer(storage: StorageConfig | null, activeCluster: ClusterConfig | null) {
+export function useFileTransfer(activeCluster: ClusterConfig | null) {
     const [state, setState] = useState<FileTransferState>({
         mode: null,
         instanceId: null,
         isPending: false,
         error: null,
-    });
-
-    const hasFileTransfer = !!(storage?.s3Bucket && storage?.s3AccessKeyId && storage?.s3SecretAccessKey);
-
-    const getS3Creds = (): S3Credentials => ({
-        accessKeyId: storage!.s3AccessKeyId!,
-        secretAccessKey: storage!.s3SecretAccessKey!,
-        region: storage?.s3Region ?? activeCluster?.region ?? "us-east-1",
+        progress: null,
+        rate: null,
     });
 
     const startDownload = useCallback((instanceId: string) => {
-        setState({ mode: "download", instanceId, isPending: false, error: null });
+        setState({ mode: "download", instanceId, isPending: false, error: null, progress: null, rate: null });
     }, []);
 
     const startUpload = useCallback((instanceId: string) => {
-        setState({ mode: "upload", instanceId, isPending: false, error: null });
+        setState({ mode: "upload", instanceId, isPending: false, error: null, progress: null, rate: null });
     }, []);
 
     const cancel = useCallback(() => {
-        setState({ mode: null, instanceId: null, isPending: false, error: null });
+        // Tell Rust to abort the in-progress transfer (no-op if none is running)
+        invoke("cancel_transfer", {}).catch(() => {});
+        setState({ mode: null, instanceId: null, isPending: false, error: null, progress: null, rate: null });
     }, []);
 
     const confirmDownload = useCallback(async (remotePath: string) => {
         const instanceId = state.instanceId;
-        if (!instanceId) return;
+        if (!instanceId || !activeCluster) return;
 
         const filename = remotePath.split("/").pop() ?? "download";
         const ext = filename.includes(".") ? filename.split(".").pop()! : "*";
@@ -63,64 +57,121 @@ export function useFileTransfer(storage: StorageConfig | null, activeCluster: Cl
         });
         if (!savePath) return;
 
-        setState((s) => ({ ...s, isPending: true, error: null }));
+        setState((s) => ({ ...s, isPending: true, error: null, progress: null, rate: null }));
+        const sshUser = activeCluster.sshUser ?? "ec2-user";
+
+        // Listen for progress events emitted by Rust during the transfer
+        const unlisten = await listen<{ percent: number; rate: string }>("sftp-progress", (event) => {
+            setState((s) => ({ ...s, progress: event.payload.percent, rate: event.payload.rate }));
+        });
+
         try {
-            const creds = getS3Creds();
-            const s3Key = await copyFileFromEc2ToS3({
-                instanceId,
-                credentials: creds,
-                s3Bucket: storage!.s3Bucket!,
-                remoteFileGlob: remotePath,
-            });
-            const data = await downloadFromS3(creds, storage!.s3Bucket!, s3Key);
-            await writeFile(savePath, data);
-            await deleteFromS3(creds, storage!.s3Bucket!, s3Key);
-            setState({ mode: null, instanceId: null, isPending: false, error: null });
+            const { keyId, publicKey, privateKeyPath } = await invoke<{
+                keyId: string;
+                publicKey: string;
+                privateKeyPath: string;
+            }>("generate_ssh_keypair");
+
+            await execSsmCommand(instanceId, [
+                "set -e",
+                `mkdir -p /home/${sshUser}/.ssh`,
+                `chmod 700 /home/${sshUser}/.ssh`,
+                `echo "${publicKey}" >> /home/${sshUser}/.ssh/authorized_keys`,
+                `chmod 600 /home/${sshUser}/.ssh/authorized_keys`,
+                `chown -R ${sshUser}:${sshUser} /home/${sshUser}/.ssh`,
+            ]);
+
+            try {
+                await invoke("sftp_download", {
+                    params: {
+                        instanceId,
+                        profile: activeCluster.profile,
+                        region: activeCluster.region ?? "us-east-1",
+                        remotePath,
+                        localPath: savePath,
+                        privateKeyPath,
+                        username: sshUser,
+                    },
+                });
+            } finally {
+                await execSsmCommand(instanceId, [
+                    `sed -i "/${keyId}/d" /home/${sshUser}/.ssh/authorized_keys 2>/dev/null || true`,
+                ]).catch((e) => logger.warn("SSH key cleanup failed (non-fatal)", e));
+            }
+
+            setState({ mode: null, instanceId: null, isPending: false, error: null, progress: null, rate: null });
         } catch (err) {
+            const msg = err instanceof Error ? err.message : String(err);
+            if (msg === "Transfer cancelled") return;
             logger.error(`Download from ${instanceId} failed`, err);
-            setState((s) => ({
-                ...s,
-                isPending: false,
-                error: `Download failed: ${err instanceof Error ? err.message : String(err)}`,
-            }));
+            setState((s) => ({ ...s, isPending: false, error: `Download failed: ${msg}` }));
+        } finally {
+            unlisten();
         }
-    }, [state.instanceId, storage, activeCluster]);
+    }, [state.instanceId, activeCluster]);
 
     const confirmUpload = useCallback(async (remotePath: string) => {
         const instanceId = state.instanceId;
-        if (!instanceId) return;
+        if (!instanceId || !activeCluster) return;
 
-        const localPath = await open({
-            multiple: false,
-            title: "Select File to Upload",
-        });
+        const localPath = await open({ multiple: false, title: "Select File to Upload" });
         if (!localPath) return;
 
-        setState((s) => ({ ...s, isPending: true, error: null }));
+        setState((s) => ({ ...s, isPending: true, error: null, progress: null, rate: null }));
+        const sshUser = activeCluster.sshUser ?? "ec2-user";
+
+        const unlisten = await listen<{ percent: number; rate: string }>("sftp-progress", (event) => {
+            setState((s) => ({ ...s, progress: event.payload.percent, rate: event.payload.rate }));
+        });
+
         try {
-            const creds = getS3Creds();
-            const filename = localPath.split(/[\\/]/).pop() ?? "upload";
-            const s3Key = `ecscope/${instanceId}/uploads/${Date.now()}-${filename}`;
-            const data = await readFile(localPath);
-            await uploadToS3(creds, storage!.s3Bucket!, s3Key, data);
-            const dest = remotePath.endsWith("/") ? `${remotePath}${filename}` : remotePath;
-            await copyFileFromS3ToEc2({
-                instanceId,
-                credentials: creds,
-                s3Bucket: storage!.s3Bucket!,
-                s3Key,
-                remotePath: dest,
-            });
-            setState({ mode: null, instanceId: null, isPending: false, error: null });
+            const { keyId, publicKey, privateKeyPath } = await invoke<{
+                keyId: string;
+                publicKey: string;
+                privateKeyPath: string;
+            }>("generate_ssh_keypair");
+
+            await execSsmCommand(instanceId, [
+                "set -e",
+                `mkdir -p /home/${sshUser}/.ssh`,
+                `chmod 700 /home/${sshUser}/.ssh`,
+                `echo "${publicKey}" >> /home/${sshUser}/.ssh/authorized_keys`,
+                `chmod 600 /home/${sshUser}/.ssh/authorized_keys`,
+                `chown -R ${sshUser}:${sshUser} /home/${sshUser}/.ssh`,
+            ]);
+
+            const dest = remotePath.endsWith("/")
+                ? `${remotePath}${(localPath as string).split(/[\\/]/).pop() ?? "upload"}`
+                : remotePath;
+
+            try {
+                await invoke("sftp_upload", {
+                    params: {
+                        instanceId,
+                        profile: activeCluster.profile,
+                        region: activeCluster.region ?? "us-east-1",
+                        remotePath: dest,
+                        localPath: localPath as string,
+                        privateKeyPath,
+                        username: sshUser,
+                    },
+                });
+            } finally {
+                await execSsmCommand(instanceId, [
+                    `sed -i "/${keyId}/d" /home/${sshUser}/.ssh/authorized_keys 2>/dev/null || true`,
+                ]).catch((e) => logger.warn("SSH key cleanup failed (non-fatal)", e));
+            }
+
+            setState({ mode: null, instanceId: null, isPending: false, error: null, progress: null, rate: null });
         } catch (err) {
+            const msg = err instanceof Error ? err.message : String(err);
+            if (msg === "Transfer cancelled") return;
             logger.error(`Upload to ${instanceId} failed`, err);
-            setState((s) => ({
-                ...s,
-                isPending: false,
-                error: `Upload failed: ${err instanceof Error ? err.message : String(err)}`,
-            }));
+            setState((s) => ({ ...s, isPending: false, error: `Upload failed: ${msg}` }));
+        } finally {
+            unlisten();
         }
-    }, [state.instanceId, storage, activeCluster]);
+    }, [state.instanceId, activeCluster]);
 
     const confirm = useCallback(async (value: string) => {
         if (state.mode === "download") await confirmDownload(value);
@@ -128,10 +179,12 @@ export function useFileTransfer(storage: StorageConfig | null, activeCluster: Cl
     }, [state.mode, confirmDownload, confirmUpload]);
 
     return {
-        hasFileTransfer,
+        hasFileTransfer: !!activeCluster,
         dialogOpen: state.mode !== null,
         dialogMode: state.mode,
         isPending: state.isPending,
+        progress: state.progress,
+        rate: state.rate,
         error: state.error,
         startDownload,
         startUpload,

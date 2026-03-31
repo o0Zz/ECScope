@@ -15,10 +15,9 @@ const logger = createLogger("NodeViewer");
 export function NodeViewer() {
   const { selectedCluster } = useNavigationStore();
   const { activeCluster } = useConfigStore();
-  const storage = useConfigStore((s) => s.storage);
   const refreshIntervalMs = useConfigStore((s) => s.refreshIntervalMs);
 
-  const transfer = useFileTransfer(storage, activeCluster);
+  const transfer = useFileTransfer(activeCluster);
 
   const { data: instances, isLoading } = useQuery({
     queryKey: ["nodes", selectedCluster],
@@ -166,6 +165,8 @@ export function NodeViewer() {
         placeholder={transfer.dialogMode === "download" ? "/var/log/app.log" : "/tmp/"}
         error={transfer.error}
         isPending={transfer.isPending}
+        progress={transfer.progress}
+        rate={transfer.rate}
         onConfirm={transfer.confirm}
         onCancel={transfer.cancel}
       />

@@ -5,7 +5,8 @@ import {
 } from "@aws-sdk/client-elastic-load-balancing-v2";
 import { getElbv2Client } from "./clients";
 import { queryMetrics } from "./cloudwatch";
-import { getClusterVpcId } from "./ecs";
+import { paginateAll } from "./pagination";
+import { getClusterVpcId } from "./ecs-instances";
 import type { AlbInfo, LoadBalancerType } from "./types";
 import { log } from "@/lib/logger";
 
@@ -21,15 +22,11 @@ export async function listAlbs(clusterName: string): Promise<AlbInfo[]> {
     log.alb.debug(`Cluster ${clusterName} VPC resolved to ${vpcId}`);
 
     // 2. List ALL load balancers (paginated) and filter by VPC
-    const allLbs: any[] = [];
-    let marker: string | undefined;
-    do {
-        const lbRes = await getElbv2Client().send(
-            new DescribeLoadBalancersCommand({ Marker: marker }),
-        );
-        allLbs.push(...(lbRes.LoadBalancers ?? []));
-        marker = lbRes.NextMarker;
-    } while (marker);
+    const allLbs = await paginateAll(
+        (marker) => getElbv2Client().send(new DescribeLoadBalancersCommand({ Marker: marker })),
+        (res) => res.LoadBalancers,
+        (res) => res.NextMarker,
+    );
 
     const vpcLbs = allLbs.filter((lb) => lb.VpcId === vpcId);
     log.alb.debug(`Found ${vpcLbs.length}/${allLbs.length} LBs in VPC ${vpcId}`);
@@ -37,15 +34,11 @@ export async function listAlbs(clusterName: string): Promise<AlbInfo[]> {
 
     // 3. Get ALL target groups for these load balancers
     const lbArnSet = new Set(vpcLbs.map((lb) => lb.LoadBalancerArn as string));
-    const allTargetGroups: any[] = [];
-    let tgMarker: string | undefined;
-    do {
-        const tgRes = await getElbv2Client().send(
-            new DescribeTargetGroupsCommand({ Marker: tgMarker }),
-        );
-        allTargetGroups.push(...(tgRes.TargetGroups ?? []));
-        tgMarker = tgRes.NextMarker;
-    } while (tgMarker);
+    const allTargetGroups = await paginateAll(
+        (marker) => getElbv2Client().send(new DescribeTargetGroupsCommand({ Marker: marker })),
+        (res) => res.TargetGroups,
+        (res) => res.NextMarker,
+    );
 
     // Keep only target groups attached to our VPC load balancers
     const relevantTgs = allTargetGroups.filter((tg) =>
@@ -75,10 +68,10 @@ export async function listAlbs(clusterName: string): Promise<AlbInfo[]> {
                         description: thd.TargetHealth?.Description ?? "",
                     };
                 });
-                tgHealthMap.set(tg.TargetGroupArn, { healthyCount, unhealthyCount, targets });
+                tgHealthMap.set(tg.TargetGroupArn ?? "", { healthyCount, unhealthyCount, targets });
             } catch (e) {
                 log.alb.warn(`Failed to get target health for ${tg.TargetGroupArn}`, e);
-                tgHealthMap.set(tg.TargetGroupArn, { healthyCount: 0, unhealthyCount: 0, targets: [] });
+                tgHealthMap.set(tg.TargetGroupArn ?? "", { healthyCount: 0, unhealthyCount: 0, targets: [] });
             }
         }),
     );
@@ -95,7 +88,7 @@ export async function listAlbs(clusterName: string): Promise<AlbInfo[]> {
             const lbTargetGroups = relevantTgs
                 .filter((tg) => (tg.LoadBalancerArns ?? []).includes(lbArn))
                 .map((tg) => {
-                    const health = tgHealthMap.get(tg.TargetGroupArn) ?? { healthyCount: 0, unhealthyCount: 0, targets: [] };
+                    const health = tgHealthMap.get(tg.TargetGroupArn ?? "") ?? { healthyCount: 0, unhealthyCount: 0, targets: [] };
                     return {
                         targetGroupArn: tg.TargetGroupArn ?? "",
                         targetGroupName: tg.TargetGroupName ?? "",

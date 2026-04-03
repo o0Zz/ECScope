@@ -4,14 +4,11 @@ import { Cpu, Network, HardDrive, ShieldAlert } from "lucide-react";
 import { MetricsChart } from "./MetricsChart";
 import { MetricsPanel } from "./MetricsPanel";
 import { formatPercent, formatBytes } from "@/lib/format";
+import { PERCENT_CHART_PROPS, COMPACT_CHART_PROPS } from "./metrics-chart-presets";
 
 interface Ec2MetricsChartProps {
     instanceId: string;
 }
-
-const PERCENT_Y_TICKS = [0, 25, 50, 75, 100];
-
-const CHART_MARGINS = { left: 42, right: 4, top: 4, bottom: 18 };
 
 export function Ec2MetricsChart({ instanceId }: Ec2MetricsChartProps) {
     return (
@@ -34,13 +31,7 @@ export function Ec2MetricsChart({ instanceId }: Ec2MetricsChartProps) {
                             label="CPU Utilization"
                             icon={Cpu}
                             formatValue={formatPercent}
-                            yScale={{ min: 0, max: 100 }}
-                            yTicks={PERCENT_Y_TICKS}
-                            formatYTick={(v) => `${v}%`}
-                            summaryMode="current-avg-minmax"
-                            chartHeight="h-40"
-                            height={110}
-                            margins={CHART_MARGINS}
+                            {...PERCENT_CHART_PROPS}
                         />
                         <MetricsChart<Ec2MetricsDataPoint>
                             data={data}
@@ -52,9 +43,7 @@ export function Ec2MetricsChart({ instanceId }: Ec2MetricsChartProps) {
                             yScale={{ min: 0, max: 2 }}
                             yTicks={[0, 1, 2]}
                             summaryMode="current-avg-minmax"
-                            chartHeight="h-40"
-                            height={110}
-                            margins={CHART_MARGINS}
+                            {...COMPACT_CHART_PROPS}
                         />
                     </div>
 
@@ -68,9 +57,7 @@ export function Ec2MetricsChart({ instanceId }: Ec2MetricsChartProps) {
                             icon={Network}
                             formatValue={formatBytes}
                             summaryMode="now-avg-total"
-                            chartHeight="h-40"
-                            height={110}
-                            margins={CHART_MARGINS}
+                            {...COMPACT_CHART_PROPS}
                         />
                         <MetricsChart<Ec2MetricsDataPoint>
                             data={data}
@@ -80,9 +67,7 @@ export function Ec2MetricsChart({ instanceId }: Ec2MetricsChartProps) {
                             icon={Network}
                             formatValue={formatBytes}
                             summaryMode="now-avg-total"
-                            chartHeight="h-40"
-                            height={110}
-                            margins={CHART_MARGINS}
+                            {...COMPACT_CHART_PROPS}
                         />
                     </div>
 
@@ -96,9 +81,7 @@ export function Ec2MetricsChart({ instanceId }: Ec2MetricsChartProps) {
                             icon={HardDrive}
                             formatValue={formatBytes}
                             summaryMode="now-avg-total"
-                            chartHeight="h-40"
-                            height={110}
-                            margins={CHART_MARGINS}
+                            {...COMPACT_CHART_PROPS}
                         />
                         <MetricsChart<Ec2MetricsDataPoint>
                             data={data}
@@ -108,9 +91,7 @@ export function Ec2MetricsChart({ instanceId }: Ec2MetricsChartProps) {
                             icon={HardDrive}
                             formatValue={formatBytes}
                             summaryMode="now-avg-total"
-                            chartHeight="h-40"
-                            height={110}
-                            margins={CHART_MARGINS}
+                            {...COMPACT_CHART_PROPS}
                         />
                     </div>
                 </div>

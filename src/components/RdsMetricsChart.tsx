@@ -4,14 +4,11 @@ import { Cpu, Database, Network, HardDrive, Timer, Users } from "lucide-react";
 import { MetricsChart } from "./MetricsChart";
 import { MetricsPanel } from "./MetricsPanel";
 import { formatPercent, formatBytes, formatNumber } from "@/lib/format";
+import { PERCENT_CHART_PROPS, COMPACT_CHART_PROPS } from "./metrics-chart-presets";
 
 interface RdsMetricsChartProps {
     dbInstanceIdentifier: string;
 }
-
-const PERCENT_Y_TICKS = [0, 25, 50, 75, 100];
-
-const CHART_MARGINS = { left: 42, right: 4, top: 4, bottom: 18 };
 
 function formatMs(v: number): string {
     if (v >= 1000) return `${(v / 1000).toFixed(1)}s`;
@@ -43,13 +40,7 @@ export function RdsMetricsChart({ dbInstanceIdentifier }: RdsMetricsChartProps) 
                             label="CPU Utilization"
                             icon={Cpu}
                             formatValue={formatPercent}
-                            yScale={{ min: 0, max: 100 }}
-                            yTicks={PERCENT_Y_TICKS}
-                            formatYTick={(v) => `${v}%`}
-                            summaryMode="current-avg-minmax"
-                            chartHeight="h-40"
-                            height={110}
-                            margins={CHART_MARGINS}
+                            {...PERCENT_CHART_PROPS}
                         />
                         <MetricsChart<RdsMetricsDataPoint>
                             data={data}
@@ -59,9 +50,7 @@ export function RdsMetricsChart({ dbInstanceIdentifier }: RdsMetricsChartProps) 
                             icon={Users}
                             formatValue={(v) => formatNumber(v)}
                             summaryMode="current-avg-minmax"
-                            chartHeight="h-40"
-                            height={110}
-                            margins={CHART_MARGINS}
+                            {...COMPACT_CHART_PROPS}
                         />
                     </div>
 
@@ -75,9 +64,7 @@ export function RdsMetricsChart({ dbInstanceIdentifier }: RdsMetricsChartProps) 
                             icon={HardDrive}
                             formatValue={formatIOPS}
                             summaryMode="current-avg-minmax"
-                            chartHeight="h-40"
-                            height={110}
-                            margins={CHART_MARGINS}
+                            {...COMPACT_CHART_PROPS}
                         />
                         <MetricsChart<RdsMetricsDataPoint>
                             data={data}
@@ -87,9 +74,7 @@ export function RdsMetricsChart({ dbInstanceIdentifier }: RdsMetricsChartProps) 
                             icon={HardDrive}
                             formatValue={formatIOPS}
                             summaryMode="current-avg-minmax"
-                            chartHeight="h-40"
-                            height={110}
-                            margins={CHART_MARGINS}
+                            {...COMPACT_CHART_PROPS}
                         />
                     </div>
 
@@ -103,9 +88,7 @@ export function RdsMetricsChart({ dbInstanceIdentifier }: RdsMetricsChartProps) 
                             icon={Timer}
                             formatValue={formatMs}
                             summaryMode="current-avg-minmax"
-                            chartHeight="h-40"
-                            height={110}
-                            margins={CHART_MARGINS}
+                            {...COMPACT_CHART_PROPS}
                         />
                         <MetricsChart<RdsMetricsDataPoint>
                             data={data}
@@ -115,9 +98,7 @@ export function RdsMetricsChart({ dbInstanceIdentifier }: RdsMetricsChartProps) 
                             icon={Timer}
                             formatValue={formatMs}
                             summaryMode="current-avg-minmax"
-                            chartHeight="h-40"
-                            height={110}
-                            margins={CHART_MARGINS}
+                            {...COMPACT_CHART_PROPS}
                         />
                     </div>
 
@@ -131,9 +112,7 @@ export function RdsMetricsChart({ dbInstanceIdentifier }: RdsMetricsChartProps) 
                             icon={Database}
                             formatValue={formatBytes}
                             summaryMode="current-avg-minmax"
-                            chartHeight="h-40"
-                            height={110}
-                            margins={CHART_MARGINS}
+                            {...COMPACT_CHART_PROPS}
                         />
                         <MetricsChart<RdsMetricsDataPoint>
                             data={data}
@@ -143,9 +122,7 @@ export function RdsMetricsChart({ dbInstanceIdentifier }: RdsMetricsChartProps) 
                             icon={Network}
                             formatValue={formatBytes}
                             summaryMode="current-avg-minmax"
-                            chartHeight="h-40"
-                            height={110}
-                            margins={CHART_MARGINS}
+                            {...COMPACT_CHART_PROPS}
                         />
                     </div>
                 </div>

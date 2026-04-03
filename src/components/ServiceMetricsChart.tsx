@@ -4,13 +4,12 @@ import { Cpu, MemoryStick } from "lucide-react";
 import { MetricsChart } from "./MetricsChart";
 import { MetricsPanel } from "./MetricsPanel";
 import { formatPercent } from "@/lib/format";
+import { PERCENT_Y_TICKS } from "./metrics-chart-presets";
 
 interface ServiceMetricsChartProps {
     clusterName: string;
     serviceName: string;
 }
-
-const PERCENT_Y_TICKS = [0, 25, 50, 75, 100];
 
 export function ServiceMetricsChart({ clusterName, serviceName }: ServiceMetricsChartProps) {
     return (

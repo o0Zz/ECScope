@@ -10,15 +10,11 @@ import { listAllServiceArns } from "./ecs-services";
 import type { ContainerInstance } from "./types";
 import { log } from "@/lib/logger";
 
-export async function listContainerInstances(
-    clusterName: string,
-): Promise<ContainerInstance[]> {
+export async function listContainerInstances(clusterName: string): Promise<ContainerInstance[]> {
     log.ecs.debug(`Listing container instances for cluster ${clusterName}`);
 
     const ciArns = await paginateAll(
-        (nextToken) => getEcsClient().send(
-            new ListContainerInstancesCommand({ cluster: clusterName, nextToken }),
-        ),
+        (nextToken) => getEcsClient().send(new ListContainerInstancesCommand({ cluster: clusterName, nextToken })),
         (res) => res.containerInstanceArns,
         (res) => res.nextToken,
     );
@@ -70,9 +66,7 @@ export async function listContainerInstances(
 export async function getClusterVpcId(clusterName: string): Promise<string | null> {
     log.ecs.debug(`Resolving VPC for cluster ${clusterName}`);
     // Try to get VPC from container instances first (EC2 launch type)
-    const listRes = await getEcsClient().send(
-        new ListContainerInstancesCommand({ cluster: clusterName }),
-    );
+    const listRes = await getEcsClient().send(new ListContainerInstancesCommand({ cluster: clusterName }));
     const ciArns = listRes.containerInstanceArns ?? [];
 
     if (ciArns.length > 0) {
@@ -84,9 +78,7 @@ export async function getClusterVpcId(clusterName: string): Promise<string | nul
         );
         const ec2Id = descRes.containerInstances?.[0]?.ec2InstanceId;
         if (ec2Id) {
-            const ec2Res = await getEc2Client().send(
-                new DescribeInstancesCommand({ InstanceIds: [ec2Id] }),
-            );
+            const ec2Res = await getEc2Client().send(new DescribeInstancesCommand({ InstanceIds: [ec2Id] }));
             const vpcId = ec2Res.Reservations?.[0]?.Instances?.[0]?.VpcId;
             if (vpcId) return vpcId;
         }
@@ -100,9 +92,7 @@ export async function getClusterVpcId(clusterName: string): Promise<string | nul
         );
         const subnets = svcRes.services?.[0]?.networkConfiguration?.awsvpcConfiguration?.subnets;
         if (subnets?.length) {
-            const subnetRes = await getEc2Client().send(
-                new DescribeSubnetsCommand({ SubnetIds: [subnets[0]] }),
-            );
+            const subnetRes = await getEc2Client().send(new DescribeSubnetsCommand({ SubnetIds: [subnets[0]] }));
             const vpcId = subnetRes.Subnets?.[0]?.VpcId;
             if (vpcId) return vpcId;
         }

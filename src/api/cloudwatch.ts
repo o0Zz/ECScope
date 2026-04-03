@@ -1,6 +1,12 @@
 import { GetMetricDataCommand } from "@aws-sdk/client-cloudwatch";
 import { getCwClient } from "./clients";
-import type { MetricsDataPoint, AlbMetricsDataPoint, NlbMetricsDataPoint, Ec2MetricsDataPoint, RdsMetricsDataPoint } from "./types";
+import type {
+    MetricsDataPoint,
+    AlbMetricsDataPoint,
+    NlbMetricsDataPoint,
+    Ec2MetricsDataPoint,
+    RdsMetricsDataPoint,
+} from "./types";
 import { log } from "@/lib/logger";
 
 // ─── Generic CloudWatch helper ───────────────────────────
@@ -65,7 +71,10 @@ export async function queryMetrics(
         for (let i = 0; i < rawTs.length; i++) {
             tsToVal.set(new Date(rawTs[i]).getTime(), rawVals[i] ?? 0);
         }
-        values.set(r.Id ?? "", timestamps.map((ts) => tsToVal.get(ts) ?? 0));
+        values.set(
+            r.Id ?? "",
+            timestamps.map((ts) => tsToVal.get(ts) ?? 0),
+        );
     }
 
     return { timestamps, values };
@@ -87,9 +96,7 @@ async function fetchHistory<T extends { timestamp: number }>(
     log.cloudwatch.debug(`Fetching ${label} metrics history`);
     try {
         const { timestamps, values } = await queryMetrics(queries, 300, ONE_DAY_MS);
-        return timestamps
-            .map((ts, i) => mapper(ts, i, values))
-            .sort((a, b) => a.timestamp - b.timestamp);
+        return timestamps.map((ts, i) => mapper(ts, i, values)).sort((a, b) => a.timestamp - b.timestamp);
     } catch (err) {
         log.cloudwatch.warn(`Failed to fetch ${label} metrics history`, err);
         return [];
@@ -111,10 +118,7 @@ function ecsDimensions(clusterName: string, serviceName: string) {
     ];
 }
 
-export async function getServiceMetricsHistory(
-    clusterName: string,
-    serviceName: string,
-): Promise<MetricsDataPoint[]> {
+export async function getServiceMetricsHistory(clusterName: string, serviceName: string): Promise<MetricsDataPoint[]> {
     const dims = ecsDimensions(clusterName, serviceName);
     return fetchHistory(
         [
@@ -130,9 +134,7 @@ export async function getServiceMetricsHistory(
     );
 }
 
-export async function getAlbMetricsHistory(
-    albArn: string,
-): Promise<AlbMetricsDataPoint[]> {
+export async function getAlbMetricsHistory(albArn: string): Promise<AlbMetricsDataPoint[]> {
     const albDimension = albArn.split(":loadbalancer/")[1] ?? "";
     if (!albDimension) return [];
 
@@ -156,9 +158,7 @@ export async function getAlbMetricsHistory(
     );
 }
 
-export async function getNlbMetricsHistory(
-    nlbArn: string,
-): Promise<NlbMetricsDataPoint[]> {
+export async function getNlbMetricsHistory(nlbArn: string): Promise<NlbMetricsDataPoint[]> {
     const lbDimension = nlbArn.split(":loadbalancer/")[1] ?? "";
     if (!lbDimension) return [];
 
@@ -184,9 +184,7 @@ export async function getNlbMetricsHistory(
     );
 }
 
-export async function getEc2MetricsHistory(
-    instanceId: string,
-): Promise<Ec2MetricsDataPoint[]> {
+export async function getEc2MetricsHistory(instanceId: string): Promise<Ec2MetricsDataPoint[]> {
     const dims = [{ Name: "InstanceId" as const, Value: instanceId }];
     const ns = "AWS/EC2";
     return fetchHistory(
@@ -211,9 +209,7 @@ export async function getEc2MetricsHistory(
     );
 }
 
-export async function getRdsMetricsHistory(
-    dbInstanceIdentifier: string,
-): Promise<RdsMetricsDataPoint[]> {
+export async function getRdsMetricsHistory(dbInstanceIdentifier: string): Promise<RdsMetricsDataPoint[]> {
     const dims = [{ Name: "DBInstanceIdentifier" as const, Value: dbInstanceIdentifier }];
     const ns = "AWS/RDS";
     return fetchHistory(

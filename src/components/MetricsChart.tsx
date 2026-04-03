@@ -112,9 +112,7 @@ export function MetricsChart<T extends { timestamp: number }>({
     // Y ticks
     const yTickValues =
         explicitYTicks ??
-        Array.from({ length: yTickCount }, (_, i) =>
-            Math.round(scaleMin + (scaleRange / (yTickCount - 1)) * i),
-        );
+        Array.from({ length: yTickCount }, (_, i) => Math.round(scaleMin + (scaleRange / (yTickCount - 1)) * i));
 
     const fmtYTick = formatYTick ?? formatValue;
 
@@ -149,16 +147,36 @@ export function MetricsChart<T extends { timestamp: number }>({
 
                 {summaryMode === "now-avg-total" ? (
                     <div className="flex items-center gap-2 text-[10px] text-muted-foreground">
-                        <span>Now: <span className="font-mono font-medium" style={{ color }}>{formatValue(current)}</span></span>
-                        <span>Avg: <span className="font-mono">{formatValue(avg)}</span></span>
-                        <span>Total: <span className="font-mono">{formatValue(total)}</span></span>
+                        <span>
+                            Now:{" "}
+                            <span className="font-mono font-medium" style={{ color }}>
+                                {formatValue(current)}
+                            </span>
+                        </span>
+                        <span>
+                            Avg: <span className="font-mono">{formatValue(avg)}</span>
+                        </span>
+                        <span>
+                            Total: <span className="font-mono">{formatValue(total)}</span>
+                        </span>
                     </div>
                 ) : (
                     <div className="flex items-center gap-2 text-[10px] text-muted-foreground">
-                        <span>Current: <span className="font-mono font-medium" style={{ color }}>{formatValue(current)}</span></span>
-                        <span>Avg: <span className="font-mono font-medium">{formatValue(avg)}</span></span>
-                        <span>Min: <span className="font-mono">{formatValue(min)}</span></span>
-                        <span>Max: <span className="font-mono">{formatValue(max)}</span></span>
+                        <span>
+                            Current:{" "}
+                            <span className="font-mono font-medium" style={{ color }}>
+                                {formatValue(current)}
+                            </span>
+                        </span>
+                        <span>
+                            Avg: <span className="font-mono font-medium">{formatValue(avg)}</span>
+                        </span>
+                        <span>
+                            Min: <span className="font-mono">{formatValue(min)}</span>
+                        </span>
+                        <span>
+                            Max: <span className="font-mono">{formatValue(max)}</span>
+                        </span>
                     </div>
                 )}
             </div>
@@ -170,13 +188,25 @@ export function MetricsChart<T extends { timestamp: number }>({
                     const y = toY(v);
                     return (
                         <g key={v}>
-                            <text x={mL - 3} y={y} textAnchor="end" dominantBaseline="middle" className="fill-muted-foreground" fontSize={7}>
+                            <text
+                                x={mL - 3}
+                                y={y}
+                                textAnchor="end"
+                                dominantBaseline="middle"
+                                className="fill-muted-foreground"
+                                fontSize={7}
+                            >
                                 {fmtYTick(v)}
                             </text>
                             <line
-                                x1={mL} y1={y} x2={W - mR} y2={y}
-                                stroke="currentColor" className="text-border"
-                                strokeDasharray={v === scaleMin ? "none" : "4 4"} strokeWidth={0.4}
+                                x1={mL}
+                                y1={y}
+                                x2={W - mR}
+                                y2={y}
+                                stroke="currentColor"
+                                className="text-border"
+                                strokeDasharray={v === scaleMin ? "none" : "4 4"}
+                                strokeWidth={0.4}
                             />
                         </g>
                     );
@@ -184,8 +214,19 @@ export function MetricsChart<T extends { timestamp: number }>({
                 {/* X-axis grid + labels */}
                 {xTicks.map((tick, i) => (
                     <g key={i}>
-                        <line x1={tick.x} y1={mT} x2={tick.x} y2={mT + cH} stroke="currentColor" className="text-border" strokeDasharray="4 4" strokeWidth={0.3} />
-                        <text x={tick.x} y={H - 2} textAnchor="middle" className="fill-muted-foreground" fontSize={6}>{tick.label}</text>
+                        <line
+                            x1={tick.x}
+                            y1={mT}
+                            x2={tick.x}
+                            y2={mT + cH}
+                            stroke="currentColor"
+                            className="text-border"
+                            strokeDasharray="4 4"
+                            strokeWidth={0.3}
+                        />
+                        <text x={tick.x} y={H - 2} textAnchor="middle" className="fill-muted-foreground" fontSize={6}>
+                            {tick.label}
+                        </text>
                     </g>
                 ))}
                 {/* Area fill */}

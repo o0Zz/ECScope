@@ -9,23 +9,23 @@ import { Ec2RdsDashboard } from "@/features/ec2rds/Ec2RdsDashboard";
 import { WelcomeView } from "@/features/welcome/WelcomeView";
 
 export function MainPanel() {
-  const { selectedCluster, activeTab } = useNavigationStore();
+    const { selectedCluster, activeTab } = useNavigationStore();
 
-  if (!selectedCluster) {
-    return <WelcomeView />;
-  }
+    if (!selectedCluster) {
+        return <WelcomeView />;
+    }
 
-  return (
-    <div className="flex h-full flex-col">
-      <Breadcrumb />
-      <TabBar />
-      <div className="flex-1 overflow-auto">
-        {activeTab === "services" && <ServiceList />}
-        {activeTab === "tasks" && <TaskList />}
-        {activeTab === "albnlb" && <AlbNlbViewer />}
-        {activeTab === "nodes" && <NodeViewer />}
-        {activeTab === "ec2rds" && <Ec2RdsDashboard />}
-      </div>
-    </div>
-  );
+    return (
+        <div className="flex h-full flex-col">
+            <Breadcrumb />
+            <TabBar />
+            <div className="flex-1 overflow-auto">
+                {activeTab === "services" && <ServiceList />}
+                {activeTab === "tasks" && <TaskList />}
+                {activeTab === "albnlb" && <AlbNlbViewer />}
+                {activeTab === "nodes" && <NodeViewer />}
+                {activeTab === "ec2rds" && <Ec2RdsDashboard />}
+            </div>
+        </div>
+    );
 }

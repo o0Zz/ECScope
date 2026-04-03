@@ -23,9 +23,7 @@ function parseIniFile(content: string): IniFile {
         const sectionMatch = line.match(/^\[(.+)]$/);
         if (sectionMatch) {
             // Normalize: "[profile foo]" → "foo", "[foo]" → "foo"
-            currentSection = sectionMatch[1]
-                .replace(/^profile\s+/, "")
-                .trim();
+            currentSection = sectionMatch[1].replace(/^profile\s+/, "").trim();
             if (!result[currentSection]) result[currentSection] = {};
             continue;
         }
@@ -40,19 +38,13 @@ function parseIniFile(content: string): IniFile {
     return result;
 }
 
-export async function resolveCredentials(
-    appConfig: ClusterConfig,
-    awsFiles: AwsFiles,
-): Promise<ResolvedCredentials> {
+export async function resolveCredentials(appConfig: ClusterConfig, awsFiles: AwsFiles): Promise<ResolvedCredentials> {
     const credSections = parseIniFile(awsFiles.credentials);
     const configSections = parseIniFile(awsFiles.config);
 
     const profileConfig = configSections[appConfig.profile] ?? {};
     const region =
-        appConfig.region ||
-        profileConfig.region ||
-        configSections[profileConfig.source_profile]?.region ||
-        "us-east-1";
+        appConfig.region || profileConfig.region || configSections[profileConfig.source_profile]?.region || "us-east-1";
 
     // If the profile has a role_arn, we need to assume the role
     if (profileConfig.role_arn && profileConfig.source_profile) {
@@ -60,9 +52,7 @@ export async function resolveCredentials(
         const sourceCreds = credSections[sourceProfile];
 
         if (!sourceCreds?.aws_access_key_id || !sourceCreds?.aws_secret_access_key) {
-            throw new Error(
-                `Source profile "${sourceProfile}" not found in ~/.aws/credentials or missing keys`,
-            );
+            throw new Error(`Source profile "${sourceProfile}" not found in ~/.aws/credentials or missing keys`);
         }
 
         const stsClient = new STSClient({
@@ -96,9 +86,7 @@ export async function resolveCredentials(
     // Direct credentials (no role assumption)
     const directCreds = credSections[appConfig.profile];
     if (!directCreds?.aws_access_key_id || !directCreds?.aws_secret_access_key) {
-        throw new Error(
-            `Profile "${appConfig.profile}" not found in ~/.aws/credentials or missing keys`,
-        );
+        throw new Error(`Profile "${appConfig.profile}" not found in ~/.aws/credentials or missing keys`);
     }
 
     return {

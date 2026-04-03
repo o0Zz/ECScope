@@ -38,9 +38,10 @@ export async function loadConfig(): Promise<ParsedConfig> {
     if (parsed && !Array.isArray(parsed) && Array.isArray(parsed.clusters)) {
         const clusters = parseClusterEntries(parsed.clusters);
         const storage = parseStorage(parsed.storage);
-        const refreshPeriodSeconds = typeof parsed.refreshPeriodSeconds === "number" && parsed.refreshPeriodSeconds > 0
-            ? parsed.refreshPeriodSeconds
-            : DEFAULT_REFRESH_PERIOD;
+        const refreshPeriodSeconds =
+            typeof parsed.refreshPeriodSeconds === "number" && parsed.refreshPeriodSeconds > 0
+                ? parsed.refreshPeriodSeconds
+                : DEFAULT_REFRESH_PERIOD;
         return { clusters, storage, refreshPeriodSeconds };
     }
 
@@ -56,9 +57,7 @@ function parseClusterEntries(entries: unknown[]): ClusterConfig[] {
     }
     return entries.map((entry: any, i: number) => {
         if (!entry.profile || !entry.clusterName) {
-            throw new Error(
-                `ecscope.config.json cluster #${i + 1} must contain "profile" and "clusterName" fields`,
-            );
+            throw new Error(`ecscope.config.json cluster #${i + 1} must contain "profile" and "clusterName" fields`);
         }
         return {
             profile: entry.profile,

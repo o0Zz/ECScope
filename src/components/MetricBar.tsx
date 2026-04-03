@@ -9,7 +9,9 @@ export function MetricBar({ value, label, color }: { value: number; label: strin
                     style={{ width: `${Math.min(100, value)}%` }}
                 />
             </div>
-            <span className="text-xs text-muted-foreground">{value}% {label}</span>
+            <span className="text-xs text-muted-foreground">
+                {value}% {label}
+            </span>
         </div>
     );
 }

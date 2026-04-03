@@ -1,6 +1,16 @@
 import type { EcsTask } from "@/api/types";
 import { StatusBadge } from "@/components/StatusBadge";
-import { Container, Server, ChevronDown, FileCode, Terminal, ScrollText, Square, AlertTriangle, Radio } from "lucide-react";
+import {
+    Container,
+    Server,
+    ChevronDown,
+    FileCode,
+    Terminal,
+    ScrollText,
+    Square,
+    AlertTriangle,
+    Radio,
+} from "lucide-react";
 import { cn } from "@/lib/utils";
 import { formatAge } from "@/lib/format";
 import { openEcsExec, openTaskLogs, openHttpCapture } from "./TaskActions";
@@ -60,16 +70,12 @@ export function TaskRow({
 
     return (
         <>
-            <tr
-                className="border-b border-border last:border-b-0 hover:bg-accent/50"
-            >
+            <tr className="border-b border-border last:border-b-0 hover:bg-accent/50">
                 <td className="px-4 py-3">
                     <div className="flex items-center gap-2">
                         <Container className="h-4 w-4 text-muted-foreground" />
                         <div>
-                            <span className="font-mono text-xs font-medium text-foreground">
-                                {taskId}
-                            </span>
+                            <span className="font-mono text-xs font-medium text-foreground">{taskId}</span>
                             {task.lastStatus === "STOPPED" && task.stoppedReason && (
                                 <div className="mt-0.5 flex items-start gap-1">
                                     <AlertTriangle className="h-3 w-3 shrink-0 text-warning mt-0.5" />
@@ -82,17 +88,13 @@ export function TaskRow({
                 <td className="px-4 py-3">
                     <StatusBadge status={task.lastStatus} />
                     {task.lastStatus === "STOPPED" && task.stoppedAt && (
-                        <div className="mt-0.5 text-[11px] text-muted-foreground">
-                            {formatAge(task.stoppedAt)} ago
-                        </div>
+                        <div className="mt-0.5 text-[11px] text-muted-foreground">{formatAge(task.stoppedAt)} ago</div>
                     )}
                 </td>
                 <td className="px-4 py-3">
                     <StatusBadge status={task.healthStatus} />
                 </td>
-                <td className="px-3 py-3 text-muted-foreground">
-                    {task.launchType}
-                </td>
+                <td className="px-3 py-3 text-muted-foreground">{task.launchType}</td>
                 <td className="px-3 py-3 font-mono text-xs text-muted-foreground whitespace-nowrap">
                     {task.cpu} / {task.memory} MB
                 </td>
@@ -109,9 +111,7 @@ export function TaskRow({
                 <td className="px-3 py-3 text-xs text-muted-foreground whitespace-nowrap">
                     {formatAge(task.startedAt)}
                 </td>
-                <td className="px-3 py-3 text-muted-foreground">
-                    {task.containers.length}
-                </td>
+                <td className="px-3 py-3 text-muted-foreground">{task.containers.length}</td>
                 <td className="px-4 py-3">
                     <div className="flex items-center gap-1">
                         <button
@@ -130,7 +130,9 @@ export function TaskRow({
                             disabled={isStopped}
                             className={cn(
                                 "rounded p-1 transition-colors",
-                                isStopped ? "text-muted-foreground/30 cursor-not-allowed" : "text-muted-foreground hover:bg-accent hover:text-foreground",
+                                isStopped
+                                    ? "text-muted-foreground/30 cursor-not-allowed"
+                                    : "text-muted-foreground hover:bg-accent hover:text-foreground",
                             )}
                             title={`Shell into ${containerName}`}
                         >
@@ -140,9 +142,17 @@ export function TaskRow({
                             onClick={handleLogs}
                             className={cn(
                                 "rounded p-1 transition-colors hover:bg-accent",
-                                isStopped || !canStreamLogs ? "text-muted-foreground/30 cursor-not-allowed" : "text-muted-foreground hover:text-foreground",
+                                isStopped || !canStreamLogs
+                                    ? "text-muted-foreground/30 cursor-not-allowed"
+                                    : "text-muted-foreground hover:text-foreground",
                             )}
-                            title={isStopped ? "Task is stopped" : canStreamLogs ? `Live logs for ${containerName}` : "Docker logs requires EC2 launch type"}
+                            title={
+                                isStopped
+                                    ? "Task is stopped"
+                                    : canStreamLogs
+                                      ? `Live logs for ${containerName}`
+                                      : "Docker logs requires EC2 launch type"
+                            }
                             disabled={isStopped || !canStreamLogs}
                         >
                             <ScrollText className="h-3.5 w-3.5" />
@@ -151,15 +161,26 @@ export function TaskRow({
                             onClick={handleHttpCapture}
                             className={cn(
                                 "rounded p-1 transition-colors hover:bg-accent",
-                                isStopped || !canHttpCapture ? "text-muted-foreground/30 cursor-not-allowed" : "text-muted-foreground hover:text-foreground",
+                                isStopped || !canHttpCapture
+                                    ? "text-muted-foreground/30 cursor-not-allowed"
+                                    : "text-muted-foreground hover:text-foreground",
                             )}
-                            title={isStopped ? "Task is stopped" : canHttpCapture ? `HTTP capture for ${containerName}` : "HTTP capture requires EC2 launch type"}
+                            title={
+                                isStopped
+                                    ? "Task is stopped"
+                                    : canHttpCapture
+                                      ? `HTTP capture for ${containerName}`
+                                      : "HTTP capture requires EC2 launch type"
+                            }
                             disabled={isStopped || !canHttpCapture}
                         >
                             <Radio className="h-3.5 w-3.5" />
                         </button>
                         <button
-                            onClick={(e) => { e.stopPropagation(); onToggleEnv(); }}
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                onToggleEnv();
+                            }}
                             className={cn(
                                 "rounded p-1 transition-colors hover:bg-accent",
                                 expanded ? "text-foreground" : "text-muted-foreground",

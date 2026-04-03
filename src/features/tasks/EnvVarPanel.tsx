@@ -48,15 +48,32 @@ export function EnvVarPanel({ task }: { task: EcsTask }) {
                 />
             </div>
             {task.containers.map((container) => {
-                const envRows: { name: string; value: string; source?: string; isSecret: boolean; resolved: boolean }[] = container.environment
-                    .filter((e) => e.name.toLowerCase().includes(lowerFilter) || e.value.toLowerCase().includes(lowerFilter))
+                const envRows: {
+                    name: string;
+                    value: string;
+                    source?: string;
+                    isSecret: boolean;
+                    resolved: boolean;
+                }[] = container.environment
+                    .filter(
+                        (e) =>
+                            e.name.toLowerCase().includes(lowerFilter) || e.value.toLowerCase().includes(lowerFilter),
+                    )
                     .map((e) => ({ name: e.name, value: e.value, isSecret: false, resolved: true }));
                 const secretRows: typeof envRows = container.secrets
                     .filter((s) => {
                         const resolved = s.resolvedValue ?? s.valueFrom;
-                        return s.name.toLowerCase().includes(lowerFilter) || resolved.toLowerCase().includes(lowerFilter);
+                        return (
+                            s.name.toLowerCase().includes(lowerFilter) || resolved.toLowerCase().includes(lowerFilter)
+                        );
                     })
-                    .map((s) => ({ name: s.name, value: s.resolvedValue ?? "", source: s.valueFrom, isSecret: true, resolved: !!s.resolvedValue }));
+                    .map((s) => ({
+                        name: s.name,
+                        value: s.resolvedValue ?? "",
+                        source: s.valueFrom,
+                        isSecret: true,
+                        resolved: !!s.resolvedValue,
+                    }));
                 const allRows = [...envRows, ...secretRows].sort((a, b) => a.name.localeCompare(b.name));
 
                 if (allRows.length === 0 && filter) return null;
@@ -72,10 +89,17 @@ export function EnvVarPanel({ task }: { task: EcsTask }) {
                             <table className="w-full text-xs">
                                 <tbody>
                                     {allRows.map((row) => (
-                                        <tr key={row.name} className="border-b border-border last:border-b-0 hover:bg-accent/30">
+                                        <tr
+                                            key={row.name}
+                                            className="border-b border-border last:border-b-0 hover:bg-accent/30"
+                                        >
                                             <td className="w-1/3 px-3 py-1 font-mono font-medium text-foreground align-top">
                                                 <span className="flex items-center gap-1">
-                                                    {row.isSecret && <span title={`Source: ${row.source}`}><KeyRound className="h-3 w-3 text-warning shrink-0" /></span>}
+                                                    {row.isSecret && (
+                                                        <span title={`Source: ${row.source}`}>
+                                                            <KeyRound className="h-3 w-3 text-warning shrink-0" />
+                                                        </span>
+                                                    )}
                                                     {row.name}
                                                 </span>
                                             </td>
@@ -89,7 +113,15 @@ export function EnvVarPanel({ task }: { task: EcsTask }) {
                                                 ) : (
                                                     row.value
                                                 )}
-                                                <CopyButton text={row.isSecret && row.resolved ? row.value : row.isSecret ? (row.source ?? "") : row.value} />
+                                                <CopyButton
+                                                    text={
+                                                        row.isSecret && row.resolved
+                                                            ? row.value
+                                                            : row.isSecret
+                                                              ? (row.source ?? "")
+                                                              : row.value
+                                                    }
+                                                />
                                             </td>
                                         </tr>
                                     ))}

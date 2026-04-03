@@ -29,12 +29,7 @@ interface CaptureConfigDialogProps {
     onCancel: () => void;
 }
 
-export function CaptureConfigDialog({
-    open,
-    containerName,
-    onConfirm,
-    onCancel,
-}: CaptureConfigDialogProps) {
+export function CaptureConfigDialog({ open, containerName, onConfirm, onCancel }: CaptureConfigDialogProps) {
     const [config, setConfig] = useState<CaptureConfig>(DEFAULT_CONFIG);
 
     useEffect(() => {
@@ -54,9 +49,7 @@ export function CaptureConfigDialog({
                 <div className="flex items-center justify-between mb-5">
                     <div className="flex items-center gap-2">
                         <Radio className="h-4 w-4 text-primary" />
-                        <h3 className="text-sm font-semibold text-foreground">
-                            HTTP Capture — {containerName}
-                        </h3>
+                        <h3 className="text-sm font-semibold text-foreground">HTTP Capture — {containerName}</h3>
                     </div>
                     <button
                         onClick={onCancel}
@@ -78,7 +71,9 @@ export function CaptureConfigDialog({
                             min={0}
                             step={100}
                             value={config.minResponseTimeMs}
-                            onChange={(e) => setConfig((c) => ({ ...c, minResponseTimeMs: Math.max(0, Number(e.target.value)) }))}
+                            onChange={(e) =>
+                                setConfig((c) => ({ ...c, minResponseTimeMs: Math.max(0, Number(e.target.value)) }))
+                            }
                             placeholder="e.g. 500"
                             className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring font-mono"
                         />
@@ -90,9 +85,7 @@ export function CaptureConfigDialog({
                     {/* HTTP Method filter */}
                     <div className="flex gap-3">
                         <div className="flex-1">
-                            <label className="block text-xs font-medium text-muted-foreground mb-1">
-                                HTTP Method
-                            </label>
+                            <label className="block text-xs font-medium text-muted-foreground mb-1">HTTP Method</label>
                             <select
                                 value={config.httpMethod}
                                 onChange={(e) => setConfig((c) => ({ ...c, httpMethod: e.target.value }))}
@@ -111,9 +104,7 @@ export function CaptureConfigDialog({
 
                         {/* Status code filter */}
                         <div className="flex-1">
-                            <label className="block text-xs font-medium text-muted-foreground mb-1">
-                                Status code
-                            </label>
+                            <label className="block text-xs font-medium text-muted-foreground mb-1">Status code</label>
                             <select
                                 value={config.statusFilter}
                                 onChange={(e) => setConfig((c) => ({ ...c, statusFilter: e.target.value }))}
@@ -154,7 +145,9 @@ export function CaptureConfigDialog({
                             min={0}
                             step={10}
                             value={config.durationSeconds}
-                            onChange={(e) => setConfig((c) => ({ ...c, durationSeconds: Math.max(0, Number(e.target.value)) }))}
+                            onChange={(e) =>
+                                setConfig((c) => ({ ...c, durationSeconds: Math.max(0, Number(e.target.value)) }))
+                            }
                             placeholder="e.g. 60"
                             className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring font-mono"
                         />
@@ -171,7 +164,9 @@ export function CaptureConfigDialog({
                     </button>
                     <button
                         onClick={handleConfirm}
-                        onKeyDown={(e) => { if (e.key === "Enter") handleConfirm(); }}
+                        onKeyDown={(e) => {
+                            if (e.key === "Enter") handleConfirm();
+                        }}
                         className="rounded-md px-3 py-1.5 text-sm font-medium bg-primary text-primary-foreground hover:bg-primary/90"
                     >
                         Start Capture

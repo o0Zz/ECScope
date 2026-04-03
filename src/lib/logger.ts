@@ -29,11 +29,12 @@ const rootLogger = new Logger<ILogObj>({
             const tag = `[${parts.join(":")}]`.padEnd(NAME_COL);
             const prefix = `${ts} ${level} ${tag}`;
 
-            const fn = logMeta?.logLevelName === "ERROR" || logMeta?.logLevelName === "FATAL"
-                ? console.error
-                : logMeta?.logLevelName === "WARN"
-                    ? console.warn
-                    : logMeta?.logLevelName === "INFO"
+            const fn =
+                logMeta?.logLevelName === "ERROR" || logMeta?.logLevelName === "FATAL"
+                    ? console.error
+                    : logMeta?.logLevelName === "WARN"
+                      ? console.warn
+                      : logMeta?.logLevelName === "INFO"
                         ? console.info
                         : console.log;
 

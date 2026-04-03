@@ -9,12 +9,7 @@ import type { ECSClient } from "@aws-sdk/client-ecs";
 import { getEcsClient } from "./clients";
 import { queryMetrics } from "./cloudwatch";
 import { paginateAll } from "./pagination";
-import type {
-    ClusterMetrics,
-    EcsService,
-    EcsServiceEvent,
-    EcsDeployment,
-} from "./types";
+import type { ClusterMetrics, EcsService, EcsServiceEvent, EcsDeployment } from "./types";
 import { log } from "@/lib/logger";
 
 // ─── Helpers ──────────────────────────────────────────────
@@ -112,19 +107,12 @@ export async function listAllServiceArns(cluster: string): Promise<string[]> {
 }
 
 /** DescribeServices in batches of 10 (AWS limit) */
-export async function describeServicesBatched(
-    cluster: string,
-    arns: string[],
-) {
-    const results: NonNullable<
-        Awaited<ReturnType<ECSClient["send"]>>
-    >[] = [];
+export async function describeServicesBatched(cluster: string, arns: string[]) {
+    const results: NonNullable<Awaited<ReturnType<ECSClient["send"]>>>[] = [];
 
     for (let i = 0; i < arns.length; i += 10) {
         const batch = arns.slice(i, i + 10);
-        const res = await getEcsClient().send(
-            new DescribeServicesCommand({ cluster, services: batch }),
-        );
+        const res = await getEcsClient().send(new DescribeServicesCommand({ cluster, services: batch }));
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         if (res.services) results.push(...(res.services as any[]));
     }
@@ -135,16 +123,17 @@ export async function listServices(clusterName: string): Promise<EcsService[]> {
     log.ecs.debug(`Listing services for cluster ${clusterName}`);
     try {
         const arns = await listAllServiceArns(clusterName);
-        if (arns.length === 0) { log.ecs.debug(`No services found for cluster ${clusterName}`); return []; }
+        if (arns.length === 0) {
+            log.ecs.debug(`No services found for cluster ${clusterName}`);
+            return [];
+        }
 
         const rawServices = await describeServicesBatched(clusterName, arns);
 
         // Fetch CloudWatch metrics for all services in parallel
         const metricsResults = await Promise.all(
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            rawServices.map((s: any) =>
-                fetchServiceMetrics(clusterName, s.serviceName ?? ""),
-            ),
+            rawServices.map((s: any) => fetchServiceMetrics(clusterName, s.serviceName ?? "")),
         );
 
         return rawServices.map((s, i) => mapService(s, metricsResults[i]));
@@ -154,10 +143,7 @@ export async function listServices(clusterName: string): Promise<EcsService[]> {
     }
 }
 
-export async function getService(
-    clusterName: string,
-    serviceName: string,
-): Promise<EcsService | undefined> {
+export async function getService(clusterName: string, serviceName: string): Promise<EcsService | undefined> {
     log.ecs.debug(`Getting service ${clusterName}/${serviceName}...`);
     const res = await getEcsClient().send(
         new DescribeServicesCommand({
@@ -194,9 +180,7 @@ export async function getServiceEvents(
     }));
 }
 
-export async function getClusterMetrics(
-    clusterName: string,
-): Promise<ClusterMetrics> {
+export async function getClusterMetrics(clusterName: string): Promise<ClusterMetrics> {
     log.ecs.debug(`Fetching cluster metrics for ${clusterName}`);
     const services = await listServices(clusterName);
 
@@ -249,11 +233,7 @@ export async function updateServiceDesiredCount(
     return updated;
 }
 
-export async function rollbackService(
-    clusterName: string,
-    serviceName: string,
-    taskDefinition: string,
-): Promise<void> {
+export async function rollbackService(clusterName: string, serviceName: string, taskDefinition: string): Promise<void> {
     log.ecs.info(`Rolling back ${clusterName}/${serviceName} to ${taskDefinition}`);
     await getEcsClient().send(
         new UpdateServiceCommand({
@@ -264,10 +244,7 @@ export async function rollbackService(
     );
 }
 
-export async function forceNewDeployment(
-    clusterName: string,
-    serviceName: string,
-): Promise<void> {
+export async function forceNewDeployment(clusterName: string, serviceName: string): Promise<void> {
     log.ecs.info(`Forcing new deployment for ${clusterName}/${serviceName}`);
     await getEcsClient().send(
         new UpdateServiceCommand({
@@ -279,13 +256,9 @@ export async function forceNewDeployment(
 }
 
 /** Fetch the raw task definition JSON (stripping read-only fields) */
-export async function getTaskDefinitionJson(
-    taskDefinition: string,
-): Promise<Record<string, unknown>> {
+export async function getTaskDefinitionJson(taskDefinition: string): Promise<Record<string, unknown>> {
     log.ecs.debug(`Fetching task definition JSON for ${taskDefinition}`);
-    const res = await getEcsClient().send(
-        new DescribeTaskDefinitionCommand({ taskDefinition }),
-    );
+    const res = await getEcsClient().send(new DescribeTaskDefinitionCommand({ taskDefinition }));
     const td = res.taskDefinition;
     if (!td) throw new Error(`Task definition ${taskDefinition} not found`);
 

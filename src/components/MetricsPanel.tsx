@@ -28,7 +28,9 @@ export function MetricsPanel<T>({
 
     if (isLoading) {
         return (
-            <div className={`flex items-center justify-center rounded border border-border bg-card py-4 text-xs text-muted-foreground ${className ?? "mt-2"}`}>
+            <div
+                className={`flex items-center justify-center rounded border border-border bg-card py-4 text-xs text-muted-foreground ${className ?? "mt-2"}`}
+            >
                 {loadingText}
             </div>
         );
@@ -36,7 +38,9 @@ export function MetricsPanel<T>({
 
     if (!data?.length) {
         return (
-            <div className={`flex items-center justify-center rounded border border-border bg-card py-4 text-xs text-muted-foreground ${className ?? "mt-2"}`}>
+            <div
+                className={`flex items-center justify-center rounded border border-border bg-card py-4 text-xs text-muted-foreground ${className ?? "mt-2"}`}
+            >
                 {emptyText}
             </div>
         );

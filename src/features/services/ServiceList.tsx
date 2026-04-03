@@ -10,225 +10,280 @@ import { cn } from "@/lib/utils";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
 
 function ClusterOverview({ clusterName }: { clusterName: string }) {
-  const refreshIntervalMs = useConfigStore((s) => s.refreshIntervalMs);
-  const { data: metrics } = useQuery({
-    queryKey: ["clusterMetrics", clusterName],
-    queryFn: () => ecsApi.getClusterMetrics(clusterName),
-    refetchInterval: refreshIntervalMs,
-  });
+    const refreshIntervalMs = useConfigStore((s) => s.refreshIntervalMs);
+    const { data: metrics } = useQuery({
+        queryKey: ["clusterMetrics", clusterName],
+        queryFn: () => ecsApi.getClusterMetrics(clusterName),
+        refetchInterval: refreshIntervalMs,
+    });
 
-  if (!metrics) return null;
+    if (!metrics) return null;
 
-  return (
-    <div className="mb-4 grid grid-cols-2 gap-3 rounded-lg border border-border bg-card p-4 md:grid-cols-4">
-      <div>
-        <div className="text-xs text-muted-foreground">Cluster CPU</div>
-        <div className="mt-1 text-lg font-semibold text-foreground">{metrics.cpuUtilization}%</div>
-        <div className="mt-1 h-1.5 w-full overflow-hidden rounded-full bg-muted">
-          <div
-            className={cn("h-full rounded-full", metrics.cpuUtilization > 80 ? "bg-destructive" : metrics.cpuUtilization > 60 ? "bg-warning" : "bg-success")}
-            style={{ width: `${metrics.cpuUtilization}%` }}
-          />
+    return (
+        <div className="mb-4 grid grid-cols-2 gap-3 rounded-lg border border-border bg-card p-4 md:grid-cols-4">
+            <div>
+                <div className="text-xs text-muted-foreground">Cluster CPU</div>
+                <div className="mt-1 text-lg font-semibold text-foreground">{metrics.cpuUtilization}%</div>
+                <div className="mt-1 h-1.5 w-full overflow-hidden rounded-full bg-muted">
+                    <div
+                        className={cn(
+                            "h-full rounded-full",
+                            metrics.cpuUtilization > 80
+                                ? "bg-destructive"
+                                : metrics.cpuUtilization > 60
+                                  ? "bg-warning"
+                                  : "bg-success",
+                        )}
+                        style={{ width: `${metrics.cpuUtilization}%` }}
+                    />
+                </div>
+                <div className="mt-1 text-xs text-muted-foreground">
+                    {metrics.cpuReserved} / {metrics.cpuTotal} units
+                </div>
+            </div>
+            <div>
+                <div className="text-xs text-muted-foreground">Cluster Memory</div>
+                <div className="mt-1 text-lg font-semibold text-foreground">{metrics.memoryUtilization}%</div>
+                <div className="mt-1 h-1.5 w-full overflow-hidden rounded-full bg-muted">
+                    <div
+                        className={cn(
+                            "h-full rounded-full",
+                            metrics.memoryUtilization > 80
+                                ? "bg-destructive"
+                                : metrics.memoryUtilization > 60
+                                  ? "bg-warning"
+                                  : "bg-success",
+                        )}
+                        style={{ width: `${metrics.memoryUtilization}%` }}
+                    />
+                </div>
+                <div className="mt-1 text-xs text-muted-foreground">
+                    {metrics.memoryReservedMB} / {metrics.memoryTotalMB} MB
+                </div>
+            </div>
+            <div>
+                <div className="text-xs text-muted-foreground">CPU Reserved</div>
+                <div className="mt-1 text-lg font-semibold text-foreground">{metrics.cpuReserved}</div>
+                <div className="mt-1 text-xs text-muted-foreground">units</div>
+            </div>
+            <div>
+                <div className="text-xs text-muted-foreground">Memory Reserved</div>
+                <div className="mt-1 text-lg font-semibold text-foreground">{metrics.memoryReservedMB}</div>
+                <div className="mt-1 text-xs text-muted-foreground">MB</div>
+            </div>
         </div>
-        <div className="mt-1 text-xs text-muted-foreground">{metrics.cpuReserved} / {metrics.cpuTotal} units</div>
-      </div>
-      <div>
-        <div className="text-xs text-muted-foreground">Cluster Memory</div>
-        <div className="mt-1 text-lg font-semibold text-foreground">{metrics.memoryUtilization}%</div>
-        <div className="mt-1 h-1.5 w-full overflow-hidden rounded-full bg-muted">
-          <div
-            className={cn("h-full rounded-full", metrics.memoryUtilization > 80 ? "bg-destructive" : metrics.memoryUtilization > 60 ? "bg-warning" : "bg-success")}
-            style={{ width: `${metrics.memoryUtilization}%` }}
-          />
-        </div>
-        <div className="mt-1 text-xs text-muted-foreground">{metrics.memoryReservedMB} / {metrics.memoryTotalMB} MB</div>
-      </div>
-      <div>
-        <div className="text-xs text-muted-foreground">CPU Reserved</div>
-        <div className="mt-1 text-lg font-semibold text-foreground">{metrics.cpuReserved}</div>
-        <div className="mt-1 text-xs text-muted-foreground">units</div>
-      </div>
-      <div>
-        <div className="text-xs text-muted-foreground">Memory Reserved</div>
-        <div className="mt-1 text-lg font-semibold text-foreground">{metrics.memoryReservedMB}</div>
-        <div className="mt-1 text-xs text-muted-foreground">MB</div>
-      </div>
-    </div>
-  );
+    );
 }
 
 export function ServiceList() {
-  const { selectedCluster, selectService } = useNavigationStore();
-  const refreshIntervalMs = useConfigStore((s) => s.refreshIntervalMs);
-  const queryClient = useQueryClient();
-  const [confirmRedeploy, setConfirmRedeploy] = useState<string | null>(null);
+    const { selectedCluster, selectService } = useNavigationStore();
+    const refreshIntervalMs = useConfigStore((s) => s.refreshIntervalMs);
+    const queryClient = useQueryClient();
+    const [confirmRedeploy, setConfirmRedeploy] = useState<string | null>(null);
 
-  const { data: services, isLoading } = useQuery({
-    queryKey: ["services", selectedCluster],
-    queryFn: () => {
-      return ecsApi.listServices(selectedCluster!);
-    },
-    enabled: !!selectedCluster,
-    refetchInterval: refreshIntervalMs,
-  });
+    const { data: services, isLoading } = useQuery({
+        queryKey: ["services", selectedCluster],
+        queryFn: () => {
+            return ecsApi.listServices(selectedCluster!);
+        },
+        enabled: !!selectedCluster,
+        refetchInterval: refreshIntervalMs,
+    });
 
-  const scaleMutation = useMutation({
-    mutationFn: ({ serviceName, desiredCount }: { serviceName: string; desiredCount: number }) =>
-      ecsApi.updateServiceDesiredCount(selectedCluster!, serviceName, desiredCount),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["services", selectedCluster] });
-      queryClient.invalidateQueries({ queryKey: ["clusterMetrics", selectedCluster] });
-    },
-  });
+    const scaleMutation = useMutation({
+        mutationFn: ({ serviceName, desiredCount }: { serviceName: string; desiredCount: number }) =>
+            ecsApi.updateServiceDesiredCount(selectedCluster!, serviceName, desiredCount),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ["services", selectedCluster] });
+            queryClient.invalidateQueries({ queryKey: ["clusterMetrics", selectedCluster] });
+        },
+    });
 
-  const redeployMutation = useMutation({
-    mutationFn: (serviceName: string) =>
-      ecsApi.forceNewDeployment(selectedCluster!, serviceName),
-    onSuccess: () => {
-      setConfirmRedeploy(null);
-      queryClient.invalidateQueries({ queryKey: ["services", selectedCluster] });
-    },
-  });
+    const redeployMutation = useMutation({
+        mutationFn: (serviceName: string) => ecsApi.forceNewDeployment(selectedCluster!, serviceName),
+        onSuccess: () => {
+            setConfirmRedeploy(null);
+            queryClient.invalidateQueries({ queryKey: ["services", selectedCluster] });
+        },
+    });
 
-  if (isLoading) {
+    if (isLoading) {
+        return (
+            <div className="flex items-center justify-center py-12 text-sm text-muted-foreground">
+                Loading services…
+            </div>
+        );
+    }
+
+    if (!services?.length) {
+        return (
+            <div className="flex items-center justify-center py-12 text-sm text-muted-foreground">
+                No services found.
+            </div>
+        );
+    }
+
     return (
-      <div className="flex items-center justify-center py-12 text-sm text-muted-foreground">
-        Loading services…
-      </div>
+        <div className="p-4">
+            <ClusterOverview clusterName={selectedCluster!} />
+
+            <h2 className="mb-4 text-lg font-semibold text-foreground">
+                Services
+                <span className="ml-2 text-sm font-normal text-muted-foreground">({services.length})</span>
+            </h2>
+            <div className="overflow-hidden rounded-lg border border-border">
+                <table className="w-full text-sm">
+                    <thead>
+                        <tr className="border-b border-border bg-muted/50">
+                            <th className="px-4 py-2.5 text-left font-medium text-muted-foreground">Service</th>
+                            <th className="px-4 py-2.5 text-left font-medium text-muted-foreground">Status</th>
+                            <th className="px-4 py-2.5 text-center font-medium text-muted-foreground">Scale</th>
+                            <th className="px-4 py-2.5 text-center font-medium text-muted-foreground">Running</th>
+                            <th className="px-4 py-2.5 text-center font-medium text-muted-foreground">CPU</th>
+                            <th className="px-4 py-2.5 text-center font-medium text-muted-foreground">Memory</th>
+                            <th className="px-4 py-2.5 text-left font-medium text-muted-foreground">Launch Type</th>
+                            <th className="px-4 py-2.5 text-left font-medium text-muted-foreground">Task Def</th>
+                            <th className="px-4 py-2.5 text-center font-medium text-muted-foreground">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {services.map((svc) => (
+                            <tr
+                                key={svc.serviceArn}
+                                className="border-b border-border last:border-b-0 hover:bg-accent/50"
+                            >
+                                <td className="px-4 py-3 cursor-pointer" onClick={() => selectService(svc.serviceName)}>
+                                    <div className="flex items-center gap-2">
+                                        <Cog className="h-4 w-4 text-muted-foreground" />
+                                        <span className="font-medium text-foreground">{svc.serviceName}</span>
+                                    </div>
+                                </td>
+                                <td className="px-4 py-3 cursor-pointer" onClick={() => selectService(svc.serviceName)}>
+                                    <StatusBadge status={svc.status} />
+                                </td>
+                                <td className="px-4 py-3">
+                                    <div className="flex items-center justify-center gap-1">
+                                        <button
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                scaleMutation.mutate({
+                                                    serviceName: svc.serviceName,
+                                                    desiredCount: svc.desiredCount - 1,
+                                                });
+                                            }}
+                                            disabled={svc.desiredCount <= 0 || scaleMutation.isPending}
+                                            className="rounded p-1 text-muted-foreground hover:bg-destructive/20 hover:text-destructive disabled:opacity-30 disabled:cursor-not-allowed"
+                                            title="Scale down"
+                                        >
+                                            <Minus className="h-3.5 w-3.5" />
+                                        </button>
+                                        <span className="min-w-[2rem] text-center font-mono font-medium text-foreground">
+                                            {svc.desiredCount}
+                                        </span>
+                                        <button
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                scaleMutation.mutate({
+                                                    serviceName: svc.serviceName,
+                                                    desiredCount: svc.desiredCount + 1,
+                                                });
+                                            }}
+                                            disabled={scaleMutation.isPending}
+                                            className="rounded p-1 text-muted-foreground hover:bg-success/20 hover:text-success disabled:opacity-30"
+                                            title="Scale up"
+                                        >
+                                            <Plus className="h-3.5 w-3.5" />
+                                        </button>
+                                    </div>
+                                </td>
+                                <td
+                                    className="px-4 py-3 text-center text-foreground cursor-pointer"
+                                    onClick={() => selectService(svc.serviceName)}
+                                >
+                                    {svc.runningCount}/{svc.desiredCount}
+                                </td>
+                                <td className="px-4 py-3 cursor-pointer" onClick={() => selectService(svc.serviceName)}>
+                                    <MetricBar
+                                        value={svc.metrics.cpuUtilization}
+                                        label="CPU"
+                                        color={
+                                            svc.metrics.cpuUtilization > 80
+                                                ? "bg-destructive"
+                                                : svc.metrics.cpuUtilization > 60
+                                                  ? "bg-warning"
+                                                  : "bg-info"
+                                        }
+                                    />
+                                </td>
+                                <td className="px-4 py-3 cursor-pointer" onClick={() => selectService(svc.serviceName)}>
+                                    <MetricBar
+                                        value={svc.metrics.memoryUtilization}
+                                        label="RAM"
+                                        color={
+                                            svc.metrics.memoryUtilization > 80
+                                                ? "bg-destructive"
+                                                : svc.metrics.memoryUtilization > 60
+                                                  ? "bg-warning"
+                                                  : "bg-primary"
+                                        }
+                                    />
+                                </td>
+                                <td
+                                    className="px-4 py-3 text-muted-foreground cursor-pointer"
+                                    onClick={() => selectService(svc.serviceName)}
+                                >
+                                    {svc.launchType}
+                                </td>
+                                <td
+                                    className="px-4 py-3 font-mono text-xs text-muted-foreground cursor-pointer"
+                                    onClick={() => selectService(svc.serviceName)}
+                                >
+                                    {svc.taskDefinition}
+                                </td>
+                                <td className="px-4 py-3">
+                                    <div className="flex items-center justify-center gap-1">
+                                        <button
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                setConfirmRedeploy(svc.serviceName);
+                                            }}
+                                            disabled={redeployMutation.isPending}
+                                            className="rounded p-1 text-muted-foreground hover:bg-info/20 hover:text-info disabled:opacity-30"
+                                            title="Force new deployment"
+                                        >
+                                            <RotateCw
+                                                className={cn(
+                                                    "h-3.5 w-3.5",
+                                                    redeployMutation.isPending && "animate-spin",
+                                                )}
+                                            />
+                                        </button>
+                                        <button
+                                            onClick={() => selectService(svc.serviceName)}
+                                            className="rounded p-1 text-muted-foreground hover:bg-accent hover:text-foreground"
+                                            title="View tasks"
+                                        >
+                                            <ArrowRight className="h-4 w-4" />
+                                        </button>
+                                    </div>
+                                </td>
+                            </tr>
+                        ))}
+                    </tbody>
+                </table>
+            </div>
+
+            <ConfirmDialog
+                open={!!confirmRedeploy}
+                title="Force New Deployment"
+                message="Force a new deployment for this service? All tasks will be replaced with fresh ones."
+                detail={confirmRedeploy ?? undefined}
+                confirmLabel="Redeploy"
+                confirmingLabel="Deploying…"
+                isPending={redeployMutation.isPending}
+                onConfirm={() => redeployMutation.mutate(confirmRedeploy!)}
+                onCancel={() => setConfirmRedeploy(null)}
+            />
+        </div>
     );
-  }
-
-  if (!services?.length) {
-    return (
-      <div className="flex items-center justify-center py-12 text-sm text-muted-foreground">
-        No services found.
-      </div>
-    );
-  }
-
-  return (
-    <div className="p-4">
-      <ClusterOverview clusterName={selectedCluster!} />
-
-      <h2 className="mb-4 text-lg font-semibold text-foreground">
-        Services
-        <span className="ml-2 text-sm font-normal text-muted-foreground">
-          ({services.length})
-        </span>
-      </h2>
-      <div className="overflow-hidden rounded-lg border border-border">
-        <table className="w-full text-sm">
-          <thead>
-            <tr className="border-b border-border bg-muted/50">
-              <th className="px-4 py-2.5 text-left font-medium text-muted-foreground">Service</th>
-              <th className="px-4 py-2.5 text-left font-medium text-muted-foreground">Status</th>
-              <th className="px-4 py-2.5 text-center font-medium text-muted-foreground">Scale</th>
-              <th className="px-4 py-2.5 text-center font-medium text-muted-foreground">Running</th>
-              <th className="px-4 py-2.5 text-center font-medium text-muted-foreground">CPU</th>
-              <th className="px-4 py-2.5 text-center font-medium text-muted-foreground">Memory</th>
-              <th className="px-4 py-2.5 text-left font-medium text-muted-foreground">Launch Type</th>
-              <th className="px-4 py-2.5 text-left font-medium text-muted-foreground">Task Def</th>
-              <th className="px-4 py-2.5 text-center font-medium text-muted-foreground">Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {services.map((svc) => (
-              <tr
-                key={svc.serviceArn}
-                className="border-b border-border last:border-b-0 hover:bg-accent/50"
-              >
-                <td className="px-4 py-3 cursor-pointer" onClick={() => selectService(svc.serviceName)}>
-                  <div className="flex items-center gap-2">
-                    <Cog className="h-4 w-4 text-muted-foreground" />
-                    <span className="font-medium text-foreground">{svc.serviceName}</span>
-                  </div>
-                </td>
-                <td className="px-4 py-3 cursor-pointer" onClick={() => selectService(svc.serviceName)}>
-                  <StatusBadge status={svc.status} />
-                </td>
-                <td className="px-4 py-3">
-                  <div className="flex items-center justify-center gap-1">
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        scaleMutation.mutate({ serviceName: svc.serviceName, desiredCount: svc.desiredCount - 1 });
-                      }}
-                      disabled={svc.desiredCount <= 0 || scaleMutation.isPending}
-                      className="rounded p-1 text-muted-foreground hover:bg-destructive/20 hover:text-destructive disabled:opacity-30 disabled:cursor-not-allowed"
-                      title="Scale down"
-                    >
-                      <Minus className="h-3.5 w-3.5" />
-                    </button>
-                    <span className="min-w-[2rem] text-center font-mono font-medium text-foreground">
-                      {svc.desiredCount}
-                    </span>
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        scaleMutation.mutate({ serviceName: svc.serviceName, desiredCount: svc.desiredCount + 1 });
-                      }}
-                      disabled={scaleMutation.isPending}
-                      className="rounded p-1 text-muted-foreground hover:bg-success/20 hover:text-success disabled:opacity-30"
-                      title="Scale up"
-                    >
-                      <Plus className="h-3.5 w-3.5" />
-                    </button>
-                  </div>
-                </td>
-                <td className="px-4 py-3 text-center text-foreground cursor-pointer" onClick={() => selectService(svc.serviceName)}>
-                  {svc.runningCount}/{svc.desiredCount}
-                </td>
-                <td className="px-4 py-3 cursor-pointer" onClick={() => selectService(svc.serviceName)}>
-                  <MetricBar value={svc.metrics.cpuUtilization} label="CPU" color={svc.metrics.cpuUtilization > 80 ? "bg-destructive" : svc.metrics.cpuUtilization > 60 ? "bg-warning" : "bg-info"} />
-                </td>
-                <td className="px-4 py-3 cursor-pointer" onClick={() => selectService(svc.serviceName)}>
-                  <MetricBar value={svc.metrics.memoryUtilization} label="RAM" color={svc.metrics.memoryUtilization > 80 ? "bg-destructive" : svc.metrics.memoryUtilization > 60 ? "bg-warning" : "bg-primary"} />
-                </td>
-                <td className="px-4 py-3 text-muted-foreground cursor-pointer" onClick={() => selectService(svc.serviceName)}>
-                  {svc.launchType}
-                </td>
-                <td className="px-4 py-3 font-mono text-xs text-muted-foreground cursor-pointer" onClick={() => selectService(svc.serviceName)}>
-                  {svc.taskDefinition}
-                </td>
-                <td className="px-4 py-3">
-                  <div className="flex items-center justify-center gap-1">
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setConfirmRedeploy(svc.serviceName);
-                      }}
-                      disabled={redeployMutation.isPending}
-                      className="rounded p-1 text-muted-foreground hover:bg-info/20 hover:text-info disabled:opacity-30"
-                      title="Force new deployment"
-                    >
-                      <RotateCw className={cn("h-3.5 w-3.5", redeployMutation.isPending && "animate-spin")} />
-                    </button>
-                    <button
-                      onClick={() => selectService(svc.serviceName)}
-                      className="rounded p-1 text-muted-foreground hover:bg-accent hover:text-foreground"
-                      title="View tasks"
-                    >
-                      <ArrowRight className="h-4 w-4" />
-                    </button>
-                  </div>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-
-      <ConfirmDialog
-        open={!!confirmRedeploy}
-        title="Force New Deployment"
-        message="Force a new deployment for this service? All tasks will be replaced with fresh ones."
-        detail={confirmRedeploy ?? undefined}
-        confirmLabel="Redeploy"
-        confirmingLabel="Deploying…"
-        isPending={redeployMutation.isPending}
-        onConfirm={() => redeployMutation.mutate(confirmRedeploy!)}
-        onCancel={() => setConfirmRedeploy(null)}
-      />
-    </div>
-  );
 }

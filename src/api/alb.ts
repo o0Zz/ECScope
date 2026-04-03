@@ -47,7 +47,14 @@ export async function listAlbs(clusterName: string): Promise<AlbInfo[]> {
     log.alb.debug(`Found ${relevantTgs.length} target groups for VPC LBs`);
 
     // 4. Get target health for each target group in parallel
-    const tgHealthMap = new Map<string, { healthyCount: number; unhealthyCount: number; targets: { targetId: string; port: number; health: string; reason: string; description: string }[] }>();
+    const tgHealthMap = new Map<
+        string,
+        {
+            healthyCount: number;
+            unhealthyCount: number;
+            targets: { targetId: string; port: number; health: string; reason: string; description: string }[];
+        }
+    >();
     await Promise.all(
         relevantTgs.map(async (tg) => {
             try {
@@ -88,7 +95,11 @@ export async function listAlbs(clusterName: string): Promise<AlbInfo[]> {
             const lbTargetGroups = relevantTgs
                 .filter((tg) => (tg.LoadBalancerArns ?? []).includes(lbArn))
                 .map((tg) => {
-                    const health = tgHealthMap.get(tg.TargetGroupArn ?? "") ?? { healthyCount: 0, unhealthyCount: 0, targets: [] };
+                    const health = tgHealthMap.get(tg.TargetGroupArn ?? "") ?? {
+                        healthyCount: 0,
+                        unhealthyCount: 0,
+                        targets: [],
+                    };
                     return {
                         targetGroupArn: tg.TargetGroupArn ?? "",
                         targetGroupName: tg.TargetGroupName ?? "",
@@ -114,8 +125,20 @@ export async function listAlbs(clusterName: string): Promise<AlbInfo[]> {
                 if (lbType === "application") {
                     const { values } = await queryMetrics(
                         [
-                            { id: "requests", namespace: "AWS/ApplicationELB", metricName: "RequestCount", dimensions: dims, stat: "Sum" },
-                            { id: "latency", namespace: "AWS/ApplicationELB", metricName: "TargetResponseTime", dimensions: dims, stat: "Average" },
+                            {
+                                id: "requests",
+                                namespace: "AWS/ApplicationELB",
+                                metricName: "RequestCount",
+                                dimensions: dims,
+                                stat: "Sum",
+                            },
+                            {
+                                id: "latency",
+                                namespace: "AWS/ApplicationELB",
+                                metricName: "TargetResponseTime",
+                                dimensions: dims,
+                                stat: "Average",
+                            },
                         ],
                         300,
                         FIVE_MIN_MS,
@@ -127,9 +150,27 @@ export async function listAlbs(clusterName: string): Promise<AlbInfo[]> {
                 } else {
                     const { values } = await queryMetrics(
                         [
-                            { id: "activeFlows", namespace: "AWS/NetworkELB", metricName: "ActiveFlowCount", dimensions: dims, stat: "Average" },
-                            { id: "newFlows", namespace: "AWS/NetworkELB", metricName: "NewFlowCount", dimensions: dims, stat: "Sum" },
-                            { id: "bytes", namespace: "AWS/NetworkELB", metricName: "ProcessedBytes", dimensions: dims, stat: "Sum" },
+                            {
+                                id: "activeFlows",
+                                namespace: "AWS/NetworkELB",
+                                metricName: "ActiveFlowCount",
+                                dimensions: dims,
+                                stat: "Average",
+                            },
+                            {
+                                id: "newFlows",
+                                namespace: "AWS/NetworkELB",
+                                metricName: "NewFlowCount",
+                                dimensions: dims,
+                                stat: "Sum",
+                            },
+                            {
+                                id: "bytes",
+                                namespace: "AWS/NetworkELB",
+                                metricName: "ProcessedBytes",
+                                dimensions: dims,
+                                stat: "Sum",
+                            },
                         ],
                         300,
                         FIVE_MIN_MS,

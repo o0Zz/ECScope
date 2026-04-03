@@ -71,13 +71,9 @@ export function FileTransferDialog({
                     <div className="mt-3">
                         <div className="flex items-center justify-between mb-1.5">
                             <span className="text-xs text-muted-foreground">
-                                {isConnecting
-                                    ? "Connecting…"
-                                    : `Transferring… ${progress}%`}
+                                {isConnecting ? "Connecting…" : `Transferring… ${progress}%`}
                             </span>
-                            {rate && (
-                                <span className="text-xs font-mono text-foreground">{rate}</span>
-                            )}
+                            {rate && <span className="text-xs font-mono text-foreground">{rate}</span>}
                         </div>
                         <div className="h-1.5 w-full overflow-hidden rounded-full bg-muted">
                             {hasProgress ? (
@@ -93,9 +89,7 @@ export function FileTransferDialog({
                     </div>
                 )}
 
-                {error && (
-                    <p className="mt-2 text-xs text-destructive">{error}</p>
-                )}
+                {error && <p className="mt-2 text-xs text-destructive">{error}</p>}
                 <div className="flex justify-end gap-2 mt-4">
                     <button
                         onClick={onCancel}

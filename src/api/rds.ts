@@ -9,9 +9,7 @@ export async function listRdsInstances(vpcId: string): Promise<RdsInstance[]> {
     let marker: string | undefined;
 
     do {
-        const res = await getRdsClient().send(
-            new DescribeDBInstancesCommand({ Marker: marker }),
-        );
+        const res = await getRdsClient().send(new DescribeDBInstancesCommand({ Marker: marker }));
 
         for (const db of res.DBInstances ?? []) {
             if (db.DBSubnetGroup?.VpcId !== vpcId) continue;

@@ -6,13 +6,9 @@ import { log } from "@/lib/logger";
 /**
  * List EC2 instances, optionally filtered by VPC ID.
  */
-export async function listEc2(
-    filterVpcId?: string
-): Promise<VpcEc2Instance[]> {
+export async function listEc2(filterVpcId?: string): Promise<VpcEc2Instance[]> {
     log.ec2.debug(`Listing EC2 instances${filterVpcId ? ` in VPC ${filterVpcId}` : ""}`);
-    const filters = [
-        { Name: "instance-state-name", Values: ["running", "stopped", "stopping", "pending"] },
-    ];
+    const filters = [{ Name: "instance-state-name", Values: ["running", "stopped", "stopping", "pending"] }];
     if (filterVpcId) {
         filters.push({ Name: "vpc-id", Values: [filterVpcId] });
     }
@@ -21,14 +17,12 @@ export async function listEc2(
     let nextToken: string | undefined;
 
     do {
-        const res = await getEc2Client().send(
-            new DescribeInstancesCommand({ Filters: filters, NextToken: nextToken }),
-        );
+        const res = await getEc2Client().send(new DescribeInstancesCommand({ Filters: filters, NextToken: nextToken }));
 
         for (const reservation of res.Reservations ?? []) {
             for (const inst of reservation.Instances ?? []) {
                 const instanceId = inst.InstanceId ?? "";
-                const name = (inst.Tags ?? []).find(t => t.Key === "Name")?.Value ?? "";
+                const name = (inst.Tags ?? []).find((t) => t.Key === "Name")?.Value ?? "";
 
                 instances.push({
                     instanceId,
@@ -51,4 +45,3 @@ export async function listEc2(
     log.ec2.debug(`Found ${instances.length} EC2 instances`);
     return instances;
 }
-

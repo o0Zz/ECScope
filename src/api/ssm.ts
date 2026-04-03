@@ -1,16 +1,9 @@
-import {
-    SendCommandCommand,
-    GetCommandInvocationCommand,
-} from "@aws-sdk/client-ssm";
+import { SendCommandCommand, GetCommandInvocationCommand } from "@aws-sdk/client-ssm";
 import { getSsmClient } from "./clients";
 import { log } from "@/lib/logger";
 
 /** Send an SSM RunShellScript command and wait for completion. Returns stdout. */
-export async function execSsmCommand(
-    instanceId: string,
-    commands: string[],
-    timeoutSeconds = 120,
-): Promise<string> {
+export async function execSsmCommand(instanceId: string, commands: string[], timeoutSeconds = 120): Promise<string> {
     log.ssm.debug(`Executing SSM command on instance ${instanceId} with commands: ${commands.join(", ")}`);
 
     const res = await getSsmClient().send(
@@ -40,7 +33,9 @@ export async function execSsmCommand(
 
             if (inv.Status === "Success") return inv.StandardOutputContent ?? "";
             if (inv.Status === "Failed" || inv.Status === "Cancelled" || inv.Status === "TimedOut") {
-                log.ssm.error(`SSM command failed: ${inv.StandardErrorContent || inv.StatusDetails || `Command ${inv.Status}`}`);
+                log.ssm.error(
+                    `SSM command failed: ${inv.StandardErrorContent || inv.StatusDetails || `Command ${inv.Status}`}`,
+                );
                 throw new Error(inv.StandardErrorContent || inv.StatusDetails || `Command ${inv.Status}`);
             }
         } catch (e: unknown) {

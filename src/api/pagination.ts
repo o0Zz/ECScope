@@ -30,7 +30,7 @@ export async function batchProcess<TItem, TResult>(
     const results: TResult[] = [];
     for (let i = 0; i < items.length; i += batchSize) {
         const batch = items.slice(i, i + batchSize);
-        results.push(...await processBatch(batch));
+        results.push(...(await processBatch(batch)));
     }
     return results;
 }

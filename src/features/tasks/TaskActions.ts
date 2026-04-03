@@ -61,10 +61,7 @@ export function openHttpCapture(
     ];
 
     // Capture all HTTP; filtering happens in awk after request/response correlation
-    const tsharkParts = [
-        `tshark -l -i any -Y "http.request or http.response"`,
-        `-T fields ${fields.join(" ")}`,
-    ];
+    const tsharkParts = [`tshark -l -i any -Y "http.request or http.response"`, `-T fields ${fields.join(" ")}`];
     if (config.durationSeconds > 0) {
         tsharkParts.push(`-a duration:${config.durationSeconds}`);
     }

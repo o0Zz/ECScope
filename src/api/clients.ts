@@ -34,10 +34,24 @@ export function initAwsClients(creds: ResolvedCredentials, clusterName: string) 
     log.aws.info(`AWS clients initialized for cluster ${clusterName}`);
 }
 
-export function getEcsClient(): ECSClient { return ecsClient; }
-export function getCwClient(): CloudWatchClient { return cwClient; }
-export function getSsmClient(): SSMClient { return ssmClient; }
-export function getSmClient(): SecretsManagerClient { return smClient; }
-export function getElbv2Client(): ElasticLoadBalancingV2Client { return elbv2Client; }
-export function getEc2Client(): EC2Client { return ec2Client; }
-export function getRdsClient(): RDSClient { return rdsClient; }
+export function getEcsClient(): ECSClient {
+    return ecsClient;
+}
+export function getCwClient(): CloudWatchClient {
+    return cwClient;
+}
+export function getSsmClient(): SSMClient {
+    return ssmClient;
+}
+export function getSmClient(): SecretsManagerClient {
+    return smClient;
+}
+export function getElbv2Client(): ElasticLoadBalancingV2Client {
+    return elbv2Client;
+}
+export function getEc2Client(): EC2Client {
+    return ec2Client;
+}
+export function getRdsClient(): RDSClient {
+    return rdsClient;
+}

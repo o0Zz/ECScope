@@ -20,18 +20,14 @@ async function paginateTaskArns(
     desiredStatus: "RUNNING" | "STOPPED",
 ): Promise<string[]> {
     return paginateAll(
-        (nextToken) => getEcsClient().send(
-            new ListTasksCommand({ cluster: clusterName, serviceName, desiredStatus, nextToken }),
-        ),
+        (nextToken) =>
+            getEcsClient().send(new ListTasksCommand({ cluster: clusterName, serviceName, desiredStatus, nextToken })),
         (res) => res.taskArns,
         (res) => res.nextToken,
     );
 }
 
-async function resolveEc2InstanceIds(
-    clusterName: string,
-    allTasks: EcsTask[],
-): Promise<void> {
+async function resolveEc2InstanceIds(clusterName: string, allTasks: EcsTask[]): Promise<void> {
     const ciArns = [...new Set(allTasks.map((t) => t.containerInstanceArn).filter(Boolean))];
     if (ciArns.length === 0) return;
 
@@ -52,21 +48,37 @@ async function resolveEc2InstanceIds(
     }
 }
 
-async function resolveTaskDefinitionEnvs(
-    allTasks: EcsTask[],
-): Promise<void> {
+async function resolveTaskDefinitionEnvs(allTasks: EcsTask[]): Promise<void> {
     const tdArns = [...new Set(allTasks.map((t) => t.taskDefinitionArn).filter(Boolean))];
-    const tdEnvMap = new Map<string, Map<string, { env: { name: string; value: string }[]; secrets: { name: string; valueFrom: string }[]; logGroup?: string; logStreamPrefix?: string }>>();
+    const tdEnvMap = new Map<
+        string,
+        Map<
+            string,
+            {
+                env: { name: string; value: string }[];
+                secrets: { name: string; valueFrom: string }[];
+                logGroup?: string;
+                logStreamPrefix?: string;
+            }
+        >
+    >();
 
     await Promise.all(
         tdArns.map(async (tdArn) => {
             try {
-                const tdRes = await getEcsClient().send(
-                    new DescribeTaskDefinitionCommand({ taskDefinition: tdArn }),
-                );
-                const containerEnvs = new Map<string, { env: { name: string; value: string }[]; secrets: { name: string; valueFrom: string }[]; logGroup?: string; logStreamPrefix?: string }>();
+                const tdRes = await getEcsClient().send(new DescribeTaskDefinitionCommand({ taskDefinition: tdArn }));
+                const containerEnvs = new Map<
+                    string,
+                    {
+                        env: { name: string; value: string }[];
+                        secrets: { name: string; valueFrom: string }[];
+                        logGroup?: string;
+                        logStreamPrefix?: string;
+                    }
+                >();
                 for (const cd of tdRes.taskDefinition?.containerDefinitions ?? []) {
-                    const logOpts = cd.logConfiguration?.logDriver === "awslogs" ? cd.logConfiguration.options : undefined;
+                    const logOpts =
+                        cd.logConfiguration?.logDriver === "awslogs" ? cd.logConfiguration.options : undefined;
                     containerEnvs.set(cd.name ?? "", {
                         env: (cd.environment ?? []).map((e) => ({
                             name: e.name ?? "",
@@ -127,9 +139,7 @@ async function resolveSecretValues(allTasks: EcsTask[]): Promise<void> {
     for (let i = 0; i < ssmNames.length; i += 10) {
         const batch = ssmNames.slice(i, i + 10);
         try {
-            const res = await getSsmClient().send(
-                new GetParametersCommand({ Names: batch, WithDecryption: true }),
-            );
+            const res = await getSsmClient().send(new GetParametersCommand({ Names: batch, WithDecryption: true }));
             for (const p of res.Parameters ?? []) {
                 const ref = batch.find((n) => n === p.Name || n === p.ARN) ?? p.Name ?? "";
                 if (ref) allSecretRefs.set(ref, p.Value ?? "");
@@ -147,9 +157,7 @@ async function resolveSecretValues(allTasks: EcsTask[]): Promise<void> {
                 const jsonKeyMatch = arn.match(/:([^:]+)::$/);
                 const jsonKey = jsonKeyMatch?.[1];
 
-                const res = await getSmClient().send(
-                    new GetSecretValueCommand({ SecretId: baseArn }),
-                );
+                const res = await getSmClient().send(new GetSecretValueCommand({ SecretId: baseArn }));
                 let value = res.SecretString ?? "";
                 if (jsonKey && value) {
                     try {
@@ -178,10 +186,7 @@ async function resolveSecretValues(allTasks: EcsTask[]): Promise<void> {
 
 // ─── API ──────────────────────────────────────────────────
 
-export async function listTasks(
-    clusterName: string,
-    serviceName: string,
-): Promise<EcsTask[]> {
+export async function listTasks(clusterName: string, serviceName: string): Promise<EcsTask[]> {
     log.ecs.debug(`Listing tasks for ${clusterName}/${serviceName}`);
 
     const [runningArns, stoppedArns] = await Promise.all([
@@ -195,9 +200,7 @@ export async function listTasks(
     const allTasks: EcsTask[] = [];
     for (let i = 0; i < taskArns.length; i += 100) {
         const batch = taskArns.slice(i, i + 100);
-        const descRes = await getEcsClient().send(
-            new DescribeTasksCommand({ cluster: clusterName, tasks: batch }),
-        );
+        const descRes = await getEcsClient().send(new DescribeTasksCommand({ cluster: clusterName, tasks: batch }));
 
         for (const t of descRes.tasks ?? []) {
             allTasks.push({
@@ -246,11 +249,7 @@ export async function listTasks(
     return allTasks;
 }
 
-export async function stopTask(
-    clusterName: string,
-    taskArn: string,
-    reason = "Stopped via ECScope",
-): Promise<void> {
+export async function stopTask(clusterName: string, taskArn: string, reason = "Stopped via ECScope"): Promise<void> {
     log.ecs.info(`Stopping task ${taskArn} on cluster ${clusterName}`);
     await getEcsClient().send(
         new StopTaskCommand({

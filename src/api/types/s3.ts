@@ -5,4 +5,3 @@ export interface S3Credentials {
     sessionToken?: string;
     region: string;
 }
-

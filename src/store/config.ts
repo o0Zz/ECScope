@@ -43,7 +43,12 @@ export const useConfigStore = create<ConfigState>((set, get) => ({
         try {
             const config = await loadConfig();
             log.config.info(`Loaded ${config.clusters.length} clusters (refresh: ${config.refreshPeriodSeconds}s)`);
-            set({ clusters: config.clusters, storage: config.storage, refreshIntervalMs: config.refreshPeriodSeconds * 1000, status: "idle" });
+            set({
+                clusters: config.clusters,
+                storage: config.storage,
+                refreshIntervalMs: config.refreshPeriodSeconds * 1000,
+                status: "idle",
+            });
         } catch (err) {
             const message = err instanceof Error ? err.message : String(err);
             log.config.error(`Failed to load configuration: ${message}`);

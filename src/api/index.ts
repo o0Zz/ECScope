@@ -15,6 +15,7 @@ import {
 import { listTasks, stopTask } from "./ecs-tasks";
 import { listContainerInstances, getClusterVpcId } from "./ecs-instances";
 import { getClusterAsgInfo, updateAsgDesiredCapacity } from "./asg";
+import { getServiceScalingTargets, updateServiceScalingTarget } from "./service-autoscaling";
 import {
     getServiceMetricsHistory,
     getAlbMetricsHistory,
@@ -43,6 +44,8 @@ export const ecsApi = {
     getClusterVpcId,
     getClusterAsgInfo,
     updateAsgDesiredCapacity,
+    getServiceScalingTargets,
+    updateServiceScalingTarget,
     listEc2,
     getEc2MetricsHistory,
     getRdsMetricsHistory,

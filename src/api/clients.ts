@@ -6,6 +6,7 @@ import { ElasticLoadBalancingV2Client } from "@aws-sdk/client-elastic-load-balan
 import { EC2Client } from "@aws-sdk/client-ec2";
 import { RDSClient } from "@aws-sdk/client-rds";
 import { AutoScalingClient } from "@aws-sdk/client-auto-scaling";
+import { ApplicationAutoScalingClient } from "@aws-sdk/client-application-auto-scaling";
 import type { ResolvedCredentials } from "@/config/aws-credentials";
 import { log } from "@/lib/logger";
 
@@ -17,6 +18,7 @@ let elbv2Client: ElasticLoadBalancingV2Client;
 let ec2Client: EC2Client;
 let rdsClient: RDSClient;
 let asgClient: AutoScalingClient;
+let appAsClient: ApplicationAutoScalingClient;
 
 export function initAwsClients(creds: ResolvedCredentials, clusterName: string) {
     log.aws.info(`Initializing AWS clients for cluster ${clusterName} (Region: ${creds.region})`);
@@ -34,6 +36,7 @@ export function initAwsClients(creds: ResolvedCredentials, clusterName: string) 
     ec2Client = new EC2Client({ region: creds.region, credentials });
     rdsClient = new RDSClient({ region: creds.region, credentials });
     asgClient = new AutoScalingClient({ region: creds.region, credentials });
+    appAsClient = new ApplicationAutoScalingClient({ region: creds.region, credentials });
     log.aws.info(`AWS clients initialized for cluster ${clusterName}`);
 }
 
@@ -60,4 +63,7 @@ export function getRdsClient(): RDSClient {
 }
 export function getAsgClient(): AutoScalingClient {
     return asgClient;
+}
+export function getAppAsClient(): ApplicationAutoScalingClient {
+    return appAsClient;
 }

@@ -5,7 +5,7 @@ import { useNavigationStore } from "@/store/navigation";
 import { useConfigStore } from "@/store/config";
 import { StatusBadge } from "@/components/StatusBadge";
 import { MetricBar } from "@/components/MetricBar";
-import { Cog, ArrowRight, Plus, Minus, RotateCw } from "lucide-react";
+import { Cog, ArrowRight, Plus, Minus, RotateCw, Settings2, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
 
@@ -80,6 +80,11 @@ export function ServiceList() {
     const refreshIntervalMs = useConfigStore((s) => s.refreshIntervalMs);
     const queryClient = useQueryClient();
     const [confirmRedeploy, setConfirmRedeploy] = useState<string | null>(null);
+    const [scalingDialog, setScalingDialog] = useState<{
+        serviceName: string;
+        minCapacity: number;
+        maxCapacity: number;
+    } | null>(null);
 
     const { data: services, isLoading } = useQuery({
         queryKey: ["services", selectedCluster],
@@ -104,6 +109,29 @@ export function ServiceList() {
         onSuccess: () => {
             setConfirmRedeploy(null);
             queryClient.invalidateQueries({ queryKey: ["services", selectedCluster] });
+        },
+    });
+
+    const { data: scalingTargets } = useQuery({
+        queryKey: ["scalingTargets", selectedCluster],
+        queryFn: () => ecsApi.getServiceScalingTargets(selectedCluster!),
+        enabled: !!selectedCluster,
+        refetchInterval: refreshIntervalMs,
+    });
+
+    const scalingTargetMutation = useMutation({
+        mutationFn: ({
+            serviceName,
+            minCapacity,
+            maxCapacity,
+        }: {
+            serviceName: string;
+            minCapacity: number;
+            maxCapacity: number;
+        }) => ecsApi.updateServiceScalingTarget(selectedCluster!, serviceName, minCapacity, maxCapacity),
+        onSuccess: () => {
+            setScalingDialog(null);
+            queryClient.invalidateQueries({ queryKey: ["scalingTargets", selectedCluster] });
         },
     });
 
@@ -193,6 +221,21 @@ export function ServiceList() {
                                             title="Scale up"
                                         >
                                             <Plus className="h-3.5 w-3.5" />
+                                        </button>
+                                        <button
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                const target = scalingTargets?.get(svc.serviceName);
+                                                setScalingDialog({
+                                                    serviceName: svc.serviceName,
+                                                    minCapacity: target?.minCapacity ?? svc.desiredCount,
+                                                    maxCapacity: target?.maxCapacity ?? svc.desiredCount,
+                                                });
+                                            }}
+                                            className="rounded p-1 text-muted-foreground hover:bg-accent hover:text-foreground"
+                                            title="Configure scaling limits"
+                                        >
+                                            <Settings2 className="h-3.5 w-3.5" />
                                         </button>
                                     </div>
                                 </td>
@@ -284,6 +327,85 @@ export function ServiceList() {
                 onConfirm={() => redeployMutation.mutate(confirmRedeploy!)}
                 onCancel={() => setConfirmRedeploy(null)}
             />
+
+            {scalingDialog && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+                    <div className="w-full max-w-sm rounded-lg border border-border bg-card p-6 shadow-lg">
+                        <div className="flex items-center justify-between mb-4">
+                            <h3 className="text-sm font-semibold text-foreground">Scaling Limits</h3>
+                            <button
+                                onClick={() => setScalingDialog(null)}
+                                className="rounded p-1 text-muted-foreground hover:bg-accent hover:text-foreground"
+                            >
+                                <X className="h-4 w-4" />
+                            </button>
+                        </div>
+                        <p className="text-xs font-mono text-foreground mb-4">{scalingDialog.serviceName}</p>
+
+                        <div className="space-y-3">
+                            <div>
+                                <label className="block text-xs text-muted-foreground mb-1">Min Capacity</label>
+                                <input
+                                    type="number"
+                                    min={0}
+                                    value={scalingDialog.minCapacity}
+                                    onChange={(e) =>
+                                        setScalingDialog({
+                                            ...scalingDialog,
+                                            minCapacity: Math.max(0, parseInt(e.target.value) || 0),
+                                        })
+                                    }
+                                    className="w-full rounded-md border border-border bg-background px-3 py-1.5 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-xs text-muted-foreground mb-1">Max Capacity</label>
+                                <input
+                                    type="number"
+                                    min={scalingDialog.minCapacity}
+                                    value={scalingDialog.maxCapacity}
+                                    onChange={(e) =>
+                                        setScalingDialog({
+                                            ...scalingDialog,
+                                            maxCapacity: Math.max(
+                                                scalingDialog.minCapacity,
+                                                parseInt(e.target.value) || 0,
+                                            ),
+                                        })
+                                    }
+                                    className="w-full rounded-md border border-border bg-background px-3 py-1.5 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+                                />
+                            </div>
+                        </div>
+
+                        <div className="flex justify-end gap-2 mt-4">
+                            <button
+                                onClick={() => setScalingDialog(null)}
+                                disabled={scalingTargetMutation.isPending}
+                                className="rounded-md px-3 py-1.5 text-sm text-muted-foreground hover:bg-accent"
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                onClick={() =>
+                                    scalingTargetMutation.mutate({
+                                        serviceName: scalingDialog.serviceName,
+                                        minCapacity: scalingDialog.minCapacity,
+                                        maxCapacity: scalingDialog.maxCapacity,
+                                    })
+                                }
+                                disabled={
+                                    scalingTargetMutation.isPending ||
+                                    scalingDialog.maxCapacity < scalingDialog.minCapacity
+                                }
+                                className="rounded-md bg-primary px-3 py-1.5 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
+                            >
+                                {scalingTargetMutation.isPending ? "Saving…" : "Save"}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }

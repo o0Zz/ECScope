@@ -4,6 +4,7 @@ import { Activity, AlertTriangle, AlertCircle, Clock } from "lucide-react";
 import { MetricsChart } from "./MetricsChart";
 import { MetricsPanel } from "./MetricsPanel";
 import { formatNumber } from "@/lib/format";
+import { formatMetricsTimeRangeLabel } from "@/lib/metrics-time-range";
 
 interface AlbMetricsChartProps {
     albArn: string;
@@ -14,15 +15,15 @@ export function AlbMetricsChart({ albArn, albName }: AlbMetricsChartProps) {
     return (
         <MetricsPanel<AlbMetricsDataPoint>
             queryKey={["albMetricsHistory", albArn]}
-            queryFn={() => ecsApi.getAlbMetricsHistory(albArn)}
+            queryFn={(range) => ecsApi.getAlbMetricsHistory(albArn, range)}
             loadingText="Loading ALB metrics…"
             emptyText={`No metrics data available for ${albName}.`}
         >
-            {(data) => {
+            {(data, range) => {
                 const has5xx = data.some((d) => d.http5xxCount > 0);
                 const has4xx = data.some((d) => d.http4xxCount > 0);
                 return (
-                    <div className="mt-2">
+                    <div>
                         <div className="grid grid-cols-2 gap-2">
                             <MetricsChart<AlbMetricsDataPoint>
                                 data={data}
@@ -62,7 +63,7 @@ export function AlbMetricsChart({ albArn, albName }: AlbMetricsChartProps) {
                             )}
                             {!has5xx && !has4xx && (
                                 <div className="flex items-center justify-center rounded-lg border border-border bg-card p-2.5 text-xs text-success col-span-2">
-                                    No HTTP errors in the last 24h
+                                    No HTTP errors in the last {formatMetricsTimeRangeLabel(range).toLowerCase()}
                                 </div>
                             )}
                         </div>

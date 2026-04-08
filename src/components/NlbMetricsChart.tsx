@@ -14,14 +14,14 @@ export function NlbMetricsChart({ nlbArn, nlbName }: NlbMetricsChartProps) {
     return (
         <MetricsPanel<NlbMetricsDataPoint>
             queryKey={["nlbMetricsHistory", nlbArn]}
-            queryFn={() => ecsApi.getNlbMetricsHistory(nlbArn)}
+            queryFn={(range) => ecsApi.getNlbMetricsHistory(nlbArn, range)}
             loadingText="Loading NLB metrics…"
             emptyText={`No metrics data available for ${nlbName}.`}
         >
             {(data) => {
                 const hasResets = data.some((d) => d.tcpClientResetCount > 0 || d.tcpTargetResetCount > 0);
                 return (
-                    <div className="mt-2">
+                    <div>
                         <div className="grid grid-cols-2 gap-2">
                             <MetricsChart<NlbMetricsDataPoint>
                                 data={data}

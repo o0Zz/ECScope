@@ -1,6 +1,41 @@
 import type { LucideIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 
+function getXAxisTickConfig(totalMs: number): {
+    stepMs: number;
+    labelOptions: Intl.DateTimeFormatOptions;
+} {
+    const hourMs = 60 * 60 * 1000;
+    const dayMs = 24 * hourMs;
+
+    if (totalMs <= 15 * 60 * 1000) {
+        return { stepMs: 5 * 60 * 1000, labelOptions: { hour: "2-digit", minute: "2-digit" } };
+    }
+    if (totalMs <= hourMs) {
+        return { stepMs: 15 * 60 * 1000, labelOptions: { hour: "2-digit", minute: "2-digit" } };
+    }
+    if (totalMs <= 4 * hourMs) {
+        return { stepMs: hourMs, labelOptions: { hour: "2-digit", minute: "2-digit" } };
+    }
+    if (totalMs <= 8 * hourMs) {
+        return { stepMs: 2 * hourMs, labelOptions: { hour: "2-digit", minute: "2-digit" } };
+    }
+    if (totalMs <= dayMs) {
+        return { stepMs: 4 * hourMs, labelOptions: { hour: "2-digit", minute: "2-digit" } };
+    }
+    if (totalMs <= 3 * dayMs) {
+        return {
+            stepMs: 12 * hourMs,
+            labelOptions: { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" },
+        };
+    }
+    if (totalMs <= 7 * dayMs) {
+        return { stepMs: dayMs, labelOptions: { month: "short", day: "numeric" } };
+    }
+
+    return { stepMs: 2 * dayMs, labelOptions: { month: "short", day: "numeric" } };
+}
+
 // ---------------------------------------------------------------------------
 // Types
 // ---------------------------------------------------------------------------
@@ -116,22 +151,20 @@ export function MetricsChart<T extends { timestamp: number }>({
 
     const fmtYTick = formatYTick ?? formatValue;
 
-    // X-axis ticks (auto hourly / 3-hourly)
+    // X-axis ticks adapt to the selected range so multi-day windows stay legible.
     const firstTs = data[0].timestamp;
     const lastTs = data[data.length - 1].timestamp;
     const totalMs = lastTs - firstTs;
     const xTicks: { x: number; label: string }[] = [];
     if (totalMs > 0) {
-        const firstHour = new Date(firstTs);
-        firstHour.setMinutes(0, 0, 0);
-        if (firstHour.getTime() < firstTs) firstHour.setHours(firstHour.getHours() + 1);
-        const stepHours = totalMs > 12 * 3600_000 ? 3 : 1;
-        for (let t = firstHour.getTime(); t <= lastTs; t += stepHours * 3600_000) {
+        const { stepMs, labelOptions } = getXAxisTickConfig(totalMs);
+        const firstTick = Math.ceil(firstTs / stepMs) * stepMs;
+        for (let t = firstTick; t <= lastTs; t += stepMs) {
             const ratio = (t - firstTs) / totalMs;
             if (ratio < 0 || ratio > 1) continue;
             xTicks.push({
                 x: mL + ratio * cW,
-                label: new Date(t).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+                label: new Date(t).toLocaleString([], labelOptions),
             });
         }
     }

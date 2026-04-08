@@ -5,6 +5,7 @@ import { MetricsChart } from "./MetricsChart";
 import { MetricsPanel } from "./MetricsPanel";
 import { formatPercent, formatBytes } from "@/lib/format";
 import { PERCENT_CHART_PROPS, COMPACT_CHART_PROPS } from "./metrics-chart-presets";
+import { formatMetricsTimeRangeLabel } from "@/lib/metrics-time-range";
 
 interface Ec2MetricsChartProps {
     instanceId: string;
@@ -14,13 +15,13 @@ export function Ec2MetricsChart({ instanceId }: Ec2MetricsChartProps) {
     return (
         <MetricsPanel<Ec2MetricsDataPoint>
             queryKey={["ec2MetricsHistory", instanceId]}
-            queryFn={() => ecsApi.getEc2MetricsHistory(instanceId)}
+            queryFn={(range) => ecsApi.getEc2MetricsHistory(instanceId, range)}
             loadingText="Loading EC2 metrics…"
             emptyText="No metrics data available."
         >
-            {(data) => (
+            {(data, range) => (
                 <div className="space-y-3">
-                    <h3 className="text-xs font-semibold text-foreground">Instance Metrics (last 24h)</h3>
+                    <h3 className="text-xs font-semibold text-foreground">Instance Metrics</h3>
 
                     {/* Row 1: CPU + Status Check */}
                     <div className="flex gap-3">

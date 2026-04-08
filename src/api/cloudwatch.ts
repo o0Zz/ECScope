@@ -8,6 +8,12 @@ import type {
     RdsMetricsDataPoint,
 } from "./types";
 import { log } from "@/lib/logger";
+import {
+    DEFAULT_METRICS_TIME_RANGE_KEY,
+    getCloudWatchPeriodSeconds,
+    getMetricsTimeRange,
+    type MetricsTimeRangeOption,
+} from "@/lib/metrics-time-range";
 
 // ─── Generic CloudWatch helper ───────────────────────────
 
@@ -82,8 +88,6 @@ export async function queryMetrics(
 
 // ─── History functions ───────────────────────────────────
 
-const ONE_DAY_MS = 24 * 60 * 60 * 1000;
-
 /**
  * Generic helper: runs a CloudWatch query, then maps each timestamp into one
  * output object using the caller-supplied `mapper`.
@@ -92,13 +96,23 @@ async function fetchHistory<T extends { timestamp: number }>(
     queries: MetricQuery[],
     mapper: (ts: number, i: number, values: Map<string, number[]>) => T,
     label: string,
+    range: MetricsTimeRangeOption,
 ): Promise<T[]> {
-    log.cloudwatch.debug(`Fetching ${label} metrics history`);
+    const periodSeconds = getCloudWatchPeriodSeconds(range);
+
+    log.cloudwatch.debug(`Fetching ${label} metrics history`, {
+        periodSeconds,
+        range: range.key,
+    });
     try {
-        const { timestamps, values } = await queryMetrics(queries, 300, ONE_DAY_MS);
+        const { timestamps, values } = await queryMetrics(queries, periodSeconds, range.lookbackMs);
         return timestamps.map((ts, i) => mapper(ts, i, values)).sort((a, b) => a.timestamp - b.timestamp);
     } catch (err) {
-        log.cloudwatch.warn(`Failed to fetch ${label} metrics history`, err);
+        log.cloudwatch.warn(`Failed to fetch ${label} metrics history`, {
+            err,
+            periodSeconds,
+            range: range.key,
+        });
         return [];
     }
 }
@@ -118,7 +132,11 @@ function ecsDimensions(clusterName: string, serviceName: string) {
     ];
 }
 
-export async function getServiceMetricsHistory(clusterName: string, serviceName: string): Promise<MetricsDataPoint[]> {
+export async function getServiceMetricsHistory(
+    clusterName: string,
+    serviceName: string,
+    range: MetricsTimeRangeOption = getMetricsTimeRange(DEFAULT_METRICS_TIME_RANGE_KEY),
+): Promise<MetricsDataPoint[]> {
     const dims = ecsDimensions(clusterName, serviceName);
     return fetchHistory(
         [
@@ -131,10 +149,14 @@ export async function getServiceMetricsHistory(clusterName: string, serviceName:
             memoryUtilization: round1(val(v, "mem", i)),
         }),
         `service ${serviceName}`,
+        range,
     );
 }
 
-export async function getAlbMetricsHistory(albArn: string): Promise<AlbMetricsDataPoint[]> {
+export async function getAlbMetricsHistory(
+    albArn: string,
+    range: MetricsTimeRangeOption = getMetricsTimeRange(DEFAULT_METRICS_TIME_RANGE_KEY),
+): Promise<AlbMetricsDataPoint[]> {
     const albDimension = albArn.split(":loadbalancer/")[1] ?? "";
     if (!albDimension) return [];
 
@@ -155,10 +177,14 @@ export async function getAlbMetricsHistory(albArn: string): Promise<AlbMetricsDa
             targetResponseTimeMs: round1(val(v, "latency", i) * 1000),
         }),
         "ALB",
+        range,
     );
 }
 
-export async function getNlbMetricsHistory(nlbArn: string): Promise<NlbMetricsDataPoint[]> {
+export async function getNlbMetricsHistory(
+    nlbArn: string,
+    range: MetricsTimeRangeOption = getMetricsTimeRange(DEFAULT_METRICS_TIME_RANGE_KEY),
+): Promise<NlbMetricsDataPoint[]> {
     const lbDimension = nlbArn.split(":loadbalancer/")[1] ?? "";
     if (!lbDimension) return [];
 
@@ -181,10 +207,14 @@ export async function getNlbMetricsHistory(nlbArn: string): Promise<NlbMetricsDa
             tcpTargetResetCount: Math.round(val(v, "targetResets", i)),
         }),
         "NLB",
+        range,
     );
 }
 
-export async function getEc2MetricsHistory(instanceId: string): Promise<Ec2MetricsDataPoint[]> {
+export async function getEc2MetricsHistory(
+    instanceId: string,
+    range: MetricsTimeRangeOption = getMetricsTimeRange(DEFAULT_METRICS_TIME_RANGE_KEY),
+): Promise<Ec2MetricsDataPoint[]> {
     const dims = [{ Name: "InstanceId" as const, Value: instanceId }];
     const ns = "AWS/EC2";
     return fetchHistory(
@@ -206,10 +236,14 @@ export async function getEc2MetricsHistory(instanceId: string): Promise<Ec2Metri
             statusCheckFailed: Math.round(val(v, "statusCheck", i)),
         }),
         `EC2 ${instanceId}`,
+        range,
     );
 }
 
-export async function getRdsMetricsHistory(dbInstanceIdentifier: string): Promise<RdsMetricsDataPoint[]> {
+export async function getRdsMetricsHistory(
+    dbInstanceIdentifier: string,
+    range: MetricsTimeRangeOption = getMetricsTimeRange(DEFAULT_METRICS_TIME_RANGE_KEY),
+): Promise<RdsMetricsDataPoint[]> {
     const dims = [{ Name: "DBInstanceIdentifier" as const, Value: dbInstanceIdentifier }];
     const ns = "AWS/RDS";
     return fetchHistory(
@@ -235,5 +269,6 @@ export async function getRdsMetricsHistory(dbInstanceIdentifier: string): Promis
             freeStorageSpaceBytes: Math.round(val(v, "freeStorage", i)),
         }),
         `RDS ${dbInstanceIdentifier}`,
+        range,
     );
 }

@@ -5,6 +5,7 @@ import { MetricsChart } from "./MetricsChart";
 import { MetricsPanel } from "./MetricsPanel";
 import { formatPercent } from "@/lib/format";
 import { PERCENT_Y_TICKS } from "./metrics-chart-presets";
+import { formatMetricsTimeRangeLabel } from "@/lib/metrics-time-range";
 
 interface ServiceMetricsChartProps {
     clusterName: string;
@@ -15,14 +16,14 @@ export function ServiceMetricsChart({ clusterName, serviceName }: ServiceMetrics
     return (
         <MetricsPanel<MetricsDataPoint>
             queryKey={["serviceMetricsHistory", clusterName, serviceName]}
-            queryFn={() => ecsApi.getServiceMetricsHistory(clusterName, serviceName)}
+            queryFn={(range) => ecsApi.getServiceMetricsHistory(clusterName, serviceName, range)}
             loadingText="Loading metrics…"
             emptyText="No metrics data available."
             className="mt-4"
         >
-            {(data) => (
-                <div className="mt-4">
-                    <h3 className="mb-2 text-sm font-semibold text-foreground">Service Metrics (last 24h)</h3>
+            {(data, range) => (
+                <div className="space-y-2">
+                    <h3 className="text-sm font-semibold text-foreground">Service Metrics</h3>
                     <div className="flex gap-3">
                         <MetricsChart<MetricsDataPoint>
                             data={data}

@@ -5,6 +5,7 @@ import { MetricsChart } from "./MetricsChart";
 import { MetricsPanel } from "./MetricsPanel";
 import { formatPercent, formatBytes, formatNumber } from "@/lib/format";
 import { PERCENT_CHART_PROPS, COMPACT_CHART_PROPS } from "./metrics-chart-presets";
+import { formatMetricsTimeRangeLabel } from "@/lib/metrics-time-range";
 
 interface RdsMetricsChartProps {
     dbInstanceIdentifier: string;
@@ -23,13 +24,13 @@ export function RdsMetricsChart({ dbInstanceIdentifier }: RdsMetricsChartProps) 
     return (
         <MetricsPanel<RdsMetricsDataPoint>
             queryKey={["rdsMetricsHistory", dbInstanceIdentifier]}
-            queryFn={() => ecsApi.getRdsMetricsHistory(dbInstanceIdentifier)}
+            queryFn={(range) => ecsApi.getRdsMetricsHistory(dbInstanceIdentifier, range)}
             loadingText="Loading RDS metrics…"
             emptyText="No metrics data available."
         >
-            {(data) => (
+            {(data, range) => (
                 <div className="space-y-3">
-                    <h3 className="text-xs font-semibold text-foreground">Database Metrics (last 24h)</h3>
+                    <h3 className="text-xs font-semibold text-foreground">Database Metrics</h3>
 
                     {/* Row 1: CPU + Connections */}
                     <div className="flex gap-3">

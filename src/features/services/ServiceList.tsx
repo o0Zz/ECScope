@@ -80,6 +80,7 @@ export function ServiceList() {
     const refreshIntervalMs = useConfigStore((s) => s.refreshIntervalMs);
     const queryClient = useQueryClient();
     const [confirmRedeploy, setConfirmRedeploy] = useState<string | null>(null);
+    const [confirmScaleToZero, setConfirmScaleToZero] = useState<string | null>(null);
     const [scalingDialog, setScalingDialog] = useState<{
         serviceName: string;
         minCapacity: number;
@@ -194,10 +195,14 @@ export function ServiceList() {
                                         <button
                                             onClick={(e) => {
                                                 e.stopPropagation();
-                                                scaleMutation.mutate({
-                                                    serviceName: svc.serviceName,
-                                                    desiredCount: svc.desiredCount - 1,
-                                                });
+                                                if (svc.desiredCount === 1) {
+                                                    setConfirmScaleToZero(svc.serviceName);
+                                                } else {
+                                                    scaleMutation.mutate({
+                                                        serviceName: svc.serviceName,
+                                                        desiredCount: svc.desiredCount - 1,
+                                                    });
+                                                }
                                             }}
                                             disabled={svc.desiredCount <= 0 || scaleMutation.isPending}
                                             className="rounded p-1 text-muted-foreground hover:bg-destructive/20 hover:text-destructive disabled:opacity-30 disabled:cursor-not-allowed"
@@ -326,6 +331,22 @@ export function ServiceList() {
                 isPending={redeployMutation.isPending}
                 onConfirm={() => redeployMutation.mutate(confirmRedeploy!)}
                 onCancel={() => setConfirmRedeploy(null)}
+            />
+
+            <ConfirmDialog
+                open={!!confirmScaleToZero}
+                title="Stop Service"
+                message="Are you sure you want to scale this service to 0? All running tasks will be stopped."
+                detail={confirmScaleToZero ?? undefined}
+                confirmLabel="Scale to 0"
+                confirmingLabel="Scaling…"
+                variant="destructive"
+                isPending={scaleMutation.isPending}
+                onConfirm={() => {
+                    scaleMutation.mutate({ serviceName: confirmScaleToZero!, desiredCount: 0 });
+                    setConfirmScaleToZero(null);
+                }}
+                onCancel={() => setConfirmScaleToZero(null)}
             />
 
             {scalingDialog && (

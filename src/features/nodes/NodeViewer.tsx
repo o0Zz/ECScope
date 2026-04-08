@@ -1,10 +1,10 @@
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { ecsApi } from "@/api";
 import { useNavigationStore } from "@/store/navigation";
 import { useConfigStore } from "@/store/config";
 import { StatusBadge } from "@/components/StatusBadge";
 import { MetricBar } from "@/components/MetricBar";
-import { Monitor, Terminal, Download, Upload } from "lucide-react";
+import { Monitor, Terminal, Download, Upload, Minus, Plus, Server } from "lucide-react";
 import { formatAge } from "@/lib/format";
 import { invoke, createLogger } from "@/lib/logger";
 import { useFileTransfer } from "./useFileTransfer";
@@ -18,12 +18,29 @@ export function NodeViewer() {
     const refreshIntervalMs = useConfigStore((s) => s.refreshIntervalMs);
 
     const transfer = useFileTransfer(activeCluster);
+    const queryClient = useQueryClient();
 
     const { data: instances, isLoading } = useQuery({
         queryKey: ["nodes", selectedCluster],
         queryFn: () => ecsApi.listContainerInstances(selectedCluster!),
         enabled: !!selectedCluster,
         refetchInterval: refreshIntervalMs,
+    });
+
+    const { data: asgInfo } = useQuery({
+        queryKey: ["asgInfo", selectedCluster],
+        queryFn: () => ecsApi.getClusterAsgInfo(selectedCluster!),
+        enabled: !!selectedCluster,
+        refetchInterval: refreshIntervalMs,
+    });
+
+    const scaleMutation = useMutation({
+        mutationFn: (desiredCapacity: number) =>
+            ecsApi.updateAsgDesiredCapacity(asgInfo!.asgName, desiredCapacity, asgInfo!.maxSize),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ["asgInfo", selectedCluster] });
+            queryClient.invalidateQueries({ queryKey: ["nodes", selectedCluster] });
+        },
     });
 
     if (isLoading) {
@@ -44,10 +61,46 @@ export function NodeViewer() {
 
     return (
         <div className="p-4">
-            <h2 className="mb-4 text-lg font-semibold text-foreground">
-                Container Instances
-                <span className="ml-2 text-sm font-normal text-muted-foreground">({instances.length})</span>
-            </h2>
+            <div className="mb-4 flex items-center justify-between">
+                <h2 className="text-lg font-semibold text-foreground">
+                    Container Instances
+                    <span className="ml-2 text-sm font-normal text-muted-foreground">({instances.length})</span>
+                </h2>
+
+                {asgInfo && (
+                    <div className="flex items-center gap-3 rounded-lg border border-border bg-muted/30 px-4 py-2">
+                        <Server className="h-4 w-4 text-muted-foreground" />
+                        <span className="text-xs text-muted-foreground">ASG</span>
+                        <span className="text-xs font-medium text-foreground truncate max-w-48" title={asgInfo.asgName}>
+                            {asgInfo.asgName}
+                        </span>
+                        <div className="flex items-center gap-1.5 ml-2">
+                            <button
+                                onClick={() => scaleMutation.mutate(asgInfo.desiredCapacity - 1)}
+                                disabled={asgInfo.desiredCapacity <= asgInfo.minSize || scaleMutation.isPending}
+                                className="rounded-md border border-border px-1.5 py-0.5 text-xs font-medium text-foreground hover:bg-accent transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                                title={`Scale down (min: ${asgInfo.minSize})`}
+                            >
+                                <Minus className="h-3 w-3" />
+                            </button>
+                            <span className="min-w-[2rem] text-center text-sm font-semibold text-foreground">
+                                {asgInfo.desiredCapacity}
+                            </span>
+                            <button
+                                onClick={() => scaleMutation.mutate(asgInfo.desiredCapacity + 1)}
+                                disabled={scaleMutation.isPending}
+                                className="rounded-md border border-border px-1.5 py-0.5 text-xs font-medium text-foreground hover:bg-accent transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                                title={`Scale up (max will be raised if needed)`}
+                            >
+                                <Plus className="h-3 w-3" />
+                            </button>
+                        </div>
+                        <span className="text-xs text-muted-foreground ml-1">
+                            ({asgInfo.minSize}–{asgInfo.maxSize})
+                        </span>
+                    </div>
+                )}
+            </div>
 
             <div className="overflow-hidden rounded-lg border border-border">
                 <table className="w-full text-sm">

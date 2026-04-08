@@ -14,6 +14,7 @@ import {
 } from "./ecs-services";
 import { listTasks, stopTask } from "./ecs-tasks";
 import { listContainerInstances, getClusterVpcId } from "./ecs-instances";
+import { getClusterAsgInfo, updateAsgDesiredCapacity } from "./asg";
 import {
     getServiceMetricsHistory,
     getAlbMetricsHistory,
@@ -40,6 +41,8 @@ export const ecsApi = {
     listAlbs,
     listContainerInstances,
     getClusterVpcId,
+    getClusterAsgInfo,
+    updateAsgDesiredCapacity,
     listEc2,
     getEc2MetricsHistory,
     getRdsMetricsHistory,

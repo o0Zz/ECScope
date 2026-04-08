@@ -35,7 +35,9 @@ function SidebarFooter() {
 
 export function Sidebar() {
     const { selectedCluster, selectCluster, sidebarCollapsed, toggleSidebar } = useNavigationStore();
-    const { clusters, connectToCluster } = useConfigStore();
+    const { clusters, connectToCluster, activeCluster } = useConfigStore();
+
+    const clusterColor = activeCluster?.color;
 
     const handleSelectCluster = async (clusterName: string) => {
         await connectToCluster(clusterName);
@@ -51,10 +53,15 @@ export function Sidebar() {
     return (
         <div
             className={cn(
-                "flex flex-col border-r border-border bg-sidebar transition-all duration-200",
+                "relative flex flex-col border-r border-border bg-sidebar transition-all duration-200",
                 sidebarCollapsed ? "w-12" : "w-60",
             )}
         >
+            {/* Cluster color accent strip */}
+            {clusterColor && (
+                <div className="absolute inset-y-0 left-0 w-[3px]" style={{ backgroundColor: `#${clusterColor}` }} />
+            )}
+
             {/* Header */}
             <div className="flex items-center justify-between border-b border-border px-3 py-3">
                 {!sidebarCollapsed && (

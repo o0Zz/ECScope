@@ -6,6 +6,8 @@ export interface ClusterConfig {
     clusterName: string;
     /** SSH username for SFTP file transfer (default: "ec2-user") */
     sshUser?: string;
+    /** Optional sidebar accent color for this cluster (hex RGB, e.g. "ff0000") */
+    color?: string;
 }
 
 /** Global S3 storage config for file transfer */
@@ -63,6 +65,7 @@ function parseClusterEntries(entries: unknown[]): ClusterConfig[] {
             profile: entry.profile,
             region: entry.region,
             clusterName: entry.clusterName,
+            color: typeof entry.color === "string" && /^[0-9a-fA-F]{6}$/.test(entry.color) ? entry.color : undefined,
         };
     });
 }

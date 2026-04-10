@@ -5,7 +5,6 @@ import { MetricsChart } from "./MetricsChart";
 import { MetricsPanel } from "./MetricsPanel";
 import { formatPercent, formatBytes } from "@/lib/format";
 import { PERCENT_CHART_PROPS, COMPACT_CHART_PROPS } from "./metrics-chart-presets";
-import { formatMetricsTimeRangeLabel } from "@/lib/metrics-time-range";
 
 interface Ec2MetricsChartProps {
     instanceId: string;
@@ -19,7 +18,7 @@ export function Ec2MetricsChart({ instanceId }: Ec2MetricsChartProps) {
             loadingText="Loading EC2 metrics…"
             emptyText="No metrics data available."
         >
-            {(data, range) => (
+            {(data) => (
                 <div className="space-y-3">
                     <h3 className="text-xs font-semibold text-foreground">Instance Metrics</h3>
 

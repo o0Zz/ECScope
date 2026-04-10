@@ -93,6 +93,12 @@ npx tauri dev
 npx tauri build
 ```
 
+### Fix ESLint 
+
+```bash
+npm run lint -- --fix
+```
+
 ## 📁 Project Structure
 
 ```

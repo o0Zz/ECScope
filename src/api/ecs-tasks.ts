@@ -5,8 +5,8 @@ import {
     StopTaskCommand,
     DescribeContainerInstancesCommand,
 } from "@aws-sdk/client-ecs";
-import { GetParametersCommand } from "@aws-sdk/client-ssm";
-import { GetSecretValueCommand } from "@aws-sdk/client-secrets-manager";
+import { GetParametersCommand, PutParameterCommand } from "@aws-sdk/client-ssm";
+import { GetSecretValueCommand, PutSecretValueCommand } from "@aws-sdk/client-secrets-manager";
 import { getEcsClient, getSsmClient, getSmClient } from "./clients";
 import { paginateAll } from "./pagination";
 import type { EcsTask } from "./types";
@@ -258,4 +258,46 @@ export async function stopTask(clusterName: string, taskArn: string, reason = "S
             reason,
         }),
     );
+}
+
+/**
+ * Update a secret value in Secrets Manager or SSM Parameter Store.
+ * Detects which store to use based on the valueFrom ARN/name.
+ * For Secrets Manager JSON secrets with a key suffix (arn:...:key::), only that key is updated.
+ */
+export async function updateSecretValue(valueFrom: string, newValue: string): Promise<void> {
+    if (valueFrom.startsWith("arn:aws:secretsmanager:")) {
+        const baseArn = valueFrom.split(":").length > 7 ? valueFrom.split(":").slice(0, 7).join(":") : valueFrom;
+        const jsonKeyMatch = valueFrom.match(/:([^:]+)::$/);
+        const jsonKey = jsonKeyMatch?.[1];
+
+        if (jsonKey) {
+            // Read existing JSON, update the specific key, write back
+            log.ecs.info(`Updating Secrets Manager JSON key '${jsonKey}' for ${baseArn}`);
+            const existing = await getSmClient().send(new GetSecretValueCommand({ SecretId: baseArn }));
+            let parsed: Record<string, unknown> = {};
+            try {
+                parsed = JSON.parse(existing.SecretString ?? "{}");
+            } catch {
+                throw new Error("Secret is not valid JSON; cannot update individual key");
+            }
+            parsed[jsonKey] = newValue;
+            await getSmClient().send(
+                new PutSecretValueCommand({ SecretId: baseArn, SecretString: JSON.stringify(parsed) }),
+            );
+        } else {
+            log.ecs.info(`Updating Secrets Manager secret ${baseArn}`);
+            await getSmClient().send(new PutSecretValueCommand({ SecretId: baseArn, SecretString: newValue }));
+        }
+    } else {
+        // SSM Parameter Store — valueFrom may be an ARN or a parameter name
+        let paramName = valueFrom;
+        if (valueFrom.startsWith("arn:aws:ssm:")) {
+            // ARN format: arn:aws:ssm:region:account:parameter/path/to/name
+            const paramPart = valueFrom.split(":parameter").pop();
+            if (paramPart) paramName = paramPart.startsWith("/") ? paramPart : `/${paramPart}`;
+        }
+        log.ecs.info(`Updating SSM parameter ${paramName}`);
+        await getSsmClient().send(new PutParameterCommand({ Name: paramName, Value: newValue, Overwrite: true }));
+    }
 }

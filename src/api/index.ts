@@ -12,7 +12,7 @@ import {
     getTaskDefinitionJson,
     registerAndDeployTaskDefinition,
 } from "./ecs-services";
-import { listTasks, stopTask } from "./ecs-tasks";
+import { listTasks, stopTask, updateSecretValue } from "./ecs-tasks";
 import { listContainerInstances, getClusterVpcId } from "./ecs-instances";
 import { getClusterAsgInfo, updateAsgDesiredCapacity } from "./asg";
 import { getServiceScalingTargets, updateServiceScalingTarget } from "./service-autoscaling";
@@ -39,6 +39,7 @@ export const ecsApi = {
     getTaskDefinitionJson,
     registerAndDeployTaskDefinition,
     stopTask,
+    updateSecretValue,
     listAlbs,
     listContainerInstances,
     getClusterVpcId,

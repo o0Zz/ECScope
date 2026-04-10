@@ -25,6 +25,7 @@ export function TaskRow({
     onStop,
     isStopping,
     clusterName,
+    serviceName,
     profile,
     region,
 }: {
@@ -34,6 +35,7 @@ export function TaskRow({
     onStop: () => void;
     isStopping: boolean;
     clusterName: string;
+    serviceName: string;
     profile: string;
     region: string;
 }) {
@@ -195,7 +197,7 @@ export function TaskRow({
             {expanded && (
                 <tr className="border-b border-border">
                     <td colSpan={9} className="bg-muted/20">
-                        <EnvVarPanel task={task} />
+                        <EnvVarPanel task={task} clusterName={clusterName} serviceName={serviceName} />
                     </td>
                 </tr>
             )}

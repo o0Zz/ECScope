@@ -1,6 +1,10 @@
 import { useState } from "react";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import type { EcsTask } from "@/api/types";
-import { FileCode, Copy, Check, KeyRound } from "lucide-react";
+import { ecsApi } from "@/api";
+import { FileCode, Copy, Check, KeyRound, Pencil } from "lucide-react";
+import { EditSecretDialog, type EditSecretInfo } from "./EditSecretDialog";
+import { ConfirmDialog } from "@/components/ConfirmDialog";
 
 function CopyButton({ text }: { text: string }) {
     const [copied, setCopied] = useState(false);
@@ -20,9 +24,40 @@ function CopyButton({ text }: { text: string }) {
     );
 }
 
-export function EnvVarPanel({ task }: { task: EcsTask }) {
+export function EnvVarPanel({
+    task,
+    clusterName,
+    serviceName,
+}: {
+    task: EcsTask;
+    clusterName: string;
+    serviceName: string;
+}) {
     const [filter, setFilter] = useState("");
     const lowerFilter = filter.toLowerCase();
+    const [editingSecret, setEditingSecret] = useState<EditSecretInfo | null>(null);
+    const [showRedeployPrompt, setShowRedeployPrompt] = useState(false);
+    const queryClient = useQueryClient();
+
+    const updateMutation = useMutation({
+        mutationFn: ({ valueFrom, newValue }: { valueFrom: string; newValue: string }) =>
+            ecsApi.updateSecretValue(valueFrom, newValue),
+        onSuccess: () => {
+            setEditingSecret(null);
+            setShowRedeployPrompt(true);
+            queryClient.invalidateQueries({ queryKey: ["tasks", clusterName, serviceName] });
+        },
+    });
+
+    const redeployMutation = useMutation({
+        mutationFn: () => ecsApi.forceNewDeployment(clusterName, serviceName),
+        onSuccess: () => {
+            setShowRedeployPrompt(false);
+            queryClient.invalidateQueries({ queryKey: ["services", clusterName] });
+            queryClient.invalidateQueries({ queryKey: ["tasks", clusterName, serviceName] });
+            queryClient.invalidateQueries({ queryKey: ["serviceDetail", clusterName, serviceName] });
+        },
+    });
 
     const totalEnvCount = task.containers.reduce((s, c) => s + c.environment.length + c.secrets.length, 0);
     if (totalEnvCount === 0) {
@@ -122,6 +157,23 @@ export function EnvVarPanel({ task }: { task: EcsTask }) {
                                                               : row.value
                                                     }
                                                 />
+                                                {row.isSecret && (
+                                                    <button
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            setEditingSecret({
+                                                                name: row.name,
+                                                                valueFrom: row.source!,
+                                                                currentValue: row.value,
+                                                                resolved: row.resolved,
+                                                            });
+                                                        }}
+                                                        className="ml-1 inline-flex items-center rounded p-0.5 text-muted-foreground hover:text-foreground hover:bg-accent/50 transition-colors"
+                                                        title="Edit secret value"
+                                                    >
+                                                        <Pencil className="h-3 w-3" />
+                                                    </button>
+                                                )}
                                             </td>
                                         </tr>
                                     ))}
@@ -131,6 +183,34 @@ export function EnvVarPanel({ task }: { task: EcsTask }) {
                     </div>
                 );
             })}
+
+            <EditSecretDialog
+                open={!!editingSecret}
+                secret={editingSecret}
+                isPending={updateMutation.isPending}
+                error={updateMutation.error ? (updateMutation.error as Error).message : null}
+                onSave={(newValue) => {
+                    if (editingSecret) {
+                        updateMutation.mutate({ valueFrom: editingSecret.valueFrom, newValue });
+                    }
+                }}
+                onCancel={() => {
+                    setEditingSecret(null);
+                    updateMutation.reset();
+                }}
+            />
+
+            <ConfirmDialog
+                open={showRedeployPrompt}
+                title="Redeploy Service?"
+                message="The secret value has been updated. Redeploy the service to apply the change to running tasks?"
+                detail={serviceName}
+                confirmLabel="Redeploy"
+                confirmingLabel="Deploying…"
+                isPending={redeployMutation.isPending}
+                onConfirm={() => redeployMutation.mutate()}
+                onCancel={() => setShowRedeployPrompt(false)}
+            />
         </div>
     );
 }

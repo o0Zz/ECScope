@@ -94,6 +94,7 @@ export function TaskList() {
                                 onStop={() => setConfirmStopTask(task.taskArn)}
                                 isStopping={stopMutation.isPending && stopMutation.variables === task.taskArn}
                                 clusterName={selectedCluster!}
+                                serviceName={selectedService!}
                                 profile={activeCluster?.profile ?? ""}
                                 region={activeCluster?.region ?? "us-east-1"}
                             />

@@ -96,7 +96,7 @@ npx tauri build
 ### Fix ESLint 
 
 ```bash
-npm run lint -- --fix
+npx eslint src/ --fix
 ```
 
 ## 📁 Project Structure

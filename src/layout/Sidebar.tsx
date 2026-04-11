@@ -35,9 +35,7 @@ function SidebarFooter() {
 
 export function Sidebar() {
     const { selectedCluster, selectCluster, sidebarCollapsed, toggleSidebar } = useNavigationStore();
-    const { clusters, connectToCluster, activeCluster } = useConfigStore();
-
-    const clusterColor = activeCluster?.color;
+    const { clusters, connectToCluster } = useConfigStore();
 
     const handleSelectCluster = async (clusterName: string) => {
         await connectToCluster(clusterName);

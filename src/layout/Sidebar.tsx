@@ -57,11 +57,6 @@ export function Sidebar() {
                 sidebarCollapsed ? "w-12" : "w-60",
             )}
         >
-            {/* Cluster color accent strip */}
-            {clusterColor && (
-                <div className="absolute inset-y-0 left-0 w-[3px]" style={{ backgroundColor: `#${clusterColor}` }} />
-            )}
-
             {/* Header */}
             <div className="flex items-center justify-between border-b border-border px-3 py-3">
                 {!sidebarCollapsed && (
@@ -95,11 +90,14 @@ export function Sidebar() {
                         key={cluster.clusterName}
                         onClick={() => handleSelectCluster(cluster.clusterName)}
                         className={cn(
-                            "flex w-full items-center gap-2 px-3 py-2 text-left text-sm transition-colors",
+                            "flex w-full items-center gap-2 px-3 py-2 text-left text-sm transition-colors border-l-4",
                             selectedCluster === cluster.clusterName
                                 ? "bg-sidebar-accent text-sidebar-accent-foreground"
                                 : "text-sidebar-foreground hover:bg-accent hover:text-foreground",
                         )}
+                        style={{
+                            borderLeftColor: cluster.color ? `#${cluster.color}` : "transparent",
+                        }}
                         title={cluster.clusterName}
                     >
                         <Server className="h-4 w-4 shrink-0" />

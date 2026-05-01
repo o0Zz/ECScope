@@ -297,9 +297,7 @@ const RdsInstancesSection = memo(function RdsInstancesSection({ instances }: { i
                                         expanded={expandedId === db.dbInstanceIdentifier}
                                         onToggle={() =>
                                             setExpandedId(
-                                                expandedId === db.dbInstanceIdentifier
-                                                    ? null
-                                                    : db.dbInstanceIdentifier,
+                                                expandedId === db.dbInstanceIdentifier ? null : db.dbInstanceIdentifier,
                                             )
                                         }
                                     />

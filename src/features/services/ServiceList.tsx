@@ -23,8 +23,7 @@ function ClusterOverview({ clusterName }: { clusterName: string }) {
     const memReservedPct =
         metrics.memoryTotalMB > 0 ? Math.round((metrics.memoryReservedMB / metrics.memoryTotalMB) * 100) : 0;
 
-    const barColor = (pct: number) =>
-        pct > 80 ? "bg-destructive" : pct > 60 ? "bg-warning" : "bg-success";
+    const barColor = (pct: number) => (pct > 80 ? "bg-destructive" : pct > 60 ? "bg-warning" : "bg-success");
 
     return (
         <div className="mb-4 grid grid-cols-2 gap-3 rounded-lg border border-border bg-card p-4 md:grid-cols-4">

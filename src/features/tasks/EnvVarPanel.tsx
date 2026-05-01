@@ -2,27 +2,10 @@ import { useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import type { EcsTask } from "@/api/types";
 import { ecsApi } from "@/api";
-import { FileCode, Copy, Check, KeyRound, Pencil } from "lucide-react";
+import { FileCode, KeyRound, Pencil } from "lucide-react";
 import { EditSecretDialog, type EditSecretInfo } from "./EditSecretDialog";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
-
-function CopyButton({ text }: { text: string }) {
-    const [copied, setCopied] = useState(false);
-    return (
-        <button
-            onClick={(e) => {
-                e.stopPropagation();
-                navigator.clipboard.writeText(text);
-                setCopied(true);
-                setTimeout(() => setCopied(false), 1500);
-            }}
-            className="ml-1 inline-flex items-center rounded p-0.5 text-muted-foreground hover:text-foreground hover:bg-accent/50 transition-colors"
-            title="Copy value"
-        >
-            {copied ? <Check className="h-3 w-3 text-success" /> : <Copy className="h-3 w-3" />}
-        </button>
-    );
-}
+import { CopyButton } from "@/components/CopyButton";
 
 export function EnvVarPanel({
     task,

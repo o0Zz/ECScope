@@ -6,7 +6,8 @@ import { useConfigStore } from "@/store/config";
 import { StatusBadge } from "@/components/StatusBadge";
 import { Ec2MetricsChart } from "@/components/Ec2MetricsChart";
 import { RdsMetricsChart } from "@/components/RdsMetricsChart";
-import { Monitor, Database, ChevronDown, Copy, Check } from "lucide-react";
+import { Monitor, Database, ChevronDown } from "lucide-react";
+import { CopyButton } from "@/components/CopyButton";
 import { cn } from "@/lib/utils";
 import { formatAge } from "@/lib/format";
 import { useState, memo } from "react";
@@ -56,25 +57,6 @@ export function Ec2RdsDashboard() {
 }
 
 /* ─── EC2 Instances Section ─────────────────────────────── */
-
-function CopyButton({ value, label }: { value: string; label: string }) {
-    const [copied, setCopied] = useState(false);
-    return (
-        <button
-            onClick={(e) => {
-                e.stopPropagation();
-                navigator.clipboard.writeText(value).then(() => {
-                    setCopied(true);
-                    setTimeout(() => setCopied(false), 1200);
-                });
-            }}
-            className="rounded p-0.5 text-muted-foreground hover:bg-accent hover:text-foreground"
-            title={`Copy ${label}`}
-        >
-            {copied ? <Check className="h-3 w-3 text-success" /> : <Copy className="h-3 w-3" />}
-        </button>
-    );
-}
 
 function PlatformIcon({ platform }: { platform: string }) {
     const isWindows = platform.toLowerCase().includes("windows");
@@ -184,7 +166,7 @@ const Ec2InstanceRow = memo(function Ec2InstanceRow({
                     {inst.publicIp ? (
                         <span className="inline-flex items-center gap-1.5">
                             {inst.publicIp}
-                            <CopyButton value={inst.publicIp} label="public IP" />
+                            <CopyButton text={inst.publicIp} title="Copy public IP" />
                         </span>
                     ) : (
                         "—"

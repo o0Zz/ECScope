@@ -15,12 +15,24 @@ function hexToRgb(hex?: string): { r: number; g: number; b: number } | null {
     };
 }
 
-// Perceived lightness (BT.709 luma), 0 (black) → 1 (white).
-// Clusters with no color are treated as "very light" so they stay on top.
-function colorLightness(hex?: string): number {
+// HSL conversion for hue-based color classification.
+function hexToHsl(hex?: string): { h: number; s: number; l: number } | null {
     const rgb = hexToRgb(hex);
-    if (!rgb) return 1;
-    return (0.2126 * rgb.r + 0.7152 * rgb.g + 0.0722 * rgb.b) / 255;
+    if (!rgb) return null;
+    const r = rgb.r / 255;
+    const g = rgb.g / 255;
+    const b = rgb.b / 255;
+    const max = Math.max(r, g, b);
+    const min = Math.min(r, g, b);
+    const l = (max + min) / 2;
+    if (max === min) return { h: 0, s: 0, l };
+    const d = max - min;
+    const s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+    let h = 0;
+    if (max === r) h = (g - b) / d + (g < b ? 6 : 0);
+    else if (max === g) h = (b - r) / d + 2;
+    else h = (r - g) / d + 4;
+    return { h: h * 60, s, l };
 }
 
 // Red-dominant heuristic: red channel clearly above green and blue.
@@ -28,6 +40,20 @@ function isRedish(hex?: string): boolean {
     const rgb = hexToRgb(hex);
     if (!rgb) return false;
     return rgb.r > 150 && rgb.r > rgb.g + 50 && rgb.r > rgb.b + 50;
+}
+
+// Color category ranking — lower = healthier visually.
+//   0 = blue / green / cyan / purple / no-color (cool, calm)
+//   1 = yellow / orange (warning)
+//   2 = red (alert)
+function colorRank(hex?: string): number {
+    if (isRedish(hex)) return 2;
+    const hsl = hexToHsl(hex);
+    if (!hsl || hsl.s < 0.15) return 0; // grey / desaturated / no color → cool
+    // Hue wheel: 0=red, 60=yellow, 120=green, 180=cyan, 240=blue, 300=magenta
+    if (hsl.h >= 345 || hsl.h <= 15) return 2; // red wrap-around
+    if (hsl.h > 15 && hsl.h <= 65) return 1; // orange + yellow
+    return 0; // green / cyan / blue / purple
 }
 
 function clusterGroup(name: string): string {
@@ -77,8 +103,8 @@ export function Sidebar() {
         }
     };
 
-    // Group by prefix (split before the first "-"), sort each group from light → dark/red
-    // so problematic clusters fall to the bottom of their group.
+    // Group by prefix (split before the first "-"), sort each group by color category
+    // so cool clusters (blue/green) stay on top, yellow/orange in the middle, red at the bottom.
     const grouped = (() => {
         const groups = new Map<string, typeof clusters>();
         for (const cluster of clusters) {
@@ -88,7 +114,7 @@ export function Sidebar() {
             groups.set(key, arr);
         }
         for (const arr of groups.values()) {
-            arr.sort((a, b) => colorLightness(b.color) - colorLightness(a.color));
+            arr.sort((a, b) => colorRank(a.color) - colorRank(b.color));
         }
         return [...groups.entries()].sort(([a], [b]) => a.localeCompare(b));
     })();

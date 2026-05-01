@@ -6,7 +6,7 @@ import { useConfigStore } from "@/store/config";
 import { StatusBadge } from "@/components/StatusBadge";
 import { Ec2MetricsChart } from "@/components/Ec2MetricsChart";
 import { RdsMetricsChart } from "@/components/RdsMetricsChart";
-import { Monitor, Database, ChevronDown } from "lucide-react";
+import { Monitor, Database, ChevronDown, Copy, Check } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { formatAge } from "@/lib/format";
 import { useState, memo } from "react";
@@ -57,10 +57,38 @@ export function Ec2RdsDashboard() {
 
 /* ─── EC2 Instances Section ─────────────────────────────── */
 
+function CopyButton({ value, label }: { value: string; label: string }) {
+    const [copied, setCopied] = useState(false);
+    return (
+        <button
+            onClick={(e) => {
+                e.stopPropagation();
+                navigator.clipboard.writeText(value).then(() => {
+                    setCopied(true);
+                    setTimeout(() => setCopied(false), 1200);
+                });
+            }}
+            className="rounded p-0.5 text-muted-foreground hover:bg-accent hover:text-foreground"
+            title={`Copy ${label}`}
+        >
+            {copied ? <Check className="h-3 w-3 text-success" /> : <Copy className="h-3 w-3" />}
+        </button>
+    );
+}
+
+function PlatformIcon({ platform }: { platform: string }) {
+    const isWindows = platform.toLowerCase().includes("windows");
+    return (
+        <span aria-label={isWindows ? "Windows" : "Linux"} title={isWindows ? "Windows" : "Linux"}>
+            {isWindows ? "🪟" : "🐧"}
+        </span>
+    );
+}
+
 function stateColor(state: string): string {
     switch (state) {
         case "running":
-            return "ACTIVE";
+            return "RUNNING";
         case "stopped":
             return "STOPPED";
         case "stopping":
@@ -104,16 +132,22 @@ const Ec2InstancesSection = memo(function Ec2InstancesSection({ instances }: { i
                             </tr>
                         </thead>
                         <tbody>
-                            {instances.map((inst) => (
-                                <Ec2InstanceRow
-                                    key={inst.instanceId}
-                                    instance={inst}
-                                    expanded={expandedId === inst.instanceId}
-                                    onToggle={() =>
-                                        setExpandedId(expandedId === inst.instanceId ? null : inst.instanceId)
-                                    }
-                                />
-                            ))}
+                            {[...instances]
+                                .sort((a, b) => {
+                                    const ta = a.launchTime ? new Date(a.launchTime).getTime() : 0;
+                                    const tb = b.launchTime ? new Date(b.launchTime).getTime() : 0;
+                                    return tb - ta;
+                                })
+                                .map((inst) => (
+                                    <Ec2InstanceRow
+                                        key={inst.instanceId}
+                                        instance={inst}
+                                        expanded={expandedId === inst.instanceId}
+                                        onToggle={() =>
+                                            setExpandedId(expandedId === inst.instanceId ? null : inst.instanceId)
+                                        }
+                                    />
+                                ))}
                         </tbody>
                     </table>
                 </div>
@@ -146,8 +180,22 @@ const Ec2InstanceRow = memo(function Ec2InstanceRow({
                     <StatusBadge status={stateColor(inst.state)} />
                 </td>
                 <td className="px-4 py-2.5 font-mono text-xs text-muted-foreground">{inst.privateIp || "—"}</td>
-                <td className="px-4 py-2.5 font-mono text-xs text-muted-foreground">{inst.publicIp || "—"}</td>
-                <td className="px-4 py-2.5 text-xs text-muted-foreground">{inst.platform}</td>
+                <td className="px-4 py-2.5 font-mono text-xs text-muted-foreground">
+                    {inst.publicIp ? (
+                        <span className="inline-flex items-center gap-1.5">
+                            {inst.publicIp}
+                            <CopyButton value={inst.publicIp} label="public IP" />
+                        </span>
+                    ) : (
+                        "—"
+                    )}
+                </td>
+                <td className="px-4 py-2.5 text-xs text-muted-foreground">
+                    <span className="inline-flex items-center gap-1.5">
+                        <PlatformIcon platform={inst.platform} />
+                        {inst.platform || "linux"}
+                    </span>
+                </td>
                 <td className="px-4 py-2.5 text-xs text-muted-foreground">
                     {inst.launchTime ? formatAge(inst.launchTime) : "—"}
                 </td>
@@ -180,7 +228,7 @@ const Ec2InstanceRow = memo(function Ec2InstanceRow({
 function rdsStatusColor(status: string): string {
     switch (status) {
         case "available":
-            return "ACTIVE";
+            return "RUNNING";
         case "stopped":
             return "STOPPED";
         case "stopping":
@@ -194,7 +242,7 @@ function rdsStatusColor(status: string): string {
         case "modifying":
             return "DRAINING";
         case "backing-up":
-            return "ACTIVE";
+            return "RUNNING";
         case "rebooting":
             return "PROVISIONING";
         case "failed":
@@ -236,18 +284,26 @@ const RdsInstancesSection = memo(function RdsInstancesSection({ instances }: { i
                             </tr>
                         </thead>
                         <tbody>
-                            {instances.map((db) => (
-                                <RdsInstanceRow
-                                    key={db.dbInstanceIdentifier}
-                                    instance={db}
-                                    expanded={expandedId === db.dbInstanceIdentifier}
-                                    onToggle={() =>
-                                        setExpandedId(
-                                            expandedId === db.dbInstanceIdentifier ? null : db.dbInstanceIdentifier,
-                                        )
-                                    }
-                                />
-                            ))}
+                            {[...instances]
+                                .sort((a, b) => {
+                                    const ta = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+                                    const tb = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+                                    return tb - ta;
+                                })
+                                .map((db) => (
+                                    <RdsInstanceRow
+                                        key={db.dbInstanceIdentifier}
+                                        instance={db}
+                                        expanded={expandedId === db.dbInstanceIdentifier}
+                                        onToggle={() =>
+                                            setExpandedId(
+                                                expandedId === db.dbInstanceIdentifier
+                                                    ? null
+                                                    : db.dbInstanceIdentifier,
+                                            )
+                                        }
+                                    />
+                                ))}
                         </tbody>
                     </table>
                 </div>

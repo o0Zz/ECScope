@@ -110,15 +110,17 @@ export function NodeViewer() {
                             <th className="px-4 py-2.5 text-left font-medium text-muted-foreground">Type</th>
                             <th className="px-4 py-2.5 text-left font-medium text-muted-foreground">Status</th>
                             <th className="px-4 py-2.5 text-center font-medium text-muted-foreground">Tasks</th>
-                            <th className="px-4 py-2.5 text-left font-medium text-muted-foreground">CPU</th>
-                            <th className="px-4 py-2.5 text-left font-medium text-muted-foreground">Memory</th>
+                            <th className="px-4 py-2.5 text-left font-medium text-muted-foreground">🖥️ CPU Reserved</th>
+                            <th className="px-4 py-2.5 text-left font-medium text-muted-foreground">🧠 Memory Reserved</th>
                             <th className="px-4 py-2.5 text-left font-medium text-muted-foreground">Agent</th>
                             <th className="px-4 py-2.5 text-left font-medium text-muted-foreground">Age</th>
                             <th className="px-4 py-2.5 text-right font-medium text-muted-foreground">Actions</th>
                         </tr>
                     </thead>
                     <tbody>
-                        {instances.map((inst) => {
+                        {[...instances]
+                            .sort((a, b) => (b.registeredAt ?? 0) - (a.registeredAt ?? 0))
+                            .map((inst) => {
                             const cpuUsed = inst.cpuRegistered - inst.cpuAvailable;
                             const cpuPct = Math.round((cpuUsed / inst.cpuRegistered) * 100);
                             const memUsed = inst.memoryRegistered - inst.memoryAvailable;

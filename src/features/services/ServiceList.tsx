@@ -19,6 +19,13 @@ function ClusterOverview({ clusterName }: { clusterName: string }) {
 
     if (!metrics) return null;
 
+    const cpuReservedPct = metrics.cpuTotal > 0 ? Math.round((metrics.cpuReserved / metrics.cpuTotal) * 100) : 0;
+    const memReservedPct =
+        metrics.memoryTotalMB > 0 ? Math.round((metrics.memoryReservedMB / metrics.memoryTotalMB) * 100) : 0;
+
+    const barColor = (pct: number) =>
+        pct > 80 ? "bg-destructive" : pct > 60 ? "bg-warning" : "bg-success";
+
     return (
         <div className="mb-4 grid grid-cols-2 gap-3 rounded-lg border border-border bg-card p-4 md:grid-cols-4">
             <div>
@@ -26,14 +33,7 @@ function ClusterOverview({ clusterName }: { clusterName: string }) {
                 <div className="mt-1 text-lg font-semibold text-foreground">{metrics.cpuUtilization}%</div>
                 <div className="mt-1 h-1.5 w-full overflow-hidden rounded-full bg-muted">
                     <div
-                        className={cn(
-                            "h-full rounded-full",
-                            metrics.cpuUtilization > 80
-                                ? "bg-destructive"
-                                : metrics.cpuUtilization > 60
-                                  ? "bg-warning"
-                                  : "bg-success",
-                        )}
+                        className={cn("h-full rounded-full", barColor(metrics.cpuUtilization))}
                         style={{ width: `${metrics.cpuUtilization}%` }}
                     />
                 </div>
@@ -46,14 +46,7 @@ function ClusterOverview({ clusterName }: { clusterName: string }) {
                 <div className="mt-1 text-lg font-semibold text-foreground">{metrics.memoryUtilization}%</div>
                 <div className="mt-1 h-1.5 w-full overflow-hidden rounded-full bg-muted">
                     <div
-                        className={cn(
-                            "h-full rounded-full",
-                            metrics.memoryUtilization > 80
-                                ? "bg-destructive"
-                                : metrics.memoryUtilization > 60
-                                  ? "bg-warning"
-                                  : "bg-success",
-                        )}
+                        className={cn("h-full rounded-full", barColor(metrics.memoryUtilization))}
                         style={{ width: `${metrics.memoryUtilization}%` }}
                     />
                 </div>
@@ -63,13 +56,29 @@ function ClusterOverview({ clusterName }: { clusterName: string }) {
             </div>
             <div>
                 <div className="text-xs text-muted-foreground">🖥️ CPU Reserved</div>
-                <div className="mt-1 text-lg font-semibold text-foreground">{metrics.cpuReserved}</div>
-                <div className="mt-1 text-xs text-muted-foreground">units</div>
+                <div className="mt-1 text-lg font-semibold text-foreground">{cpuReservedPct}%</div>
+                <div className="mt-1 h-1.5 w-full overflow-hidden rounded-full bg-muted">
+                    <div
+                        className={cn("h-full rounded-full", barColor(cpuReservedPct))}
+                        style={{ width: `${cpuReservedPct}%` }}
+                    />
+                </div>
+                <div className="mt-1 text-xs text-muted-foreground">
+                    {metrics.cpuReserved} / {metrics.cpuTotal} units
+                </div>
             </div>
             <div>
                 <div className="text-xs text-muted-foreground">🧠 Memory Reserved</div>
-                <div className="mt-1 text-lg font-semibold text-foreground">{metrics.memoryReservedMB}</div>
-                <div className="mt-1 text-xs text-muted-foreground">MB</div>
+                <div className="mt-1 text-lg font-semibold text-foreground">{memReservedPct}%</div>
+                <div className="mt-1 h-1.5 w-full overflow-hidden rounded-full bg-muted">
+                    <div
+                        className={cn("h-full rounded-full", barColor(memReservedPct))}
+                        style={{ width: `${memReservedPct}%` }}
+                    />
+                </div>
+                <div className="mt-1 text-xs text-muted-foreground">
+                    {metrics.memoryReservedMB} / {metrics.memoryTotalMB} MB
+                </div>
             </div>
         </div>
     );

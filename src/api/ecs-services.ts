@@ -4,6 +4,8 @@ import {
     UpdateServiceCommand,
     DescribeTaskDefinitionCommand,
     RegisterTaskDefinitionCommand,
+    ListContainerInstancesCommand,
+    DescribeContainerInstancesCommand,
 } from "@aws-sdk/client-ecs";
 import type { ECSClient } from "@aws-sdk/client-ecs";
 import { getEcsClient } from "./clients";
@@ -180,9 +182,39 @@ export async function getServiceEvents(
     }));
 }
 
+/** Sum cpu/memory registered across all container instances (true cluster capacity for EC2 launch type). */
+async function getClusterCapacity(clusterName: string): Promise<{ cpuTotal: number; memoryTotalMB: number }> {
+    const ciArns = await paginateAll(
+        (nextToken) => getEcsClient().send(new ListContainerInstancesCommand({ cluster: clusterName, nextToken })),
+        (res) => res.containerInstanceArns,
+        (res) => res.nextToken,
+    );
+    if (ciArns.length === 0) return { cpuTotal: 0, memoryTotalMB: 0 };
+
+    let cpuTotal = 0;
+    let memoryTotalMB = 0;
+    for (let i = 0; i < ciArns.length; i += 100) {
+        const batch = ciArns.slice(i, i + 100);
+        const descRes = await getEcsClient().send(
+            new DescribeContainerInstancesCommand({ cluster: clusterName, containerInstances: batch }),
+        );
+        for (const ci of descRes.containerInstances ?? []) {
+            cpuTotal += ci.registeredResources?.find((r) => r.name === "CPU")?.integerValue ?? 0;
+            memoryTotalMB += ci.registeredResources?.find((r) => r.name === "MEMORY")?.integerValue ?? 0;
+        }
+    }
+    return { cpuTotal, memoryTotalMB };
+}
+
 export async function getClusterMetrics(clusterName: string): Promise<ClusterMetrics> {
     log.ecs.debug(`Fetching cluster metrics for ${clusterName}`);
-    const services = await listServices(clusterName);
+    const [services, capacity] = await Promise.all([
+        listServices(clusterName),
+        getClusterCapacity(clusterName).catch((err) => {
+            log.ecs.warn(`Failed to fetch cluster capacity for ${clusterName}: ${err}`);
+            return { cpuTotal: 0, memoryTotalMB: 0 };
+        }),
+    ]);
 
     let totalCpu = 0;
     let totalMem = 0;
@@ -201,8 +233,12 @@ export async function getClusterMetrics(clusterName: string): Promise<ClusterMet
 
     const avgCpu = totalWeight > 0 ? Math.round((totalCpu / totalWeight) * 10) / 10 : 0;
     const avgMem = totalWeight > 0 ? Math.round((totalMem / totalWeight) * 10) / 10 : 0;
-    const cpuTotal = avgCpu > 0 ? Math.round(totalCpuReserved / (avgCpu / 100)) : totalCpuReserved * 2;
-    const memTotal = avgMem > 0 ? Math.round(totalMemReserved / (avgMem / 100)) : totalMemReserved * 2;
+
+    // Use actual cluster capacity from registered container instances (source of truth).
+    // For Fargate-only clusters (no container instances) there is no fixed cluster capacity,
+    // so fall back to reserved*2 as a rough display-only bound.
+    const cpuTotal = capacity.cpuTotal > 0 ? capacity.cpuTotal : totalCpuReserved * 2;
+    const memTotal = capacity.memoryTotalMB > 0 ? capacity.memoryTotalMB : totalMemReserved * 2;
 
     return {
         cpuUtilization: avgCpu,

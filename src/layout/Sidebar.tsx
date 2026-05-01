@@ -1,8 +1,9 @@
+import { useState } from "react";
 import { useNavigationStore } from "@/store/navigation";
 import { useConfigStore } from "@/store/config";
 import { cn } from "@/lib/utils";
 import { createLogger } from "@/lib/logger";
-import { Server, ChevronLeft, ChevronRight, Box } from "lucide-react";
+import { Server, ChevronLeft, ChevronRight, Box, AlertCircle, Loader2 } from "lucide-react";
 
 const logger = createLogger("Sidebar");
 
@@ -61,8 +62,8 @@ function clusterGroup(name: string): string {
     return idx === -1 ? name : name.slice(0, idx);
 }
 
-function SidebarFooter() {
-    const { activeCluster, credentials, status } = useConfigStore();
+function SidebarFooter({ lastClickedCluster }: { lastClickedCluster: string | null }) {
+    const { activeCluster, credentials, status, error } = useConfigStore();
     if (status === "connected" && activeCluster) {
         return (
             <div className="border-t border-border px-3 py-2 text-xs text-muted-foreground">
@@ -76,8 +77,15 @@ function SidebarFooter() {
     }
     if (status === "error") {
         return (
-            <div className="border-t border-border px-3 py-2 text-xs text-destructive">
-                <span className="h-1.5 w-1.5 rounded-full bg-red-500" /> Connection error
+            <div className="border-t border-border px-3 py-2 text-xs text-destructive" title={error ?? ""}>
+                <div className="flex items-center gap-1 font-medium">
+                    <AlertCircle className="h-3 w-3 shrink-0" />
+                    Connection error
+                </div>
+                {lastClickedCluster && (
+                    <div className="mt-0.5 truncate text-[11px] opacity-70">{lastClickedCluster}</div>
+                )}
+                {error && <div className="mt-0.5 break-words text-[11px] leading-tight opacity-80">{error}</div>}
             </div>
         );
     }
@@ -90,12 +98,14 @@ function SidebarFooter() {
 
 export function Sidebar() {
     const { selectedCluster, selectCluster, sidebarCollapsed, toggleSidebar } = useNavigationStore();
-    const { clusters, connectToCluster } = useConfigStore();
+    const { clusters, connectToCluster, status } = useConfigStore();
+    const [lastClickedCluster, setLastClickedCluster] = useState<string | null>(null);
 
     const handleSelectCluster = async (clusterName: string) => {
+        setLastClickedCluster(clusterName);
         await connectToCluster(clusterName);
-        const { status } = useConfigStore.getState();
-        if (status === "connected") {
+        const { status: nextStatus } = useConfigStore.getState();
+        if (nextStatus === "connected") {
             selectCluster(clusterName);
             logger.info(`Cluster selected: ${clusterName}`);
         } else {
@@ -170,22 +180,42 @@ export function Sidebar() {
                         )}
                         {groupClusters.map((cluster) => {
                             const redAlert = isRedish(cluster.color);
+                            const isTarget = lastClickedCluster === cluster.clusterName;
+                            const isConnecting = isTarget && status === "loading";
+                            const hasError = isTarget && status === "error";
                             return (
                                 <button
                                     key={cluster.clusterName}
                                     onClick={() => handleSelectCluster(cluster.clusterName)}
+                                    disabled={isConnecting}
                                     className={cn(
                                         "flex w-full items-center gap-2 px-3 py-2 text-left text-sm transition-colors border-l-4",
                                         selectedCluster === cluster.clusterName
                                             ? "bg-sidebar-accent text-sidebar-accent-foreground"
-                                            : "text-sidebar-foreground hover:bg-accent hover:text-foreground",
+                                            : hasError
+                                              ? "bg-destructive/10 text-destructive"
+                                              : isConnecting
+                                                ? "bg-accent/40 text-foreground"
+                                                : "text-sidebar-foreground hover:bg-accent hover:text-foreground",
                                     )}
                                     style={{
                                         borderLeftColor: cluster.color ? `#${cluster.color}` : "transparent",
                                     }}
-                                    title={redAlert ? `${cluster.clusterName} — alerte` : cluster.clusterName}
+                                    title={
+                                        hasError
+                                            ? `${cluster.clusterName} — connection error`
+                                            : redAlert
+                                              ? `${cluster.clusterName} — alerte`
+                                              : cluster.clusterName
+                                    }
                                 >
-                                    <Server className="h-4 w-4 shrink-0" />
+                                    {isConnecting ? (
+                                        <Loader2 className="h-4 w-4 shrink-0 animate-spin" />
+                                    ) : hasError ? (
+                                        <AlertCircle className="h-4 w-4 shrink-0" />
+                                    ) : (
+                                        <Server className="h-4 w-4 shrink-0" />
+                                    )}
                                     {!sidebarCollapsed && (
                                         <div className="min-w-0 flex-1">
                                             <div className="flex items-center gap-1 truncate font-medium">
@@ -211,7 +241,7 @@ export function Sidebar() {
             </div>
 
             {/* Footer */}
-            {!sidebarCollapsed && <SidebarFooter />}
+            {!sidebarCollapsed && <SidebarFooter lastClickedCluster={lastClickedCluster} />}
         </div>
     );
 }

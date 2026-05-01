@@ -7,7 +7,9 @@ import { cn } from "@/lib/utils";
 
 export function Breadcrumb() {
     const { selectedCluster, selectedService, selectedTaskArn, goBack } = useNavigationStore();
-    const clusterColor = useConfigStore((s) => s.activeCluster?.color);
+    const activeCluster = useConfigStore((s) => s.activeCluster);
+    const credentials = useConfigStore((s) => s.credentials);
+    const clusterColor = activeCluster?.color;
     const queryClient = useQueryClient();
     const isFetching = useIsFetching();
 
@@ -19,6 +21,10 @@ export function Breadcrumb() {
     if (selectedCluster) parts.push(selectedCluster);
     if (selectedService) parts.push(selectedService);
     if (selectedTaskArn) parts.push(selectedTaskArn.split("/").pop() ?? "task");
+
+    const clusterRegion = credentials?.region ?? activeCluster?.region;
+    const clusterInfo =
+        activeCluster && (clusterRegion ? `${clusterRegion} · ${activeCluster.profile}` : activeCluster.profile);
 
     return (
         <>
@@ -40,6 +46,11 @@ export function Breadcrumb() {
                         >
                             {part}
                         </span>
+                        {i === 0 && clusterInfo && (
+                            <span className="rounded bg-muted/60 px-1.5 py-0.5 text-[11px] text-muted-foreground">
+                                {clusterInfo}
+                            </span>
+                        )}
                     </span>
                 ))}
                 <div className="ml-auto flex items-center gap-1.5">

@@ -183,6 +183,14 @@ export function Sidebar() {
                             const isTarget = lastClickedCluster === cluster.clusterName;
                             const isConnecting = isTarget && status === "loading";
                             const hasError = isTarget && status === "error";
+                            const infoLine = cluster.region
+                                ? `${cluster.region} · ${cluster.profile}`
+                                : cluster.profile;
+                            const titleHeader = hasError
+                                ? `${cluster.clusterName} — connection error`
+                                : redAlert
+                                  ? `${cluster.clusterName} — alerte`
+                                  : cluster.clusterName;
                             return (
                                 <button
                                     key={cluster.clusterName}
@@ -201,13 +209,7 @@ export function Sidebar() {
                                     style={{
                                         borderLeftColor: cluster.color ? `#${cluster.color}` : "transparent",
                                     }}
-                                    title={
-                                        hasError
-                                            ? `${cluster.clusterName} — connection error`
-                                            : redAlert
-                                              ? `${cluster.clusterName} — alerte`
-                                              : cluster.clusterName
-                                    }
+                                    title={`${titleHeader}\n${infoLine}`}
                                 >
                                     {isConnecting ? (
                                         <Loader2 className="h-4 w-4 shrink-0 animate-spin" />

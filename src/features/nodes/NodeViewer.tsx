@@ -79,7 +79,7 @@ export function NodeViewer() {
                                 onClick={() => scaleMutation.mutate(asgInfo.desiredCapacity - 1)}
                                 disabled={asgInfo.desiredCapacity <= asgInfo.minSize || scaleMutation.isPending}
                                 className="rounded-md border border-border px-1.5 py-0.5 text-xs font-medium text-foreground hover:bg-accent transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
-                                title={`Scale down (min: ${asgInfo.minSize})`}
+                                title={`➖ Scale down (min: ${asgInfo.minSize})`}
                             >
                                 <Minus className="h-3 w-3" />
                             </button>
@@ -90,7 +90,7 @@ export function NodeViewer() {
                                 onClick={() => scaleMutation.mutate(asgInfo.desiredCapacity + 1)}
                                 disabled={scaleMutation.isPending}
                                 className="rounded-md border border-border px-1.5 py-0.5 text-xs font-medium text-foreground hover:bg-accent transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
-                                title={`Scale up (max will be raised if needed)`}
+                                title={`➕ Scale up (max will be raised if needed)`}
                             >
                                 <Plus className="h-3 w-3" />
                             </button>
@@ -191,7 +191,7 @@ export function NodeViewer() {
                                                     );
                                                 }}
                                                 className="rounded-md border border-border px-2 py-1 text-xs font-medium text-foreground hover:bg-accent transition-colors flex items-center gap-1"
-                                                title={`SSM connect to ${inst.ec2InstanceId}`}
+                                                title={`💻 SSM connect to ${inst.ec2InstanceId}`}
                                             >
                                                 <Terminal className="h-3 w-3" />
                                                 Connect
@@ -200,7 +200,7 @@ export function NodeViewer() {
                                                 <button
                                                     onClick={() => transfer.startDownload(inst.ec2InstanceId)}
                                                     className="rounded-md border border-border px-2 py-1 text-xs font-medium text-foreground hover:bg-accent transition-colors flex items-center gap-1"
-                                                    title={`Download file from ${inst.ec2InstanceId}`}
+                                                    title={`⬇️ Download file from ${inst.ec2InstanceId}`}
                                                 >
                                                     <Download className="h-3 w-3" />
                                                     Download
@@ -210,7 +210,7 @@ export function NodeViewer() {
                                                 <button
                                                     onClick={() => transfer.startUpload(inst.ec2InstanceId)}
                                                     className="rounded-md border border-border px-2 py-1 text-xs font-medium text-foreground hover:bg-accent transition-colors flex items-center gap-1"
-                                                    title={`Upload file to ${inst.ec2InstanceId}`}
+                                                    title={`⬆️ Upload file to ${inst.ec2InstanceId}`}
                                                 >
                                                     <Upload className="h-3 w-3" />
                                                     Upload

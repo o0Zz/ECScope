@@ -123,7 +123,7 @@ export function TaskRow({
                             }}
                             disabled={isStopping || isStopped}
                             className="rounded p-1 transition-colors text-muted-foreground hover:bg-destructive/20 hover:text-destructive disabled:opacity-30 disabled:cursor-not-allowed"
-                            title="Stop task"
+                            title="🛑 Stop task"
                         >
                             <Square className="h-3.5 w-3.5" />
                         </button>
@@ -136,7 +136,7 @@ export function TaskRow({
                                     ? "text-muted-foreground/30 cursor-not-allowed"
                                     : "text-muted-foreground hover:bg-accent hover:text-foreground",
                             )}
-                            title={`Shell into ${containerName}`}
+                            title={`💻 Shell into ${containerName}`}
                         >
                             <Terminal className="h-3.5 w-3.5" />
                         </button>
@@ -152,7 +152,7 @@ export function TaskRow({
                                 isStopped
                                     ? "Task is stopped"
                                     : canStreamLogs
-                                      ? `Live logs for ${containerName}`
+                                      ? `📜 Live logs for ${containerName}`
                                       : "Docker logs requires EC2 launch type"
                             }
                             disabled={isStopped || !canStreamLogs}
@@ -171,7 +171,7 @@ export function TaskRow({
                                 isStopped
                                     ? "Task is stopped"
                                     : canHttpCapture
-                                      ? `HTTP capture for ${containerName}`
+                                      ? `📡 HTTP capture for ${containerName}`
                                       : "HTTP capture requires EC2 launch type"
                             }
                             disabled={isStopped || !canHttpCapture}
@@ -187,7 +187,7 @@ export function TaskRow({
                                 "rounded p-1 transition-colors hover:bg-accent",
                                 expanded ? "text-foreground" : "text-muted-foreground",
                             )}
-                            title="Show environment variables"
+                            title="📝 Show environment variables"
                         >
                             {expanded ? <ChevronDown className="h-3.5 w-3.5" /> : <FileCode className="h-3.5 w-3.5" />}
                         </button>

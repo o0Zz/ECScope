@@ -106,7 +106,7 @@ export function TaskList() {
             {/* Confirmation dialog for stop task */}
             <ConfirmDialog
                 open={!!confirmStopTask}
-                title="Stop Task"
+                title="🛑 Stop Task"
                 message="Are you sure you want to stop this task?"
                 detail={confirmStopTask?.split("/").pop()}
                 confirmLabel="Stop Task"

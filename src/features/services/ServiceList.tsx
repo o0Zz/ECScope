@@ -22,7 +22,7 @@ function ClusterOverview({ clusterName }: { clusterName: string }) {
     return (
         <div className="mb-4 grid grid-cols-2 gap-3 rounded-lg border border-border bg-card p-4 md:grid-cols-4">
             <div>
-                <div className="text-xs text-muted-foreground">Cluster CPU</div>
+                <div className="text-xs text-muted-foreground">🖥️ Cluster CPU</div>
                 <div className="mt-1 text-lg font-semibold text-foreground">{metrics.cpuUtilization}%</div>
                 <div className="mt-1 h-1.5 w-full overflow-hidden rounded-full bg-muted">
                     <div
@@ -42,7 +42,7 @@ function ClusterOverview({ clusterName }: { clusterName: string }) {
                 </div>
             </div>
             <div>
-                <div className="text-xs text-muted-foreground">Cluster Memory</div>
+                <div className="text-xs text-muted-foreground">🧠 Cluster Memory</div>
                 <div className="mt-1 text-lg font-semibold text-foreground">{metrics.memoryUtilization}%</div>
                 <div className="mt-1 h-1.5 w-full overflow-hidden rounded-full bg-muted">
                     <div
@@ -62,12 +62,12 @@ function ClusterOverview({ clusterName }: { clusterName: string }) {
                 </div>
             </div>
             <div>
-                <div className="text-xs text-muted-foreground">CPU Reserved</div>
+                <div className="text-xs text-muted-foreground">🖥️ CPU Reserved</div>
                 <div className="mt-1 text-lg font-semibold text-foreground">{metrics.cpuReserved}</div>
                 <div className="mt-1 text-xs text-muted-foreground">units</div>
             </div>
             <div>
-                <div className="text-xs text-muted-foreground">Memory Reserved</div>
+                <div className="text-xs text-muted-foreground">🧠 Memory Reserved</div>
                 <div className="mt-1 text-lg font-semibold text-foreground">{metrics.memoryReservedMB}</div>
                 <div className="mt-1 text-xs text-muted-foreground">MB</div>
             </div>
@@ -168,8 +168,8 @@ export function ServiceList() {
                             <th className="px-4 py-2.5 text-left font-medium text-muted-foreground">Status</th>
                             <th className="px-4 py-2.5 text-center font-medium text-muted-foreground">Scale</th>
                             <th className="px-4 py-2.5 text-center font-medium text-muted-foreground">Running</th>
-                            <th className="px-4 py-2.5 text-center font-medium text-muted-foreground">CPU</th>
-                            <th className="px-4 py-2.5 text-center font-medium text-muted-foreground">Memory</th>
+                            <th className="px-4 py-2.5 text-center font-medium text-muted-foreground">🖥️ CPU</th>
+                            <th className="px-4 py-2.5 text-center font-medium text-muted-foreground">🧠 Memory</th>
                             <th className="px-4 py-2.5 text-left font-medium text-muted-foreground">Launch Type</th>
                             <th className="px-4 py-2.5 text-left font-medium text-muted-foreground">Task Def</th>
                             <th className="px-4 py-2.5 text-center font-medium text-muted-foreground">Actions</th>
@@ -206,7 +206,7 @@ export function ServiceList() {
                                             }}
                                             disabled={svc.desiredCount <= 0 || scaleMutation.isPending}
                                             className="rounded p-1 text-muted-foreground hover:bg-destructive/20 hover:text-destructive disabled:opacity-30 disabled:cursor-not-allowed"
-                                            title="Scale down"
+                                            title="➖ Scale down"
                                         >
                                             <Minus className="h-3.5 w-3.5" />
                                         </button>
@@ -223,7 +223,7 @@ export function ServiceList() {
                                             }}
                                             disabled={scaleMutation.isPending}
                                             className="rounded p-1 text-muted-foreground hover:bg-success/20 hover:text-success disabled:opacity-30"
-                                            title="Scale up"
+                                            title="➕ Scale up"
                                         >
                                             <Plus className="h-3.5 w-3.5" />
                                         </button>
@@ -238,7 +238,7 @@ export function ServiceList() {
                                                 });
                                             }}
                                             className="rounded p-1 text-muted-foreground hover:bg-accent hover:text-foreground"
-                                            title="Configure scaling limits"
+                                            title="⚙️ Configure scaling limits"
                                         >
                                             <Settings2 className="h-3.5 w-3.5" />
                                         </button>
@@ -297,7 +297,7 @@ export function ServiceList() {
                                             }}
                                             disabled={redeployMutation.isPending}
                                             className="rounded p-1 text-muted-foreground hover:bg-info/20 hover:text-info disabled:opacity-30"
-                                            title="Force new deployment"
+                                            title="🔄 Force new deployment"
                                         >
                                             <RotateCw
                                                 className={cn(
@@ -323,7 +323,7 @@ export function ServiceList() {
 
             <ConfirmDialog
                 open={!!confirmRedeploy}
-                title="Force New Deployment"
+                title="🔄 Force New Deployment"
                 message="Force a new deployment for this service? All tasks will be replaced with fresh ones."
                 detail={confirmRedeploy ?? undefined}
                 confirmLabel="Redeploy"
@@ -335,7 +335,7 @@ export function ServiceList() {
 
             <ConfirmDialog
                 open={!!confirmScaleToZero}
-                title="Stop Service"
+                title="🛑 Stop Service"
                 message="Are you sure you want to scale this service to 0? All running tasks will be stopped."
                 detail={confirmScaleToZero ?? undefined}
                 confirmLabel="Scale to 0"

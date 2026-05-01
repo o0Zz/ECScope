@@ -21,10 +21,32 @@ const statusColors: Record<string, string> = {
     UNKNOWN: "bg-muted text-muted-foreground",
 };
 
+const statusEmojis: Record<string, string> = {
+    RUNNING: "✅",
+    ACTIVE: "✅",
+    HEALTHY: "✅",
+    COMPLETED: "✅",
+    PRIMARY: "✅",
+    PENDING: "⏳",
+    IN_PROGRESS: "⏳",
+    PROVISIONING: "⏳",
+    DRAINING: "⏳",
+    STOPPED: "🛑",
+    INACTIVE: "🛑",
+    UNHEALTHY: "❌",
+    UNKNOWN: "❓",
+};
+
 export function StatusBadge({ status, className }: StatusBadgeProps) {
     const colors = statusColors[status] ?? "bg-muted text-muted-foreground";
+    const emoji = statusEmojis[status];
     return (
         <span className={cn("inline-flex items-center rounded-md px-2 py-0.5 text-xs font-medium", colors, className)}>
+            {emoji && (
+                <span className="mr-1" aria-hidden>
+                    {emoji}
+                </span>
+            )}
             {status}
         </span>
     );

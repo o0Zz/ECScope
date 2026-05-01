@@ -7,61 +7,6 @@ import { Server, ChevronLeft, ChevronRight, Box, AlertCircle, Loader2 } from "lu
 
 const logger = createLogger("Sidebar");
 
-function hexToRgb(hex?: string): { r: number; g: number; b: number } | null {
-    if (!hex || !/^[0-9a-fA-F]{6}$/.test(hex)) return null;
-    return {
-        r: parseInt(hex.slice(0, 2), 16),
-        g: parseInt(hex.slice(2, 4), 16),
-        b: parseInt(hex.slice(4, 6), 16),
-    };
-}
-
-// HSL conversion for hue-based color classification.
-function hexToHsl(hex?: string): { h: number; s: number; l: number } | null {
-    const rgb = hexToRgb(hex);
-    if (!rgb) return null;
-    const r = rgb.r / 255;
-    const g = rgb.g / 255;
-    const b = rgb.b / 255;
-    const max = Math.max(r, g, b);
-    const min = Math.min(r, g, b);
-    const l = (max + min) / 2;
-    if (max === min) return { h: 0, s: 0, l };
-    const d = max - min;
-    const s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
-    let h = 0;
-    if (max === r) h = (g - b) / d + (g < b ? 6 : 0);
-    else if (max === g) h = (b - r) / d + 2;
-    else h = (r - g) / d + 4;
-    return { h: h * 60, s, l };
-}
-
-// Red-dominant heuristic: red channel clearly above green and blue.
-function isRedish(hex?: string): boolean {
-    const rgb = hexToRgb(hex);
-    if (!rgb) return false;
-    return rgb.r > 150 && rgb.r > rgb.g + 50 && rgb.r > rgb.b + 50;
-}
-
-// Color category ranking — lower = healthier visually.
-//   0 = blue / green / cyan / purple / no-color (cool, calm)
-//   1 = yellow / orange (warning)
-//   2 = red (alert)
-function colorRank(hex?: string): number {
-    if (isRedish(hex)) return 2;
-    const hsl = hexToHsl(hex);
-    if (!hsl || hsl.s < 0.15) return 0; // grey / desaturated / no color → cool
-    // Hue wheel: 0=red, 60=yellow, 120=green, 180=cyan, 240=blue, 300=magenta
-    if (hsl.h >= 345 || hsl.h <= 15) return 2; // red wrap-around
-    if (hsl.h > 15 && hsl.h <= 65) return 1; // orange + yellow
-    return 0; // green / cyan / blue / purple
-}
-
-function clusterGroup(name: string): string {
-    const idx = name.indexOf("-");
-    return idx === -1 ? name : name.slice(0, idx);
-}
-
 function SidebarFooter({ lastClickedCluster }: { lastClickedCluster: string | null }) {
     const { activeCluster, credentials, status, error } = useConfigStore();
     if (status === "connected" && activeCluster) {
@@ -113,18 +58,14 @@ export function Sidebar() {
         }
     };
 
-    // Group by prefix (split before the first "-"), sort each group by color category
-    // so cool clusters (blue/green) stay on top, yellow/orange in the middle, red at the bottom.
+    // Group clusters by their config `group` field. Ungrouped clusters go under their clusterName.
     const grouped = (() => {
         const groups = new Map<string, typeof clusters>();
         for (const cluster of clusters) {
-            const key = clusterGroup(cluster.clusterName);
+            const key = cluster.group ?? cluster.clusterName;
             const arr = groups.get(key) ?? [];
             arr.push(cluster);
             groups.set(key, arr);
-        }
-        for (const arr of groups.values()) {
-            arr.sort((a, b) => colorRank(a.color) - colorRank(b.color));
         }
         return [...groups.entries()].sort(([a], [b]) => a.localeCompare(b));
     })();
@@ -179,7 +120,6 @@ export function Sidebar() {
                             </div>
                         )}
                         {groupClusters.map((cluster) => {
-                            const redAlert = isRedish(cluster.color);
                             const isTarget = lastClickedCluster === cluster.clusterName;
                             const isConnecting = isTarget && status === "loading";
                             const hasError = isTarget && status === "error";
@@ -188,9 +128,7 @@ export function Sidebar() {
                                 : cluster.profile;
                             const titleHeader = hasError
                                 ? `${cluster.clusterName} — connection error`
-                                : redAlert
-                                  ? `${cluster.clusterName} — alerte`
-                                  : cluster.clusterName;
+                                : cluster.clusterName;
                             return (
                                 <button
                                     key={cluster.clusterName}
@@ -220,13 +158,9 @@ export function Sidebar() {
                                     )}
                                     {!sidebarCollapsed && (
                                         <div className="min-w-0 flex-1">
-                                            <div className="flex items-center gap-1 truncate font-medium">
-                                                {redAlert && (
-                                                    <span aria-label="warning" title="Cluster en alerte">
-                                                        ⚠️
-                                                    </span>
-                                                )}
-                                                <span className="truncate">{cluster.clusterName}</span>
+                                            <div className="truncate font-medium">
+                                                {cluster.icon && <span className="mr-1">{cluster.icon}</span>}
+                                                {cluster.clusterName}
                                             </div>
                                             <div className="truncate text-xs text-muted-foreground">
                                                 {cluster.region

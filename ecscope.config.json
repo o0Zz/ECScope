@@ -4,12 +4,18 @@
         {
             "profile": "my-profile1",
             "region": "eu-west-1",
-            "clusterName": "my-cluster"
+            "clusterName": "my-cluster",
+            "color": "0000ff",
+            "group": "My Group",
+            "icon": ""
         },
         {
             "profile": "my-profile2",
             "region": "eu-west-1",
-            "clusterName": "my-cluster2"
+            "clusterName": "my-cluster2",
+            "color": "0000ff",
+            "group": "My Group",
+            "icon": "⚠️"
         }
     ]
 }

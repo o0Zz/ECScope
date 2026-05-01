@@ -8,6 +8,10 @@ export interface ClusterConfig {
     sshUser?: string;
     /** Optional sidebar accent color for this cluster (hex RGB, e.g. "ff0000") */
     color?: string;
+    /** Group name for sidebar grouping */
+    group?: string;
+    /** Optional emoji/icon displayed before the cluster name (e.g. "⚠️") */
+    icon?: string;
 }
 
 /** Global S3 storage config for file transfer */
@@ -66,6 +70,8 @@ function parseClusterEntries(entries: unknown[]): ClusterConfig[] {
             region: entry.region,
             clusterName: entry.clusterName,
             color: typeof entry.color === "string" && /^[0-9a-fA-F]{6}$/.test(entry.color) ? entry.color : undefined,
+            group: typeof entry.group === "string" && entry.group.trim() ? entry.group.trim() : undefined,
+            icon: typeof entry.icon === "string" && entry.icon.trim() ? entry.icon.trim() : undefined,
         };
     });
 }

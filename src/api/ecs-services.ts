@@ -79,7 +79,7 @@ function mapService(
         desiredCount: s.desiredCount ?? 0,
         runningCount: s.runningCount ?? 0,
         pendingCount: s.pendingCount ?? 0,
-        launchType: s.launchType ?? s.capacityProviderStrategy?.[0]?.capacityProvider ?? "UNKNOWN",
+        launchType: s.capacityProviderStrategy?.[0]?.capacityProvider ?? s.launchType ?? "UNKNOWN",
         taskDefinition: taskDef,
         deployments: (s.deployments ?? []).map(mapDeployment),
         createdAt: s.createdAt?.toISOString?.() ?? "",

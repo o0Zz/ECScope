@@ -178,7 +178,9 @@ export function ServiceList() {
                             <th className="px-4 py-2.5 text-center font-medium text-muted-foreground">Running</th>
                             <th className="px-4 py-2.5 text-center font-medium text-muted-foreground">🖥️ CPU</th>
                             <th className="px-4 py-2.5 text-center font-medium text-muted-foreground">🧠 Memory</th>
-                            <th className="px-4 py-2.5 text-left font-medium text-muted-foreground">Launch Type</th>
+                            <th className="px-4 py-2.5 text-left font-medium text-muted-foreground">
+                                Capacity Provider
+                            </th>
                             <th className="px-4 py-2.5 text-left font-medium text-muted-foreground">Task Def</th>
                             <th className="px-4 py-2.5 text-center font-medium text-muted-foreground">Actions</th>
                         </tr>

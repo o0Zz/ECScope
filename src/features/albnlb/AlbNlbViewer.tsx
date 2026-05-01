@@ -245,7 +245,7 @@ export function AlbNlbViewer() {
     return (
         <div className="p-4">
             <h2 className="mb-4 text-lg font-semibold text-foreground">
-                Load Balancers
+                🔀 Load Balancers
                 <span className="ml-2 text-sm font-normal text-muted-foreground">
                     ({albs.length}
                     {albCount > 0 && nlbCount > 0 ? ` · ${albCount} ALB, ${nlbCount} NLB` : ""})

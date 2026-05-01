@@ -156,7 +156,14 @@ export function Sidebar() {
 
                 {grouped.map(([groupName, groupClusters]) => (
                     <div key={groupName} className="mb-2">
-                        {!sidebarCollapsed && (
+                        {sidebarCollapsed ? (
+                            <div
+                                className="py-1 text-center text-[9px] font-semibold uppercase tracking-wider text-muted-foreground/60"
+                                title={groupName}
+                            >
+                                {groupName.slice(0, 2)}
+                            </div>
+                        ) : (
                             <div className="px-3 pb-1 pt-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/70">
                                 {groupName}
                             </div>
@@ -189,7 +196,11 @@ export function Sidebar() {
                                                 )}
                                                 <span className="truncate">{cluster.clusterName}</span>
                                             </div>
-                                            <div className="text-xs text-muted-foreground">{cluster.profile}</div>
+                                            <div className="truncate text-xs text-muted-foreground">
+                                                {cluster.region
+                                                    ? `${cluster.region} · ${cluster.profile}`
+                                                    : cluster.profile}
+                                            </div>
                                         </div>
                                     )}
                                 </button>

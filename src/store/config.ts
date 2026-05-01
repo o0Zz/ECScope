@@ -14,6 +14,8 @@ interface ConfigState {
     storage: StorageConfig | null;
     /** Auto-refresh interval in milliseconds */
     refreshIntervalMs: number;
+    /** Default theme from config */
+    theme: "dark" | "light";
     /** Currently active cluster config (after selection) */
     activeCluster: ClusterConfig | null;
     credentials: ResolvedCredentials | null;
@@ -30,6 +32,7 @@ export const useConfigStore = create<ConfigState>((set, get) => ({
     clusters: [],
     storage: null,
     refreshIntervalMs: 10_000,
+    theme: "dark",
     activeCluster: null,
     credentials: null,
     status: "idle",
@@ -47,6 +50,7 @@ export const useConfigStore = create<ConfigState>((set, get) => ({
                 clusters: config.clusters,
                 storage: config.storage,
                 refreshIntervalMs: config.refreshPeriodSeconds * 1000,
+                theme: config.theme,
                 status: "idle",
             });
         } catch (err) {

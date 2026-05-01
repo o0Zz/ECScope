@@ -1,14 +1,16 @@
 import { useState, useEffect } from "react";
 import { Sun, Moon } from "lucide-react";
+import { useConfigStore } from "@/store/config";
 
-function getInitialTheme(): "dark" | "light" {
+function getInitialTheme(configDefault: "dark" | "light"): "dark" | "light" {
     const stored = localStorage.getItem("ecscope-theme");
     if (stored === "light" || stored === "dark") return stored;
-    return "dark";
+    return configDefault;
 }
 
 export function ThemeToggle() {
-    const [theme, setTheme] = useState<"dark" | "light">(getInitialTheme);
+    const configTheme = useConfigStore((s) => s.theme);
+    const [theme, setTheme] = useState<"dark" | "light">(() => getInitialTheme(configTheme));
 
     useEffect(() => {
         document.documentElement.classList.toggle("dark", theme === "dark");

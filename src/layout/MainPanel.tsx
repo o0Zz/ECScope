@@ -12,7 +12,12 @@ export function MainPanel() {
     const { selectedCluster, activeTab } = useNavigationStore();
 
     if (!selectedCluster) {
-        return <WelcomeView />;
+        return (
+            <div className="flex h-full flex-col">
+                <Breadcrumb />
+                <WelcomeView />
+            </div>
+        );
     }
 
     return (

@@ -1,5 +1,6 @@
 {
     "refreshPeriodSeconds": 10,
+    "theme": "light",
     "clusters": [
         {
             "profile": "my-profile1",

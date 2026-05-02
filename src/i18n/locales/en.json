@@ -96,7 +96,8 @@
       "stopPending": "Scaling…",
       "scalingLimits": "Scaling Limits",
       "minCapacity": "Min Capacity",
-      "maxCapacity": "Max Capacity"
+      "maxCapacity": "Max Capacity",
+      "desiredCount": "Desired Count"
     }
   },
   "tasks": {
@@ -198,11 +199,18 @@
     "actions": {
       "scaleDown": "Scale down (min: {{min}})",
       "scaleUp": "Scale up (max will be raised if needed)",
+      "configureScaling": "Configure scaling limits",
       "connect": "Connect",
       "download": "Download",
       "upload": "Upload",
       "downloadFrom": "Download file from {{id}}",
       "uploadTo": "Upload file to {{id}}"
+    },
+    "dialogs": {
+      "scalingLimits": "ASG Scaling Limits",
+      "minSize": "Min Size",
+      "maxSize": "Max Size",
+      "desiredCapacity": "Desired Capacity"
     },
     "transfer": {
       "downloadTitle": "Download from EC2",

@@ -86,3 +86,26 @@ export async function updateAsgDesiredCapacity(
     );
     log.ecs.info(`ASG ${asgName} scaled to ${desiredCapacity}`);
 }
+
+/**
+ * Update ASG scaling limits (min, max, desired).
+ */
+export async function updateAsgScalingLimits(
+    asgName: string,
+    minSize: number,
+    maxSize: number,
+    desiredCapacity: number,
+): Promise<void> {
+    log.ecs.info(`Updating ASG ${asgName} limits: min=${minSize}, max=${maxSize}, desired=${desiredCapacity}`);
+
+    await getAsgClient().send(
+        new UpdateAutoScalingGroupCommand({
+            AutoScalingGroupName: asgName,
+            MinSize: minSize,
+            MaxSize: maxSize,
+            DesiredCapacity: desiredCapacity,
+        }),
+    );
+
+    log.ecs.info(`ASG ${asgName} limits updated`);
+}

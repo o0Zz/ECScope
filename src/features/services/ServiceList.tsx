@@ -6,9 +6,10 @@ import { useNavigationStore } from "@/store/navigation";
 import { useConfigStore } from "@/store/config";
 import { StatusBadge } from "@/components/StatusBadge";
 import { MetricBar } from "@/components/MetricBar";
-import { Cog, ArrowRight, Plus, Minus, RotateCw, Settings2, X, ExternalLink } from "lucide-react";
+import { Cog, ArrowRight, Plus, Minus, RotateCw, Settings2, ExternalLink } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
+import { ScalingLimitsDialog } from "@/components/ScalingLimitsDialog";
 import { ecsServiceUrl, openAwsUrl } from "@/lib/aws-urls";
 
 function ClusterOverview({ clusterName }: { clusterName: string }) {
@@ -99,6 +100,7 @@ export function ServiceList() {
         serviceName: string;
         minCapacity: number;
         maxCapacity: number;
+        desiredCount: number;
     } | null>(null);
 
     const { data: services, isLoading } = useQuery({
@@ -135,18 +137,24 @@ export function ServiceList() {
     });
 
     const scalingTargetMutation = useMutation({
-        mutationFn: ({
+        mutationFn: async ({
             serviceName,
             minCapacity,
             maxCapacity,
+            desiredCount,
         }: {
             serviceName: string;
             minCapacity: number;
             maxCapacity: number;
-        }) => ecsApi.updateServiceScalingTarget(selectedCluster!, serviceName, minCapacity, maxCapacity),
+            desiredCount: number;
+        }) => {
+            await ecsApi.updateServiceScalingTarget(selectedCluster!, serviceName, minCapacity, maxCapacity);
+            await ecsApi.updateServiceDesiredCount(selectedCluster!, serviceName, desiredCount);
+        },
         onSuccess: () => {
             setScalingDialog(null);
             queryClient.invalidateQueries({ queryKey: ["scalingTargets", selectedCluster] });
+            queryClient.invalidateQueries({ queryKey: ["services", selectedCluster] });
         },
     });
 
@@ -267,6 +275,7 @@ export function ServiceList() {
                                                     serviceName: svc.serviceName,
                                                     minCapacity: target?.minCapacity ?? svc.desiredCount,
                                                     maxCapacity: target?.maxCapacity ?? svc.desiredCount,
+                                                    desiredCount: svc.desiredCount,
                                                 });
                                             }}
                                             className="rounded p-1 text-muted-foreground hover:bg-accent hover:text-foreground"
@@ -391,90 +400,46 @@ export function ServiceList() {
                 onCancel={() => setConfirmScaleToZero(null)}
             />
 
-            {scalingDialog && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-                    <div className="w-full max-w-sm rounded-lg border border-border bg-card p-6 shadow-lg">
-                        <div className="flex items-center justify-between mb-4">
-                            <h3 className="text-sm font-semibold text-foreground">
-                                {t("services.dialogs.scalingLimits")}
-                            </h3>
-                            <button
-                                onClick={() => setScalingDialog(null)}
-                                className="rounded p-1 text-muted-foreground hover:bg-accent hover:text-foreground"
-                            >
-                                <X className="h-4 w-4" />
-                            </button>
-                        </div>
-                        <p className="text-xs font-mono text-foreground mb-4">{scalingDialog.serviceName}</p>
-
-                        <div className="space-y-3">
-                            <div>
-                                <label className="block text-xs text-muted-foreground mb-1">
-                                    {t("services.dialogs.minCapacity")}
-                                </label>
-                                <input
-                                    type="number"
-                                    min={0}
-                                    value={scalingDialog.minCapacity}
-                                    onChange={(e) =>
-                                        setScalingDialog({
-                                            ...scalingDialog,
-                                            minCapacity: Math.max(0, parseInt(e.target.value) || 0),
-                                        })
-                                    }
-                                    className="w-full rounded-md border border-border bg-background px-3 py-1.5 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
-                                />
-                            </div>
-                            <div>
-                                <label className="block text-xs text-muted-foreground mb-1">
-                                    {t("services.dialogs.maxCapacity")}
-                                </label>
-                                <input
-                                    type="number"
-                                    min={scalingDialog.minCapacity}
-                                    value={scalingDialog.maxCapacity}
-                                    onChange={(e) =>
-                                        setScalingDialog({
-                                            ...scalingDialog,
-                                            maxCapacity: Math.max(
-                                                scalingDialog.minCapacity,
-                                                parseInt(e.target.value) || 0,
-                                            ),
-                                        })
-                                    }
-                                    className="w-full rounded-md border border-border bg-background px-3 py-1.5 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
-                                />
-                            </div>
-                        </div>
-
-                        <div className="flex justify-end gap-2 mt-4">
-                            <button
-                                onClick={() => setScalingDialog(null)}
-                                disabled={scalingTargetMutation.isPending}
-                                className="rounded-md px-3 py-1.5 text-sm text-muted-foreground hover:bg-accent"
-                            >
-                                {t("common.cancel")}
-                            </button>
-                            <button
-                                onClick={() =>
-                                    scalingTargetMutation.mutate({
-                                        serviceName: scalingDialog.serviceName,
-                                        minCapacity: scalingDialog.minCapacity,
-                                        maxCapacity: scalingDialog.maxCapacity,
-                                    })
-                                }
-                                disabled={
-                                    scalingTargetMutation.isPending ||
-                                    scalingDialog.maxCapacity < scalingDialog.minCapacity
-                                }
-                                className="rounded-md bg-primary px-3 py-1.5 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
-                            >
-                                {scalingTargetMutation.isPending ? t("common.saving") : t("common.save")}
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            )}
+            <ScalingLimitsDialog
+                open={!!scalingDialog}
+                title={t("services.dialogs.scalingLimits")}
+                subtitle={scalingDialog?.serviceName}
+                fields={
+                    scalingDialog
+                        ? [
+                              {
+                                  key: "minCapacity",
+                                  label: t("services.dialogs.minCapacity"),
+                                  value: scalingDialog.minCapacity,
+                                  min: 0,
+                              },
+                              {
+                                  key: "maxCapacity",
+                                  label: t("services.dialogs.maxCapacity"),
+                                  value: scalingDialog.maxCapacity,
+                                  min: scalingDialog.minCapacity,
+                              },
+                              {
+                                  key: "desiredCount",
+                                  label: t("services.dialogs.desiredCount"),
+                                  value: scalingDialog.desiredCount,
+                                  min: scalingDialog.minCapacity,
+                                  max: scalingDialog.maxCapacity,
+                              },
+                          ]
+                        : []
+                }
+                isPending={scalingTargetMutation.isPending}
+                onConfirm={(values) =>
+                    scalingTargetMutation.mutate({
+                        serviceName: scalingDialog!.serviceName,
+                        minCapacity: values.minCapacity,
+                        maxCapacity: values.maxCapacity,
+                        desiredCount: values.desiredCount,
+                    })
+                }
+                onCancel={() => setScalingDialog(null)}
+            />
         </div>
     );
 }

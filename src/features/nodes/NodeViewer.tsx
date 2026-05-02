@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
 import { ecsApi } from "@/api";
@@ -5,11 +6,12 @@ import { useNavigationStore } from "@/store/navigation";
 import { useConfigStore } from "@/store/config";
 import { StatusBadge } from "@/components/StatusBadge";
 import { MetricBar } from "@/components/MetricBar";
-import { Monitor, Terminal, Download, Upload, Minus, Plus, Server } from "lucide-react";
+import { Monitor, Terminal, Download, Upload, Minus, Plus, Server, Settings2 } from "lucide-react";
 import { formatAge } from "@/lib/format";
 import { invoke, createLogger } from "@/lib/logger";
 import { useFileTransfer } from "./useFileTransfer";
 import { FileTransferDialog } from "./FileTransferDialog";
+import { ScalingLimitsDialog } from "@/components/ScalingLimitsDialog";
 
 const logger = createLogger("NodeViewer");
 
@@ -21,6 +23,12 @@ export function NodeViewer() {
 
     const transfer = useFileTransfer(activeCluster);
     const queryClient = useQueryClient();
+    const [scalingDialog, setScalingDialog] = useState<{
+        asgName: string;
+        minSize: number;
+        maxSize: number;
+        desiredCapacity: number;
+    } | null>(null);
 
     const { data: instances, isLoading } = useQuery({
         queryKey: ["nodes", selectedCluster],
@@ -40,6 +48,25 @@ export function NodeViewer() {
         mutationFn: (desiredCapacity: number) =>
             ecsApi.updateAsgDesiredCapacity(asgInfo!.asgName, desiredCapacity, asgInfo!.maxSize),
         onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ["asgInfo", selectedCluster] });
+            queryClient.invalidateQueries({ queryKey: ["nodes", selectedCluster] });
+        },
+    });
+
+    const scalingLimitsMutation = useMutation({
+        mutationFn: ({
+            asgName,
+            minSize,
+            maxSize,
+            desiredCapacity,
+        }: {
+            asgName: string;
+            minSize: number;
+            maxSize: number;
+            desiredCapacity: number;
+        }) => ecsApi.updateAsgScalingLimits(asgName, minSize, maxSize, desiredCapacity),
+        onSuccess: () => {
+            setScalingDialog(null);
             queryClient.invalidateQueries({ queryKey: ["asgInfo", selectedCluster] });
             queryClient.invalidateQueries({ queryKey: ["nodes", selectedCluster] });
         },
@@ -97,6 +124,20 @@ export function NodeViewer() {
                                 <Plus className="h-3 w-3" />
                             </button>
                         </div>
+                        <button
+                            onClick={() =>
+                                setScalingDialog({
+                                    asgName: asgInfo.asgName,
+                                    minSize: asgInfo.minSize,
+                                    maxSize: asgInfo.maxSize,
+                                    desiredCapacity: asgInfo.desiredCapacity,
+                                })
+                            }
+                            className="rounded-md border border-border px-1.5 py-0.5 text-xs font-medium text-foreground hover:bg-accent transition-colors ml-1"
+                            title={t("nodes.actions.configureScaling")}
+                        >
+                            <Settings2 className="h-3 w-3" />
+                        </button>
                         <span className="text-xs text-muted-foreground ml-1">
                             ({asgInfo.minSize}–{asgInfo.maxSize})
                         </span>
@@ -276,6 +317,47 @@ export function NodeViewer() {
                 rate={transfer.rate}
                 onConfirm={transfer.confirm}
                 onCancel={transfer.cancel}
+            />
+
+            <ScalingLimitsDialog
+                open={!!scalingDialog}
+                title={t("nodes.dialogs.scalingLimits")}
+                subtitle={scalingDialog?.asgName}
+                fields={
+                    scalingDialog
+                        ? [
+                              {
+                                  key: "minSize",
+                                  label: t("nodes.dialogs.minSize"),
+                                  value: scalingDialog.minSize,
+                                  min: 0,
+                              },
+                              {
+                                  key: "maxSize",
+                                  label: t("nodes.dialogs.maxSize"),
+                                  value: scalingDialog.maxSize,
+                                  min: scalingDialog.minSize,
+                              },
+                              {
+                                  key: "desiredCapacity",
+                                  label: t("nodes.dialogs.desiredCapacity"),
+                                  value: scalingDialog.desiredCapacity,
+                                  min: scalingDialog.minSize,
+                                  max: scalingDialog.maxSize,
+                              },
+                          ]
+                        : []
+                }
+                isPending={scalingLimitsMutation.isPending}
+                onConfirm={(values) =>
+                    scalingLimitsMutation.mutate({
+                        asgName: scalingDialog!.asgName,
+                        minSize: values.minSize,
+                        maxSize: values.maxSize,
+                        desiredCapacity: values.desiredCapacity,
+                    })
+                }
+                onCancel={() => setScalingDialog(null)}
             />
         </div>
     );

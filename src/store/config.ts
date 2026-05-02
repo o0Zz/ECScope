@@ -1,5 +1,5 @@
 import { create } from "zustand";
-import type { ClusterConfig, StorageConfig } from "@/config/config";
+import type { ClusterConfig } from "@/config/config";
 import type { ResolvedCredentials } from "@/config/aws-credentials";
 import { loadConfig, loadAwsFiles } from "@/config/config";
 import { resolveCredentials } from "@/config/aws-credentials";
@@ -11,8 +11,6 @@ type ConnectionStatus = "idle" | "loading" | "connected" | "error";
 
 interface ConfigState {
     clusters: ClusterConfig[];
-    /** Global S3 storage config for file transfer */
-    storage: StorageConfig | null;
     /** Auto-refresh interval in milliseconds */
     refreshIntervalMs: number;
     /** Default theme from config */
@@ -33,7 +31,6 @@ interface ConfigState {
 
 export const useConfigStore = create<ConfigState>((set, get) => ({
     clusters: [],
-    storage: null,
     refreshIntervalMs: 10_000,
     theme: "dark",
     language: "en",
@@ -52,7 +49,6 @@ export const useConfigStore = create<ConfigState>((set, get) => ({
             log.config.info(`Loaded ${config.clusters.length} clusters (refresh: ${config.refreshPeriodSeconds}s)`);
             set({
                 clusters: config.clusters,
-                storage: config.storage,
                 refreshIntervalMs: config.refreshPeriodSeconds * 1000,
                 theme: config.theme,
                 language: config.language,

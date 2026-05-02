@@ -14,15 +14,6 @@ export interface ClusterConfig {
     icon?: string;
 }
 
-/** Global S3 storage config for file transfer */
-export interface StorageConfig {
-    s3Bucket: string;
-    s3AccessKeyId: string;
-    s3SecretAccessKey: string;
-    /** Region of the S3 bucket (defaults to first cluster's region) */
-    s3Region?: string;
-}
-
 export interface AwsFiles {
     credentials: string;
     config: string;
@@ -30,7 +21,6 @@ export interface AwsFiles {
 
 export interface ParsedConfig {
     clusters: ClusterConfig[];
-    storage: StorageConfig | null;
     refreshPeriodSeconds: number;
     /** Default theme: "dark" or "light" */
     theme: "dark" | "light";
@@ -44,23 +34,22 @@ export async function loadConfig(): Promise<ParsedConfig> {
     const raw = await invoke<string>("read_app_config");
     const parsed = JSON.parse(raw);
 
-    // New format: { clusters: [...], storage: { ... } }
+    // New format: { clusters: [...] }
     if (parsed && !Array.isArray(parsed) && Array.isArray(parsed.clusters)) {
         const clusters = parseClusterEntries(parsed.clusters);
-        const storage = parseStorage(parsed.storage);
         const refreshPeriodSeconds =
             typeof parsed.refreshPeriodSeconds === "number" && parsed.refreshPeriodSeconds > 0
                 ? parsed.refreshPeriodSeconds
                 : DEFAULT_REFRESH_PERIOD;
         const theme = parsed.theme === "light" ? "light" : "dark";
         const language = typeof parsed.language === "string" ? parsed.language : "en";
-        return { clusters, storage, refreshPeriodSeconds, theme, language };
+        return { clusters, refreshPeriodSeconds, theme, language };
     }
 
     // Legacy format: array of cluster configs (or single object)
     const entries: unknown[] = Array.isArray(parsed) ? parsed : [parsed];
     const clusters = parseClusterEntries(entries);
-    return { clusters, storage: null, refreshPeriodSeconds: DEFAULT_REFRESH_PERIOD, theme: "dark", language: "en" };
+    return { clusters, refreshPeriodSeconds: DEFAULT_REFRESH_PERIOD, theme: "dark", language: "en" };
 }
 
 function parseClusterEntries(entries: unknown[]): ClusterConfig[] {
@@ -80,16 +69,6 @@ function parseClusterEntries(entries: unknown[]): ClusterConfig[] {
             icon: typeof entry.icon === "string" && entry.icon.trim() ? entry.icon.trim() : undefined,
         };
     });
-}
-
-function parseStorage(raw: any): StorageConfig | null {
-    if (!raw || !raw.s3Bucket) return null;
-    return {
-        s3Bucket: raw.s3Bucket,
-        s3AccessKeyId: raw.s3AccessKeyId ?? "",
-        s3SecretAccessKey: raw.s3SecretAccessKey ?? "",
-        s3Region: raw.s3Region,
-    };
 }
 
 export async function loadAwsFiles(): Promise<AwsFiles> {

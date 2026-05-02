@@ -58,6 +58,37 @@ fn read_aws_files() -> Result<AwsFiles, String> {
     Ok(AwsFiles { credentials, config })
 }
 
+#[tauri::command]
+async fn fetch_url(url: String) -> Result<String, String> {
+    let client = reqwest::Client::builder()
+        .timeout(std::time::Duration::from_secs(10))
+        .build()
+        .map_err(|e| format!("HTTP client error: {}", e))?;
+
+    let response = client
+        .get(&url)
+        .header("User-Agent", "ECScope")
+        .send()
+        .await
+        .map_err(|e| format!("HTTP request failed: {}", e))?;
+
+    if !response.status().is_success() {
+        return Err(format!("HTTP {}", response.status()));
+    }
+
+    let body = response
+        .text()
+        .await
+        .map_err(|e| format!("Failed to read response: {}", e))?;
+
+    // Cap at 1MB for safety
+    if body.len() > 1_048_576 {
+        return Err("Response too large".to_string());
+    }
+
+    Ok(body)
+}
+
 #[derive(Deserialize)]
 struct SsmConnectParams {
     instance_id: String,
@@ -573,6 +604,7 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             read_app_config,
             read_aws_files,
+            fetch_url,
             open_ssm_session,
             open_ecs_exec,
             generate_ssh_keypair,

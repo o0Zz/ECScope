@@ -26,6 +26,8 @@ export interface ParsedConfig {
     theme: "dark" | "light";
     /** UI language: "en" (clean) or "en-emoji" (with emojis) */
     language: string;
+    /** Optional URL to a latest.json for update checks */
+    updateUrl?: string;
 }
 
 const DEFAULT_REFRESH_PERIOD = 10;
@@ -43,7 +45,9 @@ export async function loadConfig(): Promise<ParsedConfig> {
                 : DEFAULT_REFRESH_PERIOD;
         const theme = parsed.theme === "light" ? "light" : "dark";
         const language = typeof parsed.language === "string" ? parsed.language : "en";
-        return { clusters, refreshPeriodSeconds, theme, language };
+        const updateUrl =
+            typeof parsed.updateUrl === "string" && parsed.updateUrl.trim() ? parsed.updateUrl.trim() : undefined;
+        return { clusters, refreshPeriodSeconds, theme, language, updateUrl };
     }
 
     // Legacy format: array of cluster configs (or single object)

@@ -2,6 +2,7 @@
     "refreshPeriodSeconds": 10,
     "theme": "light",
     "language": "en-emoji",
+    "updateUrl": "https://raw.githubusercontent.com/o0Zz/ECScope/main/latest.json",
     "clusters": [
         {
             "profile": "my-profile1",

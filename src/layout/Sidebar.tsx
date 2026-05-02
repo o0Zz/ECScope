@@ -4,9 +4,26 @@ import { useNavigationStore } from "@/store/navigation";
 import { useConfigStore } from "@/store/config";
 import { cn } from "@/lib/utils";
 import { createLogger } from "@/lib/logger";
-import { Server, ChevronLeft, ChevronRight, Box, AlertCircle, Loader2 } from "lucide-react";
+import { Server, ChevronLeft, ChevronRight, Box, AlertCircle, Loader2, ArrowUpCircle } from "lucide-react";
+import { openUrl } from "@tauri-apps/plugin-opener";
 
 const logger = createLogger("Sidebar");
+
+function UpdateBanner() {
+    const { t } = useTranslation();
+    const updateAvailable = useConfigStore((s) => s.updateAvailable);
+    if (!updateAvailable) return null;
+    return (
+        <button
+            onClick={() => openUrl(updateAvailable.url)}
+            className="flex items-center gap-2 border-t border-border px-3 py-2 text-xs text-primary hover:bg-accent transition-colors"
+            title={updateAvailable.url}
+        >
+            <ArrowUpCircle className="h-3.5 w-3.5 shrink-0" />
+            <span className="truncate">{t("update.available", { version: updateAvailable.version })}</span>
+        </button>
+    );
+}
 
 function SidebarFooter({ lastClickedCluster }: { lastClickedCluster: string | null }) {
     const { t } = useTranslation();
@@ -180,6 +197,7 @@ export function Sidebar() {
             </div>
 
             {/* Footer */}
+            {!sidebarCollapsed && <UpdateBanner />}
             {!sidebarCollapsed && <SidebarFooter lastClickedCluster={lastClickedCluster} />}
         </div>
     );

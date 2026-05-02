@@ -40,6 +40,9 @@
     "connecting": "Connecting…",
     "selectCluster": "Select a cluster"
   },
+  "update": {
+    "available": "🆕 Update available: {{version}}"
+  },
   "tabs": {
     "services": "Services",
     "tasks": "Tasks",

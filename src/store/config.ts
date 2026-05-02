@@ -6,6 +6,7 @@ import { resolveCredentials } from "@/config/aws-credentials";
 import { initAwsClients } from "@/api/clients";
 import { log } from "@/lib/logger";
 import { changeLanguage } from "@/i18n";
+import { checkForUpdates } from "@/lib/update-checker";
 
 type ConnectionStatus = "idle" | "loading" | "connected" | "error";
 
@@ -22,6 +23,8 @@ interface ConfigState {
     credentials: ResolvedCredentials | null;
     status: ConnectionStatus;
     error: string | null;
+    /** Available update info, null if no update or not checked */
+    updateAvailable: { version: string; url: string } | null;
 
     /** Load all cluster configs from the config file */
     initialize: () => Promise<void>;
@@ -38,6 +41,7 @@ export const useConfigStore = create<ConfigState>((set, get) => ({
     credentials: null,
     status: "idle",
     error: null,
+    updateAvailable: null,
 
     initialize: async () => {
         if (get().status === "loading") return;
@@ -55,6 +59,15 @@ export const useConfigStore = create<ConfigState>((set, get) => ({
                 status: "idle",
             });
             changeLanguage(config.language);
+
+            // Check for updates in the background (non-blocking)
+            if (config.updateUrl) {
+                checkForUpdates(config.updateUrl).then((result) => {
+                    if (result?.hasUpdate) {
+                        set({ updateAvailable: { version: result.latestVersion, url: result.downloadUrl } });
+                    }
+                });
+            }
         } catch (err) {
             const message = err instanceof Error ? err.message : String(err);
             log.config.error(`Failed to load configuration: ${message}`);

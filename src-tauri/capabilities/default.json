@@ -9,6 +9,7 @@
     "core:default",
     "core:window:allow-set-title",
     "dialog:default",
+    "opener:default",
     {
       "identifier": "fs:allow-read-text-file",
       "allow": [

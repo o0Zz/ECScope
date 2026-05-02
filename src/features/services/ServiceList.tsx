@@ -5,9 +5,10 @@ import { useNavigationStore } from "@/store/navigation";
 import { useConfigStore } from "@/store/config";
 import { StatusBadge } from "@/components/StatusBadge";
 import { MetricBar } from "@/components/MetricBar";
-import { Cog, ArrowRight, Plus, Minus, RotateCw, Settings2, X } from "lucide-react";
+import { Cog, ArrowRight, Plus, Minus, RotateCw, Settings2, X, ExternalLink } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
+import { ecsServiceUrl, openAwsUrl } from "@/lib/aws-urls";
 
 function ClusterOverview({ clusterName }: { clusterName: string }) {
     const refreshIntervalMs = useConfigStore((s) => s.refreshIntervalMs);
@@ -86,6 +87,8 @@ function ClusterOverview({ clusterName }: { clusterName: string }) {
 export function ServiceList() {
     const { selectedCluster, selectService } = useNavigationStore();
     const refreshIntervalMs = useConfigStore((s) => s.refreshIntervalMs);
+    const activeCluster = useConfigStore((s) => s.activeCluster);
+    const region = activeCluster?.region ?? "us-east-1";
     const queryClient = useQueryClient();
     const [confirmRedeploy, setConfirmRedeploy] = useState<string | null>(null);
     const [confirmScaleToZero, setConfirmScaleToZero] = useState<string | null>(null);
@@ -300,6 +303,16 @@ export function ServiceList() {
                                 </td>
                                 <td className="px-4 py-3">
                                     <div className="flex items-center justify-center gap-1">
+                                        <button
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                openAwsUrl(ecsServiceUrl(region, selectedCluster!, svc.serviceName));
+                                            }}
+                                            className="rounded p-1 text-muted-foreground hover:bg-accent hover:text-foreground"
+                                            title="Open in AWS Console"
+                                        >
+                                            <ExternalLink className="h-3.5 w-3.5" />
+                                        </button>
                                         <button
                                             onClick={(e) => {
                                                 e.stopPropagation();

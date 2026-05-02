@@ -10,6 +10,7 @@ import {
     Square,
     AlertTriangle,
     Radio,
+    ExternalLink,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { formatAge } from "@/lib/format";
@@ -17,6 +18,7 @@ import { openEcsExec, openTaskLogs, openHttpCapture } from "./TaskActions";
 import { CaptureConfigDialog, type CaptureConfig } from "./CaptureConfigDialog";
 import { EnvVarPanel } from "./EnvVarPanel";
 import { useState } from "react";
+import { ecsTaskUrl, openAwsUrl } from "@/lib/aws-urls";
 
 export function TaskRow({
     task,
@@ -116,6 +118,16 @@ export function TaskRow({
                 <td className="px-3 py-3 text-muted-foreground">{task.containers.length}</td>
                 <td className="px-4 py-3">
                     <div className="flex items-center gap-1">
+                        <button
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                openAwsUrl(ecsTaskUrl(region, clusterName, taskId));
+                            }}
+                            className="rounded p-1 text-muted-foreground hover:bg-accent hover:text-foreground"
+                            title="Open in AWS Console"
+                        >
+                            <ExternalLink className="h-3.5 w-3.5" />
+                        </button>
                         <button
                             onClick={(e) => {
                                 e.stopPropagation();

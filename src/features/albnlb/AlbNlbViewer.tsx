@@ -5,11 +5,12 @@ import type { AlbInfo } from "@/api/types";
 import { useNavigationStore } from "@/store/navigation";
 import { useConfigStore } from "@/store/config";
 import { StatusBadge } from "@/components/StatusBadge";
-import { Globe, Shield, ChevronRight, ChevronDown, Network, AlertCircle } from "lucide-react";
+import { Globe, Shield, ChevronRight, ChevronDown, Network, AlertCircle, ExternalLink } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { formatBytes } from "@/lib/format";
 import { AlbMetricsChart } from "@/components/AlbMetricsChart";
 import { NlbMetricsChart } from "@/components/NlbMetricsChart";
+import { albUrl, openAwsUrl } from "@/lib/aws-urls";
 
 function LbTypeBadge({ type }: { type: AlbInfo["lbType"] }) {
     return (
@@ -24,7 +25,7 @@ function LbTypeBadge({ type }: { type: AlbInfo["lbType"] }) {
     );
 }
 
-function LbRow({ alb }: { alb: AlbInfo }) {
+function LbRow({ alb, region }: { alb: AlbInfo; region: string }) {
     const [expanded, setExpanded] = useState(false);
     const totalHealthy = alb.targetGroups.reduce((s, tg) => s + tg.healthyCount, 0);
     const totalUnhealthy = alb.targetGroups.reduce((s, tg) => s + tg.unhealthyCount, 0);
@@ -62,6 +63,16 @@ function LbRow({ alb }: { alb: AlbInfo }) {
                         )}
                         <span className="font-medium text-foreground">{alb.albName}</span>
                         <LbTypeBadge type={alb.lbType} />
+                        <button
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                openAwsUrl(albUrl(region, alb.albArn));
+                            }}
+                            className="rounded p-0.5 text-muted-foreground hover:bg-accent hover:text-foreground"
+                            title="Open in AWS Console"
+                        >
+                            <ExternalLink className="h-3 w-3" />
+                        </button>
                     </div>
                 </td>
                 <td className="px-4 py-3 text-xs text-muted-foreground">{alb.scheme}</td>
@@ -215,6 +226,8 @@ function TargetGroupRow({ tg }: { tg: AlbInfo["targetGroups"][number] }) {
 export function AlbNlbViewer() {
     const { selectedCluster } = useNavigationStore();
     const refreshIntervalMs = useConfigStore((s) => s.refreshIntervalMs);
+    const activeCluster = useConfigStore((s) => s.activeCluster);
+    const region = activeCluster?.region ?? "us-east-1";
 
     const { data: albs, isLoading } = useQuery({
         queryKey: ["albs", selectedCluster],
@@ -269,7 +282,7 @@ export function AlbNlbViewer() {
                     </thead>
                     <tbody>
                         {albs.map((alb) => (
-                            <LbRow key={alb.albArn} alb={alb} />
+                            <LbRow key={alb.albArn} alb={alb} region={region} />
                         ))}
                     </tbody>
                 </table>

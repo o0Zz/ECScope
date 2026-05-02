@@ -6,15 +6,18 @@ import { useConfigStore } from "@/store/config";
 import { StatusBadge } from "@/components/StatusBadge";
 import { Ec2MetricsChart } from "@/components/Ec2MetricsChart";
 import { RdsMetricsChart } from "@/components/RdsMetricsChart";
-import { Monitor, Database, ChevronDown } from "lucide-react";
+import { Monitor, Database, ChevronDown, ExternalLink } from "lucide-react";
 import { CopyButton } from "@/components/CopyButton";
 import { cn } from "@/lib/utils";
 import { formatAge } from "@/lib/format";
 import { useState, memo } from "react";
+import { ec2InstanceUrl, rdsInstanceUrl, openAwsUrl } from "@/lib/aws-urls";
 
 export function Ec2RdsDashboard() {
     const { selectedCluster } = useNavigationStore();
     const refreshIntervalMs = useConfigStore((s) => s.refreshIntervalMs);
+    const activeCluster = useConfigStore((s) => s.activeCluster);
+    const region = activeCluster?.region ?? "us-east-1";
 
     const { data: instances, isPending: pendingEc2 } = useQuery({
         queryKey: ["vpcInstances", selectedCluster],
@@ -49,9 +52,9 @@ export function Ec2RdsDashboard() {
     return (
         <div className="space-y-6 p-4">
             {/* ── VPC EC2 Instances ── */}
-            <Ec2InstancesSection instances={instances ?? []} />
+            <Ec2InstancesSection instances={instances ?? []} region={region} />
             {/* ── RDS Databases ── */}
-            <RdsInstancesSection instances={rdsInstances ?? []} />
+            <RdsInstancesSection instances={rdsInstances ?? []} region={region} />
         </div>
     );
 }
@@ -82,7 +85,13 @@ function stateColor(state: string): string {
     }
 }
 
-const Ec2InstancesSection = memo(function Ec2InstancesSection({ instances }: { instances: VpcEc2Instance[] }) {
+const Ec2InstancesSection = memo(function Ec2InstancesSection({
+    instances,
+    region,
+}: {
+    instances: VpcEc2Instance[];
+    region: string;
+}) {
     const [expandedId, setExpandedId] = useState<string | null>(null);
 
     return (
@@ -124,6 +133,7 @@ const Ec2InstancesSection = memo(function Ec2InstancesSection({ instances }: { i
                                     <Ec2InstanceRow
                                         key={inst.instanceId}
                                         instance={inst}
+                                        region={region}
                                         expanded={expandedId === inst.instanceId}
                                         onToggle={() =>
                                             setExpandedId(expandedId === inst.instanceId ? null : inst.instanceId)
@@ -142,10 +152,12 @@ const Ec2InstanceRow = memo(function Ec2InstanceRow({
     instance: inst,
     expanded,
     onToggle,
+    region,
 }: {
     instance: VpcEc2Instance;
     expanded: boolean;
     onToggle: () => void;
+    region: string;
 }) {
     return (
         <>
@@ -156,7 +168,21 @@ const Ec2InstanceRow = memo(function Ec2InstanceRow({
                 <td className="px-4 py-2.5 font-medium text-foreground">
                     {inst.name || <span className="text-muted-foreground italic">—</span>}
                 </td>
-                <td className="px-4 py-2.5 font-mono text-xs text-muted-foreground">{inst.instanceId}</td>
+                <td className="px-4 py-2.5 font-mono text-xs text-muted-foreground">
+                    <span className="inline-flex items-center gap-1.5">
+                        {inst.instanceId}
+                        <button
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                openAwsUrl(ec2InstanceUrl(region, inst.instanceId));
+                            }}
+                            className="rounded p-0.5 text-muted-foreground hover:bg-accent hover:text-foreground"
+                            title="Open in AWS Console"
+                        >
+                            <ExternalLink className="h-3 w-3" />
+                        </button>
+                    </span>
+                </td>
                 <td className="px-4 py-2.5 text-muted-foreground">{inst.instanceType}</td>
                 <td className="px-4 py-2.5">
                     <StatusBadge status={stateColor(inst.state)} />
@@ -234,7 +260,13 @@ function rdsStatusColor(status: string): string {
     }
 }
 
-const RdsInstancesSection = memo(function RdsInstancesSection({ instances }: { instances: RdsInstance[] }) {
+const RdsInstancesSection = memo(function RdsInstancesSection({
+    instances,
+    region,
+}: {
+    instances: RdsInstance[];
+    region: string;
+}) {
     const [expandedId, setExpandedId] = useState<string | null>(null);
 
     return (
@@ -276,6 +308,7 @@ const RdsInstancesSection = memo(function RdsInstancesSection({ instances }: { i
                                     <RdsInstanceRow
                                         key={db.dbInstanceIdentifier}
                                         instance={db}
+                                        region={region}
                                         expanded={expandedId === db.dbInstanceIdentifier}
                                         onToggle={() =>
                                             setExpandedId(
@@ -296,10 +329,12 @@ const RdsInstanceRow = memo(function RdsInstanceRow({
     instance: db,
     expanded,
     onToggle,
+    region,
 }: {
     instance: RdsInstance;
     expanded: boolean;
     onToggle: () => void;
+    region: string;
 }) {
     return (
         <>
@@ -307,7 +342,21 @@ const RdsInstanceRow = memo(function RdsInstanceRow({
                 onClick={onToggle}
                 className="cursor-pointer border-b border-border transition-colors hover:bg-accent/30"
             >
-                <td className="px-4 py-2.5 font-medium text-foreground">{db.dbInstanceIdentifier}</td>
+                <td className="px-4 py-2.5 font-medium text-foreground">
+                    <span className="inline-flex items-center gap-1.5">
+                        {db.dbInstanceIdentifier}
+                        <button
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                openAwsUrl(rdsInstanceUrl(region, db.dbInstanceIdentifier));
+                            }}
+                            className="rounded p-0.5 text-muted-foreground hover:bg-accent hover:text-foreground"
+                            title="Open in AWS Console"
+                        >
+                            <ExternalLink className="h-3 w-3" />
+                        </button>
+                    </span>
+                </td>
                 <td className="px-4 py-2.5 text-muted-foreground">
                     {db.engine} {db.engineVersion}
                 </td>

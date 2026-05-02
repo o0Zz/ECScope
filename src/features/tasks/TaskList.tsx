@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useTranslation } from "react-i18next";
 import { ecsApi } from "@/api";
 import { useNavigationStore } from "@/store/navigation";
 import { useConfigStore } from "@/store/config";
@@ -12,6 +13,7 @@ import { TaskDefinitionEditor } from "@/components/TaskDefinitionEditor";
 import { TaskRow } from "./TaskRow";
 
 export function TaskList() {
+    const { t } = useTranslation();
     const { selectedCluster, selectedService } = useNavigationStore();
     const { activeCluster } = useConfigStore();
     const refreshIntervalMs = useConfigStore((s) => s.refreshIntervalMs);
@@ -41,13 +43,17 @@ export function TaskList() {
 
     if (isLoading) {
         return (
-            <div className="flex items-center justify-center py-12 text-sm text-muted-foreground">Loading tasks…</div>
+            <div className="flex items-center justify-center py-12 text-sm text-muted-foreground">
+                {t("tasks.loading")}
+            </div>
         );
     }
 
     if (!tasks?.length) {
         return (
-            <div className="flex items-center justify-center py-12 text-sm text-muted-foreground">No tasks found.</div>
+            <div className="flex items-center justify-center py-12 text-sm text-muted-foreground">
+                {t("tasks.noTasks")}
+            </div>
         );
     }
 
@@ -55,30 +61,47 @@ export function TaskList() {
         <div className="p-4">
             <div className="mb-4 flex items-center justify-between">
                 <h2 className="text-lg font-semibold text-foreground">
-                    Tasks
+                    {t("tasks.title")}
                     <span className="ml-2 text-sm font-normal text-muted-foreground">({tasks.length})</span>
                 </h2>
                 <button
                     onClick={() => setShowTaskDefEditor(true)}
                     className="inline-flex items-center gap-1.5 rounded-md border border-border px-2.5 py-1.5 text-xs font-medium text-muted-foreground hover:bg-accent hover:text-foreground transition-colors"
-                    title="Edit Task Definition"
+                    title={t("tasks.editTaskDef")}
                 >
                     <Pencil className="h-3.5 w-3.5" />
-                    Edit Task Definition
+                    {t("tasks.editTaskDef")}
                 </button>
             </div>
             <div className="overflow-x-auto rounded-lg border border-border">
                 <table className="w-full text-sm">
                     <thead>
                         <tr className="border-b border-border bg-muted/50">
-                            <th className="px-4 py-2.5 text-left font-medium text-muted-foreground">Task ID</th>
-                            <th className="px-4 py-2.5 text-left font-medium text-muted-foreground">Status</th>
-                            <th className="px-4 py-2.5 text-left font-medium text-muted-foreground">Health</th>
-                            <th className="px-3 py-2.5 text-left font-medium text-muted-foreground">Launch</th>
-                            <th className="px-3 py-2.5 text-left font-medium text-muted-foreground">CPU/Mem</th>
-                            <th className="px-3 py-2.5 text-left font-medium text-muted-foreground">Node</th>
-                            <th className="px-3 py-2.5 text-left font-medium text-muted-foreground">Age</th>
-                            <th className="px-3 py-2.5 text-left font-medium text-muted-foreground" title="Containers">
+                            <th className="px-4 py-2.5 text-left font-medium text-muted-foreground">
+                                {t("tasks.columns.taskId")}
+                            </th>
+                            <th className="px-4 py-2.5 text-left font-medium text-muted-foreground">
+                                {t("tasks.columns.status")}
+                            </th>
+                            <th className="px-4 py-2.5 text-left font-medium text-muted-foreground">
+                                {t("tasks.columns.health")}
+                            </th>
+                            <th className="px-3 py-2.5 text-left font-medium text-muted-foreground">
+                                {t("tasks.columns.launch")}
+                            </th>
+                            <th className="px-3 py-2.5 text-left font-medium text-muted-foreground">
+                                {t("tasks.columns.cpuMem")}
+                            </th>
+                            <th className="px-3 py-2.5 text-left font-medium text-muted-foreground">
+                                {t("tasks.columns.node")}
+                            </th>
+                            <th className="px-3 py-2.5 text-left font-medium text-muted-foreground">
+                                {t("tasks.columns.age")}
+                            </th>
+                            <th
+                                className="px-3 py-2.5 text-left font-medium text-muted-foreground"
+                                title={t("tasks.columns.containers")}
+                            >
                                 #
                             </th>
                             <th className="w-10 px-4 py-2.5" />
@@ -106,11 +129,11 @@ export function TaskList() {
             {/* Confirmation dialog for stop task */}
             <ConfirmDialog
                 open={!!confirmStopTask}
-                title="🛑 Stop Task"
-                message="Are you sure you want to stop this task?"
+                title={t("tasks.actions.stopTaskTitle")}
+                message={t("tasks.dialogs.stopMessage")}
                 detail={confirmStopTask?.split("/").pop()}
-                confirmLabel="Stop Task"
-                confirmingLabel="Stopping…"
+                confirmLabel={t("tasks.dialogs.stopConfirm")}
+                confirmingLabel={t("tasks.dialogs.stopPending")}
                 variant="destructive"
                 isPending={stopMutation.isPending}
                 onConfirm={() => stopMutation.mutate(confirmStopTask!)}

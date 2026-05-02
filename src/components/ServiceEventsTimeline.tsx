@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { useTranslation } from "react-i18next";
 import { ecsApi } from "@/api";
 import { useConfigStore } from "@/store/config";
 import { ChevronDown, ChevronRight, AlertCircle, Info } from "lucide-react";
@@ -39,6 +40,7 @@ function formatEventTime(iso: string): string {
 }
 
 export function ServiceEventsTimeline({ clusterName, serviceName }: { clusterName: string; serviceName: string }) {
+    const { t } = useTranslation();
     const [expanded, setExpanded] = useState(true);
     const refreshIntervalMs = useConfigStore((s) => s.refreshIntervalMs);
 
@@ -62,12 +64,12 @@ export function ServiceEventsTimeline({ clusterName, serviceName }: { clusterNam
                 ) : (
                     <ChevronRight className="h-4 w-4 text-muted-foreground" />
                 )}
-                Service Events
+                {t("events.title")}
                 {events && <span className="text-xs font-normal text-muted-foreground">({events.length})</span>}
                 {errorCount > 0 && (
                     <span className="ml-1 inline-flex items-center gap-1 rounded-full bg-destructive/15 px-2 py-0.5 text-xs font-medium text-destructive">
                         <AlertCircle className="h-3 w-3" />
-                        {errorCount} error{errorCount > 1 ? "s" : ""}
+                        {errorCount} {errorCount > 1 ? t("events.errors") : t("events.error")}
                     </span>
                 )}
             </button>
@@ -75,10 +77,12 @@ export function ServiceEventsTimeline({ clusterName, serviceName }: { clusterNam
             {expanded && (
                 <div className="max-h-80 overflow-auto">
                     {isLoading && (
-                        <div className="px-4 py-6 text-center text-xs text-muted-foreground">Loading events…</div>
+                        <div className="px-4 py-6 text-center text-xs text-muted-foreground">{t("events.loading")}</div>
                     )}
                     {!isLoading && (!events || events.length === 0) && (
-                        <div className="px-4 py-6 text-center text-xs text-muted-foreground">No recent events.</div>
+                        <div className="px-4 py-6 text-center text-xs text-muted-foreground">
+                            {t("events.noEvents")}
+                        </div>
                     )}
                     {events && events.length > 0 && (
                         <div className="divide-y divide-border">

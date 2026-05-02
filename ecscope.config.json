@@ -1,6 +1,7 @@
 {
     "refreshPeriodSeconds": 10,
     "theme": "light",
+    "language": "en-emoji",
     "clusters": [
         {
             "profile": "my-profile1",

@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useTranslation } from "react-i18next";
 import { ecsApi } from "@/api";
 import type { EcsDeployment } from "@/api/types";
 import { useConfigStore } from "@/store/config";
@@ -18,6 +19,7 @@ function rolloutBadge(state: string) {
 }
 
 export function DeploymentStatusPanel({ clusterName, serviceName }: { clusterName: string; serviceName: string }) {
+    const { t } = useTranslation();
     const [expanded, setExpanded] = useState(true);
     const [rollbackTarget, setRollbackTarget] = useState<EcsDeployment | null>(null);
     const refreshIntervalMs = useConfigStore((s) => s.refreshIntervalMs);
@@ -56,11 +58,11 @@ export function DeploymentStatusPanel({ clusterName, serviceName }: { clusterNam
                 ) : (
                     <ChevronRight className="h-4 w-4 text-muted-foreground" />
                 )}
-                Deployments
+                {t("deployments.title")}
                 <span className="text-xs font-normal text-muted-foreground">({deployments.length})</span>
                 {hasMultiple && (
                     <span className="ml-1 inline-flex items-center rounded-full bg-warning/15 px-2 py-0.5 text-xs font-medium text-warning">
-                        Rollout in progress
+                        {t("deployments.rolloutInProgress")}
                     </span>
                 )}
             </button>
@@ -79,27 +81,29 @@ export function DeploymentStatusPanel({ clusterName, serviceName }: { clusterNam
                                     <StatusBadge status={rolloutBadge(dep.rolloutState)} />
                                     <span className="font-mono text-muted-foreground">{dep.taskDefinition}</span>
                                     <span className="ml-auto text-muted-foreground">
-                                        {formatAge(dep.createdAt)} ago
+                                        {formatAge(dep.createdAt)} {t("common.ago")}
                                     </span>
                                     {isActive && (
                                         <button
                                             onClick={() => setRollbackTarget(dep)}
                                             className="ml-2 inline-flex items-center gap-1 rounded-md border border-border px-2 py-1 text-xs font-medium text-foreground hover:bg-accent transition-colors"
-                                            title="Rollback to this task definition"
+                                            title={t("deployments.rollbackTitle")}
                                         >
                                             <RotateCcw className="h-3 w-3" />
-                                            Rollback
+                                            {t("deployments.rollback")}
                                         </button>
                                     )}
                                 </div>
                                 <div className="flex gap-4 text-muted-foreground">
                                     <span>
-                                        Running <span className="font-mono text-foreground">{dep.runningCount}</span>/
+                                        {t("deployments.running")}{" "}
+                                        <span className="font-mono text-foreground">{dep.runningCount}</span>/
                                         {dep.desiredCount}
                                     </span>
                                     {dep.pendingCount > 0 && (
                                         <span>
-                                            Pending <span className="font-mono text-warning">{dep.pendingCount}</span>
+                                            {t("deployments.pending")}{" "}
+                                            <span className="font-mono text-warning">{dep.pendingCount}</span>
                                         </span>
                                     )}
                                 </div>
@@ -116,11 +120,11 @@ export function DeploymentStatusPanel({ clusterName, serviceName }: { clusterNam
 
             <ConfirmDialog
                 open={!!rollbackTarget}
-                title="Rollback Service"
-                message={`Roll back to the previous task definition?`}
+                title={t("deployments.rollbackDialogTitle")}
+                message={t("deployments.rollbackMessage")}
                 detail={rollbackTarget?.taskDefinition}
-                confirmLabel="Rollback"
-                confirmingLabel="Rolling back…"
+                confirmLabel={t("deployments.rollback")}
+                confirmingLabel={t("deployments.rollingBack")}
                 isPending={rollbackMutation.isPending}
                 onConfirm={() => rollbackMutation.mutate(rollbackTarget!.taskDefinition)}
                 onCancel={() => setRollbackTarget(null)}

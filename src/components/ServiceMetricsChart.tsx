@@ -5,6 +5,7 @@ import { MetricsChart } from "./MetricsChart";
 import { MetricsPanel } from "./MetricsPanel";
 import { formatPercent } from "@/lib/format";
 import { PERCENT_Y_TICKS } from "./metrics-chart-presets";
+import { useTranslation } from "react-i18next";
 
 interface ServiceMetricsChartProps {
     clusterName: string;
@@ -12,23 +13,24 @@ interface ServiceMetricsChartProps {
 }
 
 export function ServiceMetricsChart({ clusterName, serviceName }: ServiceMetricsChartProps) {
+    const { t } = useTranslation();
     return (
         <MetricsPanel<MetricsDataPoint>
             queryKey={["serviceMetricsHistory", clusterName, serviceName]}
             queryFn={(range) => ecsApi.getServiceMetricsHistory(clusterName, serviceName, range)}
-            loadingText="Loading metrics…"
-            emptyText="No metrics data available."
+            loadingText={t("metrics.loadingMetrics")}
+            emptyText={t("metrics.noMetrics")}
             className="mt-4"
         >
             {(data) => (
                 <div className="space-y-2">
-                    <h3 className="text-sm font-semibold text-foreground">Service Metrics</h3>
+                    <h3 className="text-sm font-semibold text-foreground">{t("metrics.serviceMetrics")}</h3>
                     <div className="flex gap-3">
                         <MetricsChart<MetricsDataPoint>
                             data={data}
                             getValue={(d) => d.cpuUtilization}
                             color="oklch(0.6 0.15 250)"
-                            label="CPU Usage"
+                            label={t("metrics.cpuUsage")}
                             icon={Cpu}
                             formatValue={formatPercent}
                             yScale={{ min: 0, max: 100 }}
@@ -43,7 +45,7 @@ export function ServiceMetricsChart({ clusterName, serviceName }: ServiceMetrics
                             data={data}
                             getValue={(d) => d.memoryUtilization}
                             color="oklch(0.6 0.18 145)"
-                            label="Memory Usage"
+                            label={t("metrics.memoryUsage")}
                             icon={MemoryStick}
                             formatValue={formatPercent}
                             yScale={{ min: 0, max: 100 }}

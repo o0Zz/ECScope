@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { useNavigationStore } from "@/store/navigation";
 import { useConfigStore } from "@/store/config";
 import { cn } from "@/lib/utils";
@@ -8,6 +9,7 @@ import { Server, ChevronLeft, ChevronRight, Box, AlertCircle, Loader2 } from "lu
 const logger = createLogger("Sidebar");
 
 function SidebarFooter({ lastClickedCluster }: { lastClickedCluster: string | null }) {
+    const { t } = useTranslation();
     const { activeCluster, credentials, status, error } = useConfigStore();
     if (status === "connected" && activeCluster) {
         return (
@@ -25,7 +27,7 @@ function SidebarFooter({ lastClickedCluster }: { lastClickedCluster: string | nu
             <div className="border-t border-border px-3 py-2 text-xs text-destructive" title={error ?? ""}>
                 <div className="flex items-center gap-1 font-medium">
                     <AlertCircle className="h-3 w-3 shrink-0" />
-                    Connection error
+                    {t("sidebar.connectionError")}
                 </div>
                 {lastClickedCluster && (
                     <div className="mt-0.5 truncate text-[11px] opacity-70">{lastClickedCluster}</div>
@@ -36,12 +38,13 @@ function SidebarFooter({ lastClickedCluster }: { lastClickedCluster: string | nu
     }
     return (
         <div className="border-t border-border px-3 py-2 text-xs text-muted-foreground">
-            {status === "loading" ? "Connecting…" : "Select a cluster"}
+            {status === "loading" ? t("sidebar.connecting") : t("sidebar.selectCluster")}
         </div>
     );
 }
 
 export function Sidebar() {
+    const { t } = useTranslation();
     const { selectedCluster, selectCluster, sidebarCollapsed, toggleSidebar } = useNavigationStore();
     const { clusters, connectToCluster, status } = useConfigStore();
     const [lastClickedCluster, setLastClickedCluster] = useState<string | null>(null);
@@ -82,7 +85,7 @@ export function Sidebar() {
                 {!sidebarCollapsed && (
                     <div className="flex items-center gap-2">
                         <Box className="h-5 w-5 text-primary" />
-                        <span className="text-sm font-bold tracking-wide text-foreground">ECScope</span>
+                        <span className="text-sm font-bold tracking-wide text-foreground">{t("sidebar.brand")}</span>
                     </div>
                 )}
                 <button
@@ -97,12 +100,12 @@ export function Sidebar() {
             <div className="flex-1 overflow-y-auto py-2">
                 {!sidebarCollapsed && (
                     <div className="px-3 pb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                        Clusters
+                        {t("sidebar.clusters")}
                     </div>
                 )}
 
                 {clusters.length === 0 && (
-                    <div className="px-3 py-4 text-xs text-muted-foreground">No clusters configured</div>
+                    <div className="px-3 py-4 text-xs text-muted-foreground">{t("sidebar.noClusters")}</div>
                 )}
 
                 {grouped.map(([groupName, groupClusters]) => (

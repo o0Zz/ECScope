@@ -5,22 +5,24 @@ import { MetricsChart } from "./MetricsChart";
 import { MetricsPanel } from "./MetricsPanel";
 import { formatPercent, formatBytes } from "@/lib/format";
 import { PERCENT_CHART_PROPS, COMPACT_CHART_PROPS } from "./metrics-chart-presets";
+import { useTranslation } from "react-i18next";
 
 interface Ec2MetricsChartProps {
     instanceId: string;
 }
 
 export function Ec2MetricsChart({ instanceId }: Ec2MetricsChartProps) {
+    const { t } = useTranslation();
     return (
         <MetricsPanel<Ec2MetricsDataPoint>
             queryKey={["ec2MetricsHistory", instanceId]}
             queryFn={(range) => ecsApi.getEc2MetricsHistory(instanceId, range)}
-            loadingText="Loading EC2 metrics…"
-            emptyText="No metrics data available."
+            loadingText={t("metrics.loadingEc2")}
+            emptyText={t("metrics.noMetrics")}
         >
             {(data) => (
                 <div className="space-y-3">
-                    <h3 className="text-xs font-semibold text-foreground">Instance Metrics</h3>
+                    <h3 className="text-xs font-semibold text-foreground">{t("metrics.instanceMetrics")}</h3>
 
                     {/* Row 1: CPU + Status Check */}
                     <div className="flex gap-3">
@@ -28,7 +30,7 @@ export function Ec2MetricsChart({ instanceId }: Ec2MetricsChartProps) {
                             data={data}
                             getValue={(d) => d.cpuUtilization}
                             color="oklch(0.6 0.15 250)"
-                            label="CPU Utilization"
+                            label={t("metrics.cpuUtilization")}
                             icon={Cpu}
                             formatValue={formatPercent}
                             {...PERCENT_CHART_PROPS}
@@ -37,7 +39,7 @@ export function Ec2MetricsChart({ instanceId }: Ec2MetricsChartProps) {
                             data={data}
                             getValue={(d) => d.statusCheckFailed}
                             color="oklch(0.6 0.2 25)"
-                            label="Status Check Failed"
+                            label={t("metrics.statusCheckFailed")}
                             icon={ShieldAlert}
                             formatValue={(v) => (v === 0 ? "OK" : `${v}`)}
                             yScale={{ min: 0, max: 2 }}
@@ -53,7 +55,7 @@ export function Ec2MetricsChart({ instanceId }: Ec2MetricsChartProps) {
                             data={data}
                             getValue={(d) => d.networkInBytes}
                             color="oklch(0.6 0.18 145)"
-                            label="Network In"
+                            label={t("metrics.networkIn")}
                             icon={Network}
                             formatValue={formatBytes}
                             summaryMode="now-avg-total"
@@ -63,7 +65,7 @@ export function Ec2MetricsChart({ instanceId }: Ec2MetricsChartProps) {
                             data={data}
                             getValue={(d) => d.networkOutBytes}
                             color="oklch(0.6 0.15 290)"
-                            label="Network Out"
+                            label={t("metrics.networkOut")}
                             icon={Network}
                             formatValue={formatBytes}
                             summaryMode="now-avg-total"
@@ -77,7 +79,7 @@ export function Ec2MetricsChart({ instanceId }: Ec2MetricsChartProps) {
                             data={data}
                             getValue={(d) => d.diskReadBytes}
                             color="oklch(0.65 0.12 70)"
-                            label="Disk Read"
+                            label={t("metrics.diskRead")}
                             icon={HardDrive}
                             formatValue={formatBytes}
                             summaryMode="now-avg-total"
@@ -87,7 +89,7 @@ export function Ec2MetricsChart({ instanceId }: Ec2MetricsChartProps) {
                             data={data}
                             getValue={(d) => d.diskWriteBytes}
                             color="oklch(0.6 0.14 30)"
-                            label="Disk Write"
+                            label={t("metrics.diskWrite")}
                             icon={HardDrive}
                             formatValue={formatBytes}
                             summaryMode="now-avg-total"

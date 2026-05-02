@@ -5,6 +5,7 @@ import { loadConfig, loadAwsFiles } from "@/config/config";
 import { resolveCredentials } from "@/config/aws-credentials";
 import { initAwsClients } from "@/api/clients";
 import { log } from "@/lib/logger";
+import { changeLanguage } from "@/i18n";
 
 type ConnectionStatus = "idle" | "loading" | "connected" | "error";
 
@@ -16,6 +17,8 @@ interface ConfigState {
     refreshIntervalMs: number;
     /** Default theme from config */
     theme: "dark" | "light";
+    /** UI language from config */
+    language: string;
     /** Currently active cluster config (after selection) */
     activeCluster: ClusterConfig | null;
     credentials: ResolvedCredentials | null;
@@ -33,6 +36,7 @@ export const useConfigStore = create<ConfigState>((set, get) => ({
     storage: null,
     refreshIntervalMs: 10_000,
     theme: "dark",
+    language: "en",
     activeCluster: null,
     credentials: null,
     status: "idle",
@@ -51,8 +55,10 @@ export const useConfigStore = create<ConfigState>((set, get) => ({
                 storage: config.storage,
                 refreshIntervalMs: config.refreshPeriodSeconds * 1000,
                 theme: config.theme,
+                language: config.language,
                 status: "idle",
             });
+            changeLanguage(config.language);
         } catch (err) {
             const message = err instanceof Error ? err.message : String(err);
             log.config.error(`Failed to load configuration: ${message}`);

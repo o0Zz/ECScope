@@ -1,4 +1,5 @@
 import { cn } from "@/lib/utils";
+import { useTranslation } from "react-i18next";
 
 interface StatusBadgeProps {
     status: string;
@@ -21,25 +22,27 @@ const statusColors: Record<string, string> = {
     UNKNOWN: "bg-muted text-muted-foreground",
 };
 
-const statusEmojis: Record<string, string> = {
-    RUNNING: "✅",
-    ACTIVE: "✅",
-    HEALTHY: "✅",
-    COMPLETED: "✅",
-    PRIMARY: "✅",
-    PENDING: "⏳",
-    IN_PROGRESS: "⏳",
-    PROVISIONING: "⏳",
-    DRAINING: "⏳",
-    STOPPED: "🛑",
-    INACTIVE: "🛑",
-    UNHEALTHY: "❌",
-    UNKNOWN: "❓",
+const statusKeys: Record<string, string> = {
+    RUNNING: "status.running",
+    ACTIVE: "status.active",
+    HEALTHY: "status.healthy",
+    COMPLETED: "status.completed",
+    PRIMARY: "status.primary",
+    PENDING: "status.pending",
+    IN_PROGRESS: "status.inProgress",
+    PROVISIONING: "status.provisioning",
+    DRAINING: "status.draining",
+    STOPPED: "status.stopped",
+    INACTIVE: "status.inactive",
+    UNHEALTHY: "status.unhealthy",
+    UNKNOWN: "status.unknown",
 };
 
 export function StatusBadge({ status, className }: StatusBadgeProps) {
+    const { t } = useTranslation();
     const colors = statusColors[status] ?? "bg-muted text-muted-foreground";
-    const emoji = statusEmojis[status];
+    const key = statusKeys[status];
+    const emoji = key ? t(key) : "";
     return (
         <span className={cn("inline-flex items-center rounded-md px-2 py-0.5 text-xs font-medium", colors, className)}>
             {emoji && (

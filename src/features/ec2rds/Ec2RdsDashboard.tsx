@@ -1,4 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
+import { useTranslation } from "react-i18next";
 import { ecsApi } from "@/api";
 import type { VpcEc2Instance, RdsInstance } from "@/api/types";
 import { useNavigationStore } from "@/store/navigation";
@@ -14,6 +15,7 @@ import { useState, memo } from "react";
 import { ec2InstanceUrl, rdsInstanceUrl, openAwsUrl } from "@/lib/aws-urls";
 
 export function Ec2RdsDashboard() {
+    const { t } = useTranslation();
     const { selectedCluster } = useNavigationStore();
     const refreshIntervalMs = useConfigStore((s) => s.refreshIntervalMs);
     const activeCluster = useConfigStore((s) => s.activeCluster);
@@ -44,7 +46,7 @@ export function Ec2RdsDashboard() {
     if (pendingEc2 && pendingRds) {
         return (
             <div className="flex items-center justify-center py-12 text-sm text-muted-foreground">
-                Loading EC2 / RDS…
+                {t("ec2.loading")}
             </div>
         );
     }
@@ -62,10 +64,14 @@ export function Ec2RdsDashboard() {
 /* ─── EC2 Instances Section ─────────────────────────────── */
 
 function PlatformIcon({ platform }: { platform: string }) {
+    const { t } = useTranslation();
     const isWindows = platform.toLowerCase().includes("windows");
     return (
-        <span aria-label={isWindows ? "Windows" : "Linux"} title={isWindows ? "Windows" : "Linux"}>
-            {isWindows ? "🪟" : "🐧"}
+        <span
+            aria-label={isWindows ? t("ec2.windows") : t("ec2.linux")}
+            title={isWindows ? t("ec2.windows") : t("ec2.linux")}
+        >
+            {isWindows ? t("ec2.platformWindows") : t("ec2.platformLinux")}
         </span>
     );
 }
@@ -92,33 +98,50 @@ const Ec2InstancesSection = memo(function Ec2InstancesSection({
     instances: VpcEc2Instance[];
     region: string;
 }) {
+    const { t } = useTranslation();
     const [expandedId, setExpandedId] = useState<string | null>(null);
 
     return (
         <div>
             <h2 className="mb-4 text-lg font-semibold text-foreground">
                 <Monitor className="mr-2 inline h-5 w-5 text-primary" />
-                VPC EC2 Instances
+                {t("ec2.vpcTitle")}
                 <span className="ml-2 text-sm font-normal text-muted-foreground">({instances.length})</span>
             </h2>
 
             {instances.length === 0 ? (
                 <div className="rounded-lg border border-border bg-card p-8 text-center text-sm text-muted-foreground">
-                    No non-node EC2 instances found in the cluster VPC.
+                    {t("ec2.noEc2")}
                 </div>
             ) : (
                 <div className="overflow-hidden rounded-lg border border-border">
                     <table className="w-full text-sm">
                         <thead>
                             <tr className="border-b border-border bg-muted/50">
-                                <th className="px-4 py-2.5 text-left font-medium text-muted-foreground">Name</th>
-                                <th className="px-4 py-2.5 text-left font-medium text-muted-foreground">Instance ID</th>
-                                <th className="px-4 py-2.5 text-left font-medium text-muted-foreground">Type</th>
-                                <th className="px-4 py-2.5 text-left font-medium text-muted-foreground">State</th>
-                                <th className="px-4 py-2.5 text-left font-medium text-muted-foreground">Private IP</th>
-                                <th className="px-4 py-2.5 text-left font-medium text-muted-foreground">Public IP</th>
-                                <th className="px-4 py-2.5 text-left font-medium text-muted-foreground">Platform</th>
-                                <th className="px-4 py-2.5 text-left font-medium text-muted-foreground">Age</th>
+                                <th className="px-4 py-2.5 text-left font-medium text-muted-foreground">
+                                    {t("ec2.columns.name")}
+                                </th>
+                                <th className="px-4 py-2.5 text-left font-medium text-muted-foreground">
+                                    {t("ec2.columns.instanceId")}
+                                </th>
+                                <th className="px-4 py-2.5 text-left font-medium text-muted-foreground">
+                                    {t("ec2.columns.type")}
+                                </th>
+                                <th className="px-4 py-2.5 text-left font-medium text-muted-foreground">
+                                    {t("ec2.columns.state")}
+                                </th>
+                                <th className="px-4 py-2.5 text-left font-medium text-muted-foreground">
+                                    {t("ec2.columns.privateIp")}
+                                </th>
+                                <th className="px-4 py-2.5 text-left font-medium text-muted-foreground">
+                                    {t("ec2.columns.publicIp")}
+                                </th>
+                                <th className="px-4 py-2.5 text-left font-medium text-muted-foreground">
+                                    {t("ec2.columns.platform")}
+                                </th>
+                                <th className="px-4 py-2.5 text-left font-medium text-muted-foreground">
+                                    {t("ec2.columns.age")}
+                                </th>
                                 <th className="w-8 px-4 py-2.5" />
                             </tr>
                         </thead>
@@ -159,6 +182,7 @@ const Ec2InstanceRow = memo(function Ec2InstanceRow({
     onToggle: () => void;
     region: string;
 }) {
+    const { t } = useTranslation();
     return (
         <>
             <tr
@@ -177,7 +201,7 @@ const Ec2InstanceRow = memo(function Ec2InstanceRow({
                                 openAwsUrl(ec2InstanceUrl(region, inst.instanceId));
                             }}
                             className="rounded p-0.5 text-muted-foreground hover:bg-accent hover:text-foreground"
-                            title="Open in AWS Console"
+                            title={t("common.openConsole")}
                         >
                             <ExternalLink className="h-3 w-3" />
                         </button>
@@ -192,7 +216,7 @@ const Ec2InstanceRow = memo(function Ec2InstanceRow({
                     {inst.publicIp ? (
                         <span className="inline-flex items-center gap-1.5">
                             {inst.publicIp}
-                            <CopyButton text={inst.publicIp} title="Copy public IP" />
+                            <CopyButton text={inst.publicIp} title={t("ec2.copyPublicIp")} />
                         </span>
                     ) : (
                         "—"
@@ -219,7 +243,7 @@ const Ec2InstanceRow = memo(function Ec2InstanceRow({
                     <td colSpan={9} className="px-4 py-4">
                         {inst.state !== "running" ? (
                             <div className="text-xs text-muted-foreground italic">
-                                Metrics unavailable — instance is {inst.state}.
+                                {t("ec2.metricsUnavailable", { state: inst.state })}
                             </div>
                         ) : (
                             <Ec2MetricsChart instanceId={inst.instanceId} />
@@ -267,33 +291,50 @@ const RdsInstancesSection = memo(function RdsInstancesSection({
     instances: RdsInstance[];
     region: string;
 }) {
+    const { t } = useTranslation();
     const [expandedId, setExpandedId] = useState<string | null>(null);
 
     return (
         <div>
             <h2 className="mb-4 text-lg font-semibold text-foreground">
                 <Database className="mr-2 inline h-5 w-5 text-primary" />
-                RDS Databases
+                {t("rds.title")}
                 <span className="ml-2 text-sm font-normal text-muted-foreground">({instances.length})</span>
             </h2>
 
             {instances.length === 0 ? (
                 <div className="rounded-lg border border-border bg-card p-8 text-center text-sm text-muted-foreground">
-                    No RDS instances found in the cluster VPC.
+                    {t("rds.noRds")}
                 </div>
             ) : (
                 <div className="overflow-hidden rounded-lg border border-border">
                     <table className="w-full text-sm">
                         <thead>
                             <tr className="border-b border-border bg-muted/50">
-                                <th className="px-4 py-2.5 text-left font-medium text-muted-foreground">Identifier</th>
-                                <th className="px-4 py-2.5 text-left font-medium text-muted-foreground">Engine</th>
-                                <th className="px-4 py-2.5 text-left font-medium text-muted-foreground">Class</th>
-                                <th className="px-4 py-2.5 text-left font-medium text-muted-foreground">Status</th>
-                                <th className="px-4 py-2.5 text-left font-medium text-muted-foreground">Endpoint</th>
-                                <th className="px-4 py-2.5 text-left font-medium text-muted-foreground">Storage</th>
-                                <th className="px-4 py-2.5 text-left font-medium text-muted-foreground">Multi-AZ</th>
-                                <th className="px-4 py-2.5 text-left font-medium text-muted-foreground">Age</th>
+                                <th className="px-4 py-2.5 text-left font-medium text-muted-foreground">
+                                    {t("rds.columns.identifier")}
+                                </th>
+                                <th className="px-4 py-2.5 text-left font-medium text-muted-foreground">
+                                    {t("rds.columns.engine")}
+                                </th>
+                                <th className="px-4 py-2.5 text-left font-medium text-muted-foreground">
+                                    {t("rds.columns.class")}
+                                </th>
+                                <th className="px-4 py-2.5 text-left font-medium text-muted-foreground">
+                                    {t("rds.columns.status")}
+                                </th>
+                                <th className="px-4 py-2.5 text-left font-medium text-muted-foreground">
+                                    {t("rds.columns.endpoint")}
+                                </th>
+                                <th className="px-4 py-2.5 text-left font-medium text-muted-foreground">
+                                    {t("rds.columns.storage")}
+                                </th>
+                                <th className="px-4 py-2.5 text-left font-medium text-muted-foreground">
+                                    {t("rds.columns.multiAz")}
+                                </th>
+                                <th className="px-4 py-2.5 text-left font-medium text-muted-foreground">
+                                    {t("rds.columns.age")}
+                                </th>
                                 <th className="w-8 px-4 py-2.5" />
                             </tr>
                         </thead>
@@ -336,6 +377,7 @@ const RdsInstanceRow = memo(function RdsInstanceRow({
     onToggle: () => void;
     region: string;
 }) {
+    const { t } = useTranslation();
     return (
         <>
             <tr
@@ -351,7 +393,7 @@ const RdsInstanceRow = memo(function RdsInstanceRow({
                                 openAwsUrl(rdsInstanceUrl(region, db.dbInstanceIdentifier));
                             }}
                             className="rounded p-0.5 text-muted-foreground hover:bg-accent hover:text-foreground"
-                            title="Open in AWS Console"
+                            title={t("common.openConsole")}
                         >
                             <ExternalLink className="h-3 w-3" />
                         </button>
@@ -368,9 +410,9 @@ const RdsInstanceRow = memo(function RdsInstanceRow({
                     {db.endpoint ? `${db.endpoint}:${db.port}` : "—"}
                 </td>
                 <td className="px-4 py-2.5 text-muted-foreground">
-                    {db.allocatedStorage} GB {db.storageType}
+                    {db.allocatedStorage} {t("common.gb")} {db.storageType}
                 </td>
-                <td className="px-4 py-2.5 text-muted-foreground">{db.multiAz ? "Yes" : "No"}</td>
+                <td className="px-4 py-2.5 text-muted-foreground">{db.multiAz ? t("common.yes") : t("common.no")}</td>
                 <td className="px-4 py-2.5 text-xs text-muted-foreground">
                     {db.createdAt ? formatAge(db.createdAt) : "—"}
                 </td>
@@ -386,28 +428,33 @@ const RdsInstanceRow = memo(function RdsInstanceRow({
                     <td colSpan={9} className="px-4 py-4">
                         {db.status !== "available" ? (
                             <div className="text-xs text-muted-foreground italic">
-                                Metrics unavailable — instance is {db.status}.
+                                {t("rds.metricsUnavailable", { status: db.status })}
                             </div>
                         ) : (
                             <div className="space-y-3">
                                 <div className="flex flex-wrap gap-x-6 gap-y-1 text-xs text-muted-foreground">
                                     <span>
-                                        AZ:{" "}
+                                        {t("rds.az")}{" "}
                                         <span className="font-mono text-foreground">
                                             {db.availabilityZone}
                                             {db.secondaryAvailabilityZone ? `, ${db.secondaryAvailabilityZone}` : ""}
                                         </span>
                                     </span>
                                     <span>
-                                        User: <span className="font-mono text-foreground">{db.masterUsername}</span>
+                                        {t("rds.user")}{" "}
+                                        <span className="font-mono text-foreground">{db.masterUsername}</span>
                                     </span>
                                     <span>
-                                        Encrypted:{" "}
-                                        <span className="text-foreground">{db.storageEncrypted ? "Yes" : "No"}</span>
+                                        {t("rds.encrypted")}{" "}
+                                        <span className="text-foreground">
+                                            {db.storageEncrypted ? t("common.yes") : t("common.no")}
+                                        </span>
                                     </span>
                                     <span>
-                                        Public:{" "}
-                                        <span className="text-foreground">{db.publiclyAccessible ? "Yes" : "No"}</span>
+                                        {t("rds.public")}{" "}
+                                        <span className="text-foreground">
+                                            {db.publiclyAccessible ? t("common.yes") : t("common.no")}
+                                        </span>
                                     </span>
                                 </div>
                                 <RdsMetricsChart dbInstanceIdentifier={db.dbInstanceIdentifier} />

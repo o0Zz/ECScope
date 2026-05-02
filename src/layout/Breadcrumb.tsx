@@ -1,11 +1,13 @@
 import { useNavigationStore } from "@/store/navigation";
 import { useConfigStore } from "@/store/config";
 import { useQueryClient, useIsFetching } from "@tanstack/react-query";
+import { useTranslation } from "react-i18next";
 import { ArrowLeft, RefreshCw } from "lucide-react";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { cn } from "@/lib/utils";
 
 export function Breadcrumb() {
+    const { t } = useTranslation();
     const { selectedCluster, selectedService, selectedTaskArn, goBack } = useNavigationStore();
     const activeCluster = useConfigStore((s) => s.activeCluster);
     const credentials = useConfigStore((s) => s.credentials);
@@ -55,15 +57,17 @@ export function Breadcrumb() {
                 ))}
                 <div className="ml-auto flex items-center gap-1.5">
                     {isFetching > 0 && (
-                        <span className="flex items-center gap-1 text-xs text-muted-foreground">Refreshing…</span>
+                        <span className="flex items-center gap-1 text-xs text-muted-foreground">
+                            {t("common.refreshing")}
+                        </span>
                     )}
                     <button
                         onClick={handleRefresh}
                         className="rounded p-1.5 text-muted-foreground hover:bg-accent hover:text-foreground transition-colors"
-                        title="Refresh all data"
+                        title={t("common.refreshAll")}
                     >
                         <RefreshCw className={cn("h-4 w-4", isFetching > 0 && "animate-spin")} />
-                        <span className="sr-only">Refreshing…</span>
+                        <span className="sr-only">{t("common.refreshing")}</span>
                     </button>
                     <ThemeToggle />
                 </div>

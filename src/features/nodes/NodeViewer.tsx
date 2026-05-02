@@ -1,4 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useTranslation } from "react-i18next";
 import { ecsApi } from "@/api";
 import { useNavigationStore } from "@/store/navigation";
 import { useConfigStore } from "@/store/config";
@@ -13,6 +14,7 @@ import { FileTransferDialog } from "./FileTransferDialog";
 const logger = createLogger("NodeViewer");
 
 export function NodeViewer() {
+    const { t } = useTranslation();
     const { selectedCluster } = useNavigationStore();
     const { activeCluster } = useConfigStore();
     const refreshIntervalMs = useConfigStore((s) => s.refreshIntervalMs);
@@ -46,7 +48,7 @@ export function NodeViewer() {
     if (isLoading) {
         return (
             <div className="flex items-center justify-center py-12 text-sm text-muted-foreground">
-                Loading container instances…
+                {t("nodes.loading")}
             </div>
         );
     }
@@ -54,7 +56,7 @@ export function NodeViewer() {
     if (!instances?.length) {
         return (
             <div className="flex items-center justify-center py-12 text-sm text-muted-foreground">
-                No container instances found (Fargate-only cluster).
+                {t("nodes.noInstances")}
             </div>
         );
     }
@@ -63,14 +65,14 @@ export function NodeViewer() {
         <div className="p-4">
             <div className="mb-4 flex items-center justify-between">
                 <h2 className="text-lg font-semibold text-foreground">
-                    Container Instances
+                    {t("nodes.title")}
                     <span className="ml-2 text-sm font-normal text-muted-foreground">({instances.length})</span>
                 </h2>
 
                 {asgInfo && (
                     <div className="flex items-center gap-3 rounded-lg border border-border bg-muted/30 px-4 py-2">
                         <Server className="h-4 w-4 text-muted-foreground" />
-                        <span className="text-xs text-muted-foreground">ASG</span>
+                        <span className="text-xs text-muted-foreground">{t("nodes.asg")}</span>
                         <span className="text-xs font-medium text-foreground truncate max-w-48" title={asgInfo.asgName}>
                             {asgInfo.asgName}
                         </span>
@@ -79,7 +81,7 @@ export function NodeViewer() {
                                 onClick={() => scaleMutation.mutate(asgInfo.desiredCapacity - 1)}
                                 disabled={asgInfo.desiredCapacity <= asgInfo.minSize || scaleMutation.isPending}
                                 className="rounded-md border border-border px-1.5 py-0.5 text-xs font-medium text-foreground hover:bg-accent transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
-                                title={`➖ Scale down (min: ${asgInfo.minSize})`}
+                                title={t("nodes.actions.scaleDown", { min: asgInfo.minSize })}
                             >
                                 <Minus className="h-3 w-3" />
                             </button>
@@ -90,7 +92,7 @@ export function NodeViewer() {
                                 onClick={() => scaleMutation.mutate(asgInfo.desiredCapacity + 1)}
                                 disabled={scaleMutation.isPending}
                                 className="rounded-md border border-border px-1.5 py-0.5 text-xs font-medium text-foreground hover:bg-accent transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
-                                title={`➕ Scale up (max will be raised if needed)`}
+                                title={t("nodes.actions.scaleUp")}
                             >
                                 <Plus className="h-3 w-3" />
                             </button>
@@ -106,17 +108,33 @@ export function NodeViewer() {
                 <table className="w-full text-sm">
                     <thead>
                         <tr className="border-b border-border bg-muted/50">
-                            <th className="px-4 py-2.5 text-left font-medium text-muted-foreground">Instance</th>
-                            <th className="px-4 py-2.5 text-left font-medium text-muted-foreground">Type</th>
-                            <th className="px-4 py-2.5 text-left font-medium text-muted-foreground">Status</th>
-                            <th className="px-4 py-2.5 text-center font-medium text-muted-foreground">Tasks</th>
-                            <th className="px-4 py-2.5 text-left font-medium text-muted-foreground">🖥️ CPU Reserved</th>
                             <th className="px-4 py-2.5 text-left font-medium text-muted-foreground">
-                                🧠 Memory Reserved
+                                {t("nodes.columns.instance")}
                             </th>
-                            <th className="px-4 py-2.5 text-left font-medium text-muted-foreground">Agent</th>
-                            <th className="px-4 py-2.5 text-left font-medium text-muted-foreground">Age</th>
-                            <th className="px-4 py-2.5 text-right font-medium text-muted-foreground">Actions</th>
+                            <th className="px-4 py-2.5 text-left font-medium text-muted-foreground">
+                                {t("nodes.columns.type")}
+                            </th>
+                            <th className="px-4 py-2.5 text-left font-medium text-muted-foreground">
+                                {t("nodes.columns.status")}
+                            </th>
+                            <th className="px-4 py-2.5 text-center font-medium text-muted-foreground">
+                                {t("nodes.columns.tasks")}
+                            </th>
+                            <th className="px-4 py-2.5 text-left font-medium text-muted-foreground">
+                                {t("nodes.columns.cpuReserved")}
+                            </th>
+                            <th className="px-4 py-2.5 text-left font-medium text-muted-foreground">
+                                {t("nodes.columns.memoryReserved")}
+                            </th>
+                            <th className="px-4 py-2.5 text-left font-medium text-muted-foreground">
+                                {t("nodes.columns.agent")}
+                            </th>
+                            <th className="px-4 py-2.5 text-left font-medium text-muted-foreground">
+                                {t("nodes.columns.age")}
+                            </th>
+                            <th className="px-4 py-2.5 text-right font-medium text-muted-foreground">
+                                {t("nodes.columns.actions")}
+                            </th>
                         </tr>
                     </thead>
                     <tbody>
@@ -199,29 +217,31 @@ export function NodeViewer() {
                                                         );
                                                     }}
                                                     className="rounded-md border border-border px-2 py-1 text-xs font-medium text-foreground hover:bg-accent transition-colors flex items-center gap-1"
-                                                    title={`💻 SSM connect to ${inst.ec2InstanceId}`}
+                                                    title={t("tasks.actions.ssmConnect", { id: inst.ec2InstanceId })}
                                                 >
                                                     <Terminal className="h-3 w-3" />
-                                                    Connect
+                                                    {t("nodes.actions.connect")}
                                                 </button>
                                                 {transfer.hasFileTransfer && (
                                                     <button
                                                         onClick={() => transfer.startDownload(inst.ec2InstanceId)}
                                                         className="rounded-md border border-border px-2 py-1 text-xs font-medium text-foreground hover:bg-accent transition-colors flex items-center gap-1"
-                                                        title={`⬇️ Download file from ${inst.ec2InstanceId}`}
+                                                        title={t("nodes.actions.downloadFrom", {
+                                                            id: inst.ec2InstanceId,
+                                                        })}
                                                     >
                                                         <Download className="h-3 w-3" />
-                                                        Download
+                                                        {t("nodes.actions.download")}
                                                     </button>
                                                 )}
                                                 {transfer.hasFileTransfer && (
                                                     <button
                                                         onClick={() => transfer.startUpload(inst.ec2InstanceId)}
                                                         className="rounded-md border border-border px-2 py-1 text-xs font-medium text-foreground hover:bg-accent transition-colors flex items-center gap-1"
-                                                        title={`⬆️ Upload file to ${inst.ec2InstanceId}`}
+                                                        title={t("nodes.actions.uploadTo", { id: inst.ec2InstanceId })}
                                                     >
                                                         <Upload className="h-3 w-3" />
-                                                        Upload
+                                                        {t("nodes.actions.upload")}
                                                     </button>
                                                 )}
                                             </div>
@@ -235,13 +255,21 @@ export function NodeViewer() {
 
             <FileTransferDialog
                 open={transfer.dialogOpen}
-                title={transfer.dialogMode === "download" ? "Download from EC2" : "Upload to EC2"}
+                title={
+                    transfer.dialogMode === "download"
+                        ? t("nodes.transfer.downloadTitle")
+                        : t("nodes.transfer.uploadTitle")
+                }
                 label={
                     transfer.dialogMode === "download"
-                        ? "Remote file path on EC2 to download:"
-                        : "Remote destination path on EC2 (file or directory ending with /):"
+                        ? t("nodes.transfer.downloadLabel")
+                        : t("nodes.transfer.uploadLabel")
                 }
-                placeholder={transfer.dialogMode === "download" ? "/var/log/app.log" : "/tmp/"}
+                placeholder={
+                    transfer.dialogMode === "download"
+                        ? t("nodes.transfer.downloadPlaceholder")
+                        : t("nodes.transfer.uploadPlaceholder")
+                }
                 error={transfer.error}
                 isPending={transfer.isPending}
                 progress={transfer.progress}

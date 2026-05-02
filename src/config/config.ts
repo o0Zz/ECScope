@@ -34,6 +34,8 @@ export interface ParsedConfig {
     refreshPeriodSeconds: number;
     /** Default theme: "dark" or "light" */
     theme: "dark" | "light";
+    /** UI language: "en" (clean) or "en-emoji" (with emojis) */
+    language: string;
 }
 
 const DEFAULT_REFRESH_PERIOD = 10;
@@ -51,13 +53,14 @@ export async function loadConfig(): Promise<ParsedConfig> {
                 ? parsed.refreshPeriodSeconds
                 : DEFAULT_REFRESH_PERIOD;
         const theme = parsed.theme === "light" ? "light" : "dark";
-        return { clusters, storage, refreshPeriodSeconds, theme };
+        const language = typeof parsed.language === "string" ? parsed.language : "en";
+        return { clusters, storage, refreshPeriodSeconds, theme, language };
     }
 
     // Legacy format: array of cluster configs (or single object)
     const entries: unknown[] = Array.isArray(parsed) ? parsed : [parsed];
     const clusters = parseClusterEntries(entries);
-    return { clusters, storage: null, refreshPeriodSeconds: DEFAULT_REFRESH_PERIOD, theme: "dark" };
+    return { clusters, storage: null, refreshPeriodSeconds: DEFAULT_REFRESH_PERIOD, theme: "dark", language: "en" };
 }
 
 function parseClusterEntries(entries: unknown[]): ClusterConfig[] {

@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { X } from "lucide-react";
+import { useTranslation } from "react-i18next";
 
 interface FileTransferDialogProps {
     open: boolean;
@@ -28,6 +29,7 @@ export function FileTransferDialog({
     onConfirm,
     onCancel,
 }: FileTransferDialogProps) {
+    const { t } = useTranslation();
     const [value, setValue] = useState("");
 
     useEffect(() => {
@@ -71,7 +73,9 @@ export function FileTransferDialog({
                     <div className="mt-3">
                         <div className="flex items-center justify-between mb-1.5">
                             <span className="text-xs text-muted-foreground">
-                                {isConnecting ? "Connecting…" : `Transferring… ${progress}%`}
+                                {isConnecting
+                                    ? t("nodes.transfer.connecting")
+                                    : t("nodes.transfer.transferring", { progress })}
                             </span>
                             {rate && <span className="text-xs font-mono text-foreground">{rate}</span>}
                         </div>
@@ -96,14 +100,14 @@ export function FileTransferDialog({
                         disabled={isPending}
                         className="rounded-md px-3 py-1.5 text-sm text-muted-foreground hover:bg-accent disabled:opacity-50"
                     >
-                        Cancel
+                        {t("common.cancel")}
                     </button>
                     <button
                         onClick={() => value.trim() && !isPending && onConfirm(value.trim())}
                         disabled={isPending || !value.trim()}
                         className="rounded-md px-3 py-1.5 text-sm font-medium bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
                     >
-                        {isPending ? "Transferring…" : "OK"}
+                        {isPending ? t("nodes.transfer.transferringBtn") : t("common.ok")}
                     </button>
                 </div>
             </div>

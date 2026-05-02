@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { X, Save, KeyRound, AlertCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useTranslation } from "react-i18next";
 
 export interface EditSecretInfo {
     name: string;
@@ -25,6 +26,7 @@ export function EditSecretDialog({
     onCancel: () => void;
 }) {
     const [newValue, setNewValue] = useState("");
+    const { t } = useTranslation();
 
     useEffect(() => {
         if (open && secret) {
@@ -45,7 +47,7 @@ export function EditSecretDialog({
     if (!open || !secret) return null;
 
     const isSecretsManager = secret.valueFrom.startsWith("arn:aws:secretsmanager:");
-    const storeLabel = isSecretsManager ? "Secrets Manager" : "SSM Parameter Store";
+    const storeLabel = isSecretsManager ? t("editSecret.secretsManager") : t("editSecret.ssmParameterStore");
     const hasChanged = newValue !== secret.currentValue;
 
     return (
@@ -56,7 +58,7 @@ export function EditSecretDialog({
                     <div className="flex items-center gap-2">
                         <KeyRound className="h-4 w-4 text-warning" />
                         <div>
-                            <h3 className="text-sm font-semibold text-foreground">Edit Secret</h3>
+                            <h3 className="text-sm font-semibold text-foreground">{t("editSecret.title")}</h3>
                             <p className="text-[11px] text-muted-foreground">{storeLabel}</p>
                         </div>
                     </div>
@@ -71,21 +73,27 @@ export function EditSecretDialog({
                 {/* Body */}
                 <div className="space-y-3 px-4 py-4">
                     <div>
-                        <label className="mb-1 block text-xs font-medium text-muted-foreground">Variable Name</label>
+                        <label className="mb-1 block text-xs font-medium text-muted-foreground">
+                            {t("editSecret.variableName")}
+                        </label>
                         <div className="rounded border border-border bg-muted/30 px-3 py-1.5 font-mono text-xs text-foreground">
                             {secret.name}
                         </div>
                     </div>
 
                     <div>
-                        <label className="mb-1 block text-xs font-medium text-muted-foreground">Source</label>
+                        <label className="mb-1 block text-xs font-medium text-muted-foreground">
+                            {t("editSecret.source")}
+                        </label>
                         <div className="rounded border border-border bg-muted/30 px-3 py-1.5 font-mono text-[11px] text-muted-foreground break-all">
                             {secret.valueFrom}
                         </div>
                     </div>
 
                     <div>
-                        <label className="mb-1 block text-xs font-medium text-muted-foreground">New Value</label>
+                        <label className="mb-1 block text-xs font-medium text-muted-foreground">
+                            {t("editSecret.newValue")}
+                        </label>
                         <textarea
                             value={newValue}
                             onChange={(e) => setNewValue(e.target.value)}
@@ -96,14 +104,14 @@ export function EditSecretDialog({
                                 "focus:outline-none focus:ring-1 focus:ring-ring",
                                 "placeholder:text-muted-foreground",
                             )}
-                            placeholder="Enter new secret value…"
+                            placeholder={t("editSecret.placeholder")}
                         />
                     </div>
 
                     {!secret.resolved && (
                         <div className="flex items-center gap-1.5 rounded border border-warning/30 bg-warning/5 px-3 py-2 text-[11px] text-warning">
                             <AlertCircle className="h-3 w-3 shrink-0" />
-                            Could not resolve current value. The field is empty — enter the full new value.
+                            {t("editSecret.unresolvedWarning")}
                         </div>
                     )}
 
@@ -117,14 +125,14 @@ export function EditSecretDialog({
 
                 {/* Footer */}
                 <div className="flex items-center justify-between border-t border-border px-4 py-3">
-                    <p className="text-[11px] text-muted-foreground">Tasks must be redeployed to pick up changes.</p>
+                    <p className="text-[11px] text-muted-foreground">{t("editSecret.redeployNote")}</p>
                     <div className="flex items-center gap-2">
                         <button
                             onClick={onCancel}
                             disabled={isPending}
                             className="rounded-md px-3 py-1.5 text-xs text-muted-foreground hover:bg-accent"
                         >
-                            Cancel
+                            {t("common.cancel")}
                         </button>
                         <button
                             onClick={() => onSave(newValue)}
@@ -132,7 +140,7 @@ export function EditSecretDialog({
                             className="inline-flex items-center gap-1.5 rounded-md bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
                         >
                             <Save className="h-3 w-3" />
-                            {isPending ? "Saving…" : "Update Secret"}
+                            {isPending ? t("common.saving") : t("editSecret.updateSecret")}
                         </button>
                     </div>
                 </div>

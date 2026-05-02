@@ -1,20 +1,22 @@
+import { useTranslation } from "react-i18next";
 import { useNavigationStore, type ActiveTab } from "@/store/navigation";
 import { cn } from "@/lib/utils";
 
-const TABS: { id: ActiveTab; label: string }[] = [
-    { id: "services", label: "Services" },
-    { id: "tasks", label: "Tasks" },
-    { id: "albnlb", label: "ALB / NLB" },
-    { id: "nodes", label: "Nodes" },
-    { id: "ec2rds", label: "EC2 / RDS" },
+const TAB_KEYS: { id: ActiveTab; key: string }[] = [
+    { id: "services", key: "tabs.services" },
+    { id: "tasks", key: "tabs.tasks" },
+    { id: "albnlb", key: "tabs.albnlb" },
+    { id: "nodes", key: "tabs.nodes" },
+    { id: "ec2rds", key: "tabs.ec2rds" },
 ];
 
 export function TabBar() {
+    const { t } = useTranslation();
     const { activeTab, setActiveTab, selectedService } = useNavigationStore();
 
     return (
         <div className="flex border-b border-border bg-card">
-            {TABS.map((tab) => {
+            {TAB_KEYS.map((tab) => {
                 const disabled = tab.id === "tasks" && !selectedService;
 
                 return (
@@ -31,7 +33,7 @@ export function TabBar() {
                                   : "text-muted-foreground hover:text-foreground",
                         )}
                     >
-                        {tab.label}
+                        {t(tab.key)}
                         {activeTab === tab.id && <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary" />}
                     </button>
                 );

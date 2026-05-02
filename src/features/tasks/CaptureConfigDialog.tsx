@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { X, Radio } from "lucide-react";
+import { useTranslation } from "react-i18next";
 
 export interface CaptureConfig {
     /** Show only requests exceeding this threshold (0 = disabled) */
@@ -30,6 +31,7 @@ interface CaptureConfigDialogProps {
 }
 
 export function CaptureConfigDialog({ open, containerName, onConfirm, onCancel }: CaptureConfigDialogProps) {
+    const { t } = useTranslation();
     const [config, setConfig] = useState<CaptureConfig>(DEFAULT_CONFIG);
 
     useEffect(() => {
@@ -49,7 +51,9 @@ export function CaptureConfigDialog({ open, containerName, onConfirm, onCancel }
                 <div className="flex items-center justify-between mb-5">
                     <div className="flex items-center gap-2">
                         <Radio className="h-4 w-4 text-primary" />
-                        <h3 className="text-sm font-semibold text-foreground">HTTP Capture — {containerName}</h3>
+                        <h3 className="text-sm font-semibold text-foreground">
+                            {t("capture.title", { name: containerName })}
+                        </h3>
                     </div>
                     <button
                         onClick={onCancel}
@@ -63,8 +67,8 @@ export function CaptureConfigDialog({ open, containerName, onConfirm, onCancel }
                     {/* Response time filter */}
                     <div>
                         <label className="block text-xs font-medium text-muted-foreground mb-1">
-                            Min response time (ms)
-                            <span className="ml-1 text-[10px] text-muted-foreground/70">0 = no filter</span>
+                            {t("capture.minResponseTime")}
+                            <span className="ml-1 text-[10px] text-muted-foreground/70">{t("capture.noFilter")}</span>
                         </label>
                         <input
                             type="number"
@@ -74,24 +78,24 @@ export function CaptureConfigDialog({ open, containerName, onConfirm, onCancel }
                             onChange={(e) =>
                                 setConfig((c) => ({ ...c, minResponseTimeMs: Math.max(0, Number(e.target.value)) }))
                             }
-                            placeholder="e.g. 500"
+                            placeholder={t("capture.responseTimePlaceholder")}
                             className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring font-mono"
                         />
-                        <p className="mt-1 text-[10px] text-muted-foreground">
-                            Only show HTTP exchanges where response time exceeds this threshold.
-                        </p>
+                        <p className="mt-1 text-[10px] text-muted-foreground">{t("capture.responseTimeHelp")}</p>
                     </div>
 
                     {/* HTTP Method filter */}
                     <div className="flex gap-3">
                         <div className="flex-1">
-                            <label className="block text-xs font-medium text-muted-foreground mb-1">HTTP Method</label>
+                            <label className="block text-xs font-medium text-muted-foreground mb-1">
+                                {t("capture.httpMethod")}
+                            </label>
                             <select
                                 value={config.httpMethod}
                                 onChange={(e) => setConfig((c) => ({ ...c, httpMethod: e.target.value }))}
                                 className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
                             >
-                                <option value="">All methods</option>
+                                <option value="">{t("capture.allMethods")}</option>
                                 <option value="GET">GET</option>
                                 <option value="POST">POST</option>
                                 <option value="PUT">PUT</option>
@@ -104,17 +108,19 @@ export function CaptureConfigDialog({ open, containerName, onConfirm, onCancel }
 
                         {/* Status code filter */}
                         <div className="flex-1">
-                            <label className="block text-xs font-medium text-muted-foreground mb-1">Status code</label>
+                            <label className="block text-xs font-medium text-muted-foreground mb-1">
+                                {t("capture.statusCode")}
+                            </label>
                             <select
                                 value={config.statusFilter}
                                 onChange={(e) => setConfig((c) => ({ ...c, statusFilter: e.target.value }))}
                                 className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
                             >
-                                <option value="">All status codes</option>
-                                <option value="2xx">2xx (Success)</option>
-                                <option value="3xx">3xx (Redirect)</option>
-                                <option value="4xx">4xx (Client Error)</option>
-                                <option value="5xx">5xx (Server Error)</option>
+                                <option value="">{t("capture.allStatusCodes")}</option>
+                                <option value="2xx">{t("capture.status2xx")}</option>
+                                <option value="3xx">{t("capture.status3xx")}</option>
+                                <option value="4xx">{t("capture.status4xx")}</option>
+                                <option value="5xx">{t("capture.status5xx")}</option>
                             </select>
                         </div>
                     </div>
@@ -122,14 +128,16 @@ export function CaptureConfigDialog({ open, containerName, onConfirm, onCancel }
                     {/* URI filter */}
                     <div>
                         <label className="block text-xs font-medium text-muted-foreground mb-1">
-                            URI filter
-                            <span className="ml-1 text-[10px] text-muted-foreground/70">substring match</span>
+                            {t("capture.uriFilter")}
+                            <span className="ml-1 text-[10px] text-muted-foreground/70">
+                                {t("capture.substringMatch")}
+                            </span>
                         </label>
                         <input
                             type="text"
                             value={config.uriFilter}
                             onChange={(e) => setConfig((c) => ({ ...c, uriFilter: e.target.value }))}
-                            placeholder="e.g. /api/v1"
+                            placeholder={t("capture.uriPlaceholder")}
                             className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring font-mono"
                         />
                     </div>
@@ -137,8 +145,8 @@ export function CaptureConfigDialog({ open, containerName, onConfirm, onCancel }
                     {/* Duration */}
                     <div>
                         <label className="block text-xs font-medium text-muted-foreground mb-1">
-                            Capture duration (seconds)
-                            <span className="ml-1 text-[10px] text-muted-foreground/70">0 = unlimited</span>
+                            {t("capture.captureDuration")}
+                            <span className="ml-1 text-[10px] text-muted-foreground/70">{t("capture.unlimited")}</span>
                         </label>
                         <input
                             type="number"
@@ -148,7 +156,7 @@ export function CaptureConfigDialog({ open, containerName, onConfirm, onCancel }
                             onChange={(e) =>
                                 setConfig((c) => ({ ...c, durationSeconds: Math.max(0, Number(e.target.value)) }))
                             }
-                            placeholder="e.g. 60"
+                            placeholder={t("capture.durationPlaceholder")}
                             className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring font-mono"
                         />
                     </div>
@@ -160,7 +168,7 @@ export function CaptureConfigDialog({ open, containerName, onConfirm, onCancel }
                         onClick={onCancel}
                         className="rounded-md px-3 py-1.5 text-sm text-muted-foreground hover:bg-accent"
                     >
-                        Cancel
+                        {t("common.cancel")}
                     </button>
                     <button
                         onClick={handleConfirm}
@@ -169,7 +177,7 @@ export function CaptureConfigDialog({ open, containerName, onConfirm, onCancel }
                         }}
                         className="rounded-md px-3 py-1.5 text-sm font-medium bg-primary text-primary-foreground hover:bg-primary/90"
                     >
-                        Start Capture
+                        {t("capture.startCapture")}
                     </button>
                 </div>
             </div>

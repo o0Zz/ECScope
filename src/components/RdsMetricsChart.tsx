@@ -5,6 +5,7 @@ import { MetricsChart } from "./MetricsChart";
 import { MetricsPanel } from "./MetricsPanel";
 import { formatPercent, formatBytes, formatNumber } from "@/lib/format";
 import { PERCENT_CHART_PROPS, COMPACT_CHART_PROPS } from "./metrics-chart-presets";
+import { useTranslation } from "react-i18next";
 
 interface RdsMetricsChartProps {
     dbInstanceIdentifier: string;
@@ -20,16 +21,17 @@ function formatIOPS(v: number): string {
 }
 
 export function RdsMetricsChart({ dbInstanceIdentifier }: RdsMetricsChartProps) {
+    const { t } = useTranslation();
     return (
         <MetricsPanel<RdsMetricsDataPoint>
             queryKey={["rdsMetricsHistory", dbInstanceIdentifier]}
             queryFn={(range) => ecsApi.getRdsMetricsHistory(dbInstanceIdentifier, range)}
-            loadingText="Loading RDS metrics…"
-            emptyText="No metrics data available."
+            loadingText={t("metrics.loadingRds")}
+            emptyText={t("metrics.noMetrics")}
         >
             {(data) => (
                 <div className="space-y-3">
-                    <h3 className="text-xs font-semibold text-foreground">Database Metrics</h3>
+                    <h3 className="text-xs font-semibold text-foreground">{t("metrics.databaseMetrics")}</h3>
 
                     {/* Row 1: CPU + Connections */}
                     <div className="flex gap-3">
@@ -37,7 +39,7 @@ export function RdsMetricsChart({ dbInstanceIdentifier }: RdsMetricsChartProps) 
                             data={data}
                             getValue={(d) => d.cpuUtilization}
                             color="oklch(0.6 0.15 250)"
-                            label="CPU Utilization"
+                            label={t("metrics.cpuUtilization")}
                             icon={Cpu}
                             formatValue={formatPercent}
                             {...PERCENT_CHART_PROPS}
@@ -46,7 +48,7 @@ export function RdsMetricsChart({ dbInstanceIdentifier }: RdsMetricsChartProps) 
                             data={data}
                             getValue={(d) => d.databaseConnections}
                             color="oklch(0.6 0.18 145)"
-                            label="DB Connections"
+                            label={t("metrics.dbConnections")}
                             icon={Users}
                             formatValue={(v) => formatNumber(v)}
                             summaryMode="current-avg-minmax"
@@ -60,7 +62,7 @@ export function RdsMetricsChart({ dbInstanceIdentifier }: RdsMetricsChartProps) 
                             data={data}
                             getValue={(d) => d.readIOPS}
                             color="oklch(0.65 0.12 70)"
-                            label="Read IOPS"
+                            label={t("metrics.readIops")}
                             icon={HardDrive}
                             formatValue={formatIOPS}
                             summaryMode="current-avg-minmax"
@@ -70,7 +72,7 @@ export function RdsMetricsChart({ dbInstanceIdentifier }: RdsMetricsChartProps) 
                             data={data}
                             getValue={(d) => d.writeIOPS}
                             color="oklch(0.6 0.14 30)"
-                            label="Write IOPS"
+                            label={t("metrics.writeIops")}
                             icon={HardDrive}
                             formatValue={formatIOPS}
                             summaryMode="current-avg-minmax"
@@ -84,7 +86,7 @@ export function RdsMetricsChart({ dbInstanceIdentifier }: RdsMetricsChartProps) 
                             data={data}
                             getValue={(d) => d.readLatencyMs}
                             color="oklch(0.6 0.15 290)"
-                            label="Read Latency"
+                            label={t("metrics.readLatency")}
                             icon={Timer}
                             formatValue={formatMs}
                             summaryMode="current-avg-minmax"
@@ -94,7 +96,7 @@ export function RdsMetricsChart({ dbInstanceIdentifier }: RdsMetricsChartProps) 
                             data={data}
                             getValue={(d) => d.writeLatencyMs}
                             color="oklch(0.6 0.2 25)"
-                            label="Write Latency"
+                            label={t("metrics.writeLatency")}
                             icon={Timer}
                             formatValue={formatMs}
                             summaryMode="current-avg-minmax"
@@ -108,7 +110,7 @@ export function RdsMetricsChart({ dbInstanceIdentifier }: RdsMetricsChartProps) 
                             data={data}
                             getValue={(d) => d.freeableMemoryBytes}
                             color="oklch(0.6 0.18 200)"
-                            label="Freeable Memory"
+                            label={t("metrics.freeableMemory")}
                             icon={Database}
                             formatValue={formatBytes}
                             summaryMode="current-avg-minmax"
@@ -118,7 +120,7 @@ export function RdsMetricsChart({ dbInstanceIdentifier }: RdsMetricsChartProps) 
                             data={data}
                             getValue={(d) => d.freeStorageSpaceBytes}
                             color="oklch(0.6 0.12 160)"
-                            label="Free Storage Space"
+                            label={t("metrics.freeStorageSpace")}
                             icon={Network}
                             formatValue={formatBytes}
                             summaryMode="current-avg-minmax"

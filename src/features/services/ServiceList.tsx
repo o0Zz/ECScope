@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useTranslation } from "react-i18next";
 import { ecsApi } from "@/api";
 import { useNavigationStore } from "@/store/navigation";
 import { useConfigStore } from "@/store/config";
@@ -11,6 +12,7 @@ import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { ecsServiceUrl, openAwsUrl } from "@/lib/aws-urls";
 
 function ClusterOverview({ clusterName }: { clusterName: string }) {
+    const { t } = useTranslation();
     const refreshIntervalMs = useConfigStore((s) => s.refreshIntervalMs);
     const { data: metrics } = useQuery({
         queryKey: ["clusterMetrics", clusterName],
@@ -29,7 +31,7 @@ function ClusterOverview({ clusterName }: { clusterName: string }) {
     return (
         <div className="mb-4 grid grid-cols-2 gap-3 rounded-lg border border-border bg-card p-4 md:grid-cols-4">
             <div>
-                <div className="text-xs text-muted-foreground">🖥️ Cluster CPU</div>
+                <div className="text-xs text-muted-foreground">{t("cluster.cpu")}</div>
                 <div className="mt-1 text-lg font-semibold text-foreground">{metrics.cpuUtilization}%</div>
                 <div className="mt-1 h-1.5 w-full overflow-hidden rounded-full bg-muted">
                     <div
@@ -42,7 +44,7 @@ function ClusterOverview({ clusterName }: { clusterName: string }) {
                 </div>
             </div>
             <div>
-                <div className="text-xs text-muted-foreground">🧠 Cluster Memory</div>
+                <div className="text-xs text-muted-foreground">{t("cluster.memory")}</div>
                 <div className="mt-1 text-lg font-semibold text-foreground">{metrics.memoryUtilization}%</div>
                 <div className="mt-1 h-1.5 w-full overflow-hidden rounded-full bg-muted">
                     <div
@@ -55,7 +57,7 @@ function ClusterOverview({ clusterName }: { clusterName: string }) {
                 </div>
             </div>
             <div>
-                <div className="text-xs text-muted-foreground">🖥️ CPU Reserved</div>
+                <div className="text-xs text-muted-foreground">{t("cluster.cpuReserved")}</div>
                 <div className="mt-1 text-lg font-semibold text-foreground">{cpuReservedPct}%</div>
                 <div className="mt-1 h-1.5 w-full overflow-hidden rounded-full bg-muted">
                     <div
@@ -68,7 +70,7 @@ function ClusterOverview({ clusterName }: { clusterName: string }) {
                 </div>
             </div>
             <div>
-                <div className="text-xs text-muted-foreground">🧠 Memory Reserved</div>
+                <div className="text-xs text-muted-foreground">{t("cluster.memoryReserved")}</div>
                 <div className="mt-1 text-lg font-semibold text-foreground">{memReservedPct}%</div>
                 <div className="mt-1 h-1.5 w-full overflow-hidden rounded-full bg-muted">
                     <div
@@ -85,6 +87,7 @@ function ClusterOverview({ clusterName }: { clusterName: string }) {
 }
 
 export function ServiceList() {
+    const { t } = useTranslation();
     const { selectedCluster, selectService } = useNavigationStore();
     const refreshIntervalMs = useConfigStore((s) => s.refreshIntervalMs);
     const activeCluster = useConfigStore((s) => s.activeCluster);
@@ -150,7 +153,7 @@ export function ServiceList() {
     if (isLoading) {
         return (
             <div className="flex items-center justify-center py-12 text-sm text-muted-foreground">
-                Loading services…
+                {t("services.loading")}
             </div>
         );
     }
@@ -158,7 +161,7 @@ export function ServiceList() {
     if (!services?.length) {
         return (
             <div className="flex items-center justify-center py-12 text-sm text-muted-foreground">
-                No services found.
+                {t("services.noServices")}
             </div>
         );
     }
@@ -168,24 +171,40 @@ export function ServiceList() {
             <ClusterOverview clusterName={selectedCluster!} />
 
             <h2 className="mb-4 text-lg font-semibold text-foreground">
-                Services
+                {t("services.title")}
                 <span className="ml-2 text-sm font-normal text-muted-foreground">({services.length})</span>
             </h2>
             <div className="overflow-hidden rounded-lg border border-border">
                 <table className="w-full text-sm">
                     <thead>
                         <tr className="border-b border-border bg-muted/50">
-                            <th className="px-4 py-2.5 text-left font-medium text-muted-foreground">Service</th>
-                            <th className="px-4 py-2.5 text-left font-medium text-muted-foreground">Status</th>
-                            <th className="px-4 py-2.5 text-center font-medium text-muted-foreground">Scale</th>
-                            <th className="px-4 py-2.5 text-center font-medium text-muted-foreground">Running</th>
-                            <th className="px-4 py-2.5 text-center font-medium text-muted-foreground">🖥️ CPU</th>
-                            <th className="px-4 py-2.5 text-center font-medium text-muted-foreground">🧠 Memory</th>
                             <th className="px-4 py-2.5 text-left font-medium text-muted-foreground">
-                                Capacity Provider
+                                {t("services.columns.service")}
                             </th>
-                            <th className="px-4 py-2.5 text-left font-medium text-muted-foreground">Task Def</th>
-                            <th className="px-4 py-2.5 text-center font-medium text-muted-foreground">Actions</th>
+                            <th className="px-4 py-2.5 text-left font-medium text-muted-foreground">
+                                {t("services.columns.status")}
+                            </th>
+                            <th className="px-4 py-2.5 text-center font-medium text-muted-foreground">
+                                {t("services.columns.scale")}
+                            </th>
+                            <th className="px-4 py-2.5 text-center font-medium text-muted-foreground">
+                                {t("services.columns.running")}
+                            </th>
+                            <th className="px-4 py-2.5 text-center font-medium text-muted-foreground">
+                                {t("services.columns.cpu")}
+                            </th>
+                            <th className="px-4 py-2.5 text-center font-medium text-muted-foreground">
+                                {t("services.columns.memory")}
+                            </th>
+                            <th className="px-4 py-2.5 text-left font-medium text-muted-foreground">
+                                {t("services.columns.capacityProvider")}
+                            </th>
+                            <th className="px-4 py-2.5 text-left font-medium text-muted-foreground">
+                                {t("services.columns.taskDef")}
+                            </th>
+                            <th className="px-4 py-2.5 text-center font-medium text-muted-foreground">
+                                {t("services.columns.actions")}
+                            </th>
                         </tr>
                     </thead>
                     <tbody>
@@ -219,7 +238,7 @@ export function ServiceList() {
                                             }}
                                             disabled={svc.desiredCount <= 0 || scaleMutation.isPending}
                                             className="rounded p-1 text-muted-foreground hover:bg-destructive/20 hover:text-destructive disabled:opacity-30 disabled:cursor-not-allowed"
-                                            title="➖ Scale down"
+                                            title={t("services.actions.scaleDown")}
                                         >
                                             <Minus className="h-3.5 w-3.5" />
                                         </button>
@@ -236,7 +255,7 @@ export function ServiceList() {
                                             }}
                                             disabled={scaleMutation.isPending}
                                             className="rounded p-1 text-muted-foreground hover:bg-success/20 hover:text-success disabled:opacity-30"
-                                            title="➕ Scale up"
+                                            title={t("services.actions.scaleUp")}
                                         >
                                             <Plus className="h-3.5 w-3.5" />
                                         </button>
@@ -251,7 +270,7 @@ export function ServiceList() {
                                                 });
                                             }}
                                             className="rounded p-1 text-muted-foreground hover:bg-accent hover:text-foreground"
-                                            title="⚙️ Configure scaling limits"
+                                            title={t("services.actions.configureScaling")}
                                         >
                                             <Settings2 className="h-3.5 w-3.5" />
                                         </button>
@@ -309,7 +328,7 @@ export function ServiceList() {
                                                 openAwsUrl(ecsServiceUrl(region, selectedCluster!, svc.serviceName));
                                             }}
                                             className="rounded p-1 text-muted-foreground hover:bg-accent hover:text-foreground"
-                                            title="Open in AWS Console"
+                                            title={t("common.openConsole")}
                                         >
                                             <ExternalLink className="h-3.5 w-3.5" />
                                         </button>
@@ -320,7 +339,7 @@ export function ServiceList() {
                                             }}
                                             disabled={redeployMutation.isPending}
                                             className="rounded p-1 text-muted-foreground hover:bg-info/20 hover:text-info disabled:opacity-30"
-                                            title="🔄 Force new deployment"
+                                            title={t("services.actions.forceDeployment")}
                                         >
                                             <RotateCw
                                                 className={cn(
@@ -332,7 +351,7 @@ export function ServiceList() {
                                         <button
                                             onClick={() => selectService(svc.serviceName)}
                                             className="rounded p-1 text-muted-foreground hover:bg-accent hover:text-foreground"
-                                            title="View tasks"
+                                            title={t("services.actions.viewTasks")}
                                         >
                                             <ArrowRight className="h-4 w-4" />
                                         </button>
@@ -346,11 +365,11 @@ export function ServiceList() {
 
             <ConfirmDialog
                 open={!!confirmRedeploy}
-                title="🔄 Force New Deployment"
-                message="Force a new deployment for this service? All tasks will be replaced with fresh ones."
+                title={t("services.actions.forceDeploymentTitle")}
+                message={t("services.dialogs.redeployMessage")}
                 detail={confirmRedeploy ?? undefined}
-                confirmLabel="Redeploy"
-                confirmingLabel="Deploying…"
+                confirmLabel={t("services.dialogs.redeployConfirm")}
+                confirmingLabel={t("services.dialogs.redeployPending")}
                 isPending={redeployMutation.isPending}
                 onConfirm={() => redeployMutation.mutate(confirmRedeploy!)}
                 onCancel={() => setConfirmRedeploy(null)}
@@ -358,11 +377,11 @@ export function ServiceList() {
 
             <ConfirmDialog
                 open={!!confirmScaleToZero}
-                title="🛑 Stop Service"
-                message="Are you sure you want to scale this service to 0? All running tasks will be stopped."
+                title={t("services.actions.stopService")}
+                message={t("services.dialogs.stopMessage")}
                 detail={confirmScaleToZero ?? undefined}
-                confirmLabel="Scale to 0"
-                confirmingLabel="Scaling…"
+                confirmLabel={t("services.dialogs.stopConfirm")}
+                confirmingLabel={t("services.dialogs.stopPending")}
                 variant="destructive"
                 isPending={scaleMutation.isPending}
                 onConfirm={() => {
@@ -376,7 +395,9 @@ export function ServiceList() {
                 <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
                     <div className="w-full max-w-sm rounded-lg border border-border bg-card p-6 shadow-lg">
                         <div className="flex items-center justify-between mb-4">
-                            <h3 className="text-sm font-semibold text-foreground">Scaling Limits</h3>
+                            <h3 className="text-sm font-semibold text-foreground">
+                                {t("services.dialogs.scalingLimits")}
+                            </h3>
                             <button
                                 onClick={() => setScalingDialog(null)}
                                 className="rounded p-1 text-muted-foreground hover:bg-accent hover:text-foreground"
@@ -388,7 +409,9 @@ export function ServiceList() {
 
                         <div className="space-y-3">
                             <div>
-                                <label className="block text-xs text-muted-foreground mb-1">Min Capacity</label>
+                                <label className="block text-xs text-muted-foreground mb-1">
+                                    {t("services.dialogs.minCapacity")}
+                                </label>
                                 <input
                                     type="number"
                                     min={0}
@@ -403,7 +426,9 @@ export function ServiceList() {
                                 />
                             </div>
                             <div>
-                                <label className="block text-xs text-muted-foreground mb-1">Max Capacity</label>
+                                <label className="block text-xs text-muted-foreground mb-1">
+                                    {t("services.dialogs.maxCapacity")}
+                                </label>
                                 <input
                                     type="number"
                                     min={scalingDialog.minCapacity}
@@ -428,7 +453,7 @@ export function ServiceList() {
                                 disabled={scalingTargetMutation.isPending}
                                 className="rounded-md px-3 py-1.5 text-sm text-muted-foreground hover:bg-accent"
                             >
-                                Cancel
+                                {t("common.cancel")}
                             </button>
                             <button
                                 onClick={() =>
@@ -444,7 +469,7 @@ export function ServiceList() {
                                 }
                                 className="rounded-md bg-primary px-3 py-1.5 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
                             >
-                                {scalingTargetMutation.isPending ? "Saving…" : "Save"}
+                                {scalingTargetMutation.isPending ? t("common.saving") : t("common.save")}
                             </button>
                         </div>
                     </div>

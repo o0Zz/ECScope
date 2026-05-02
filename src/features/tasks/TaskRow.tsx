@@ -13,6 +13,7 @@ import {
     ExternalLink,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useTranslation } from "react-i18next";
 import { formatAge } from "@/lib/format";
 import { openEcsExec, openTaskLogs, openHttpCapture } from "./TaskActions";
 import { CaptureConfigDialog, type CaptureConfig } from "./CaptureConfigDialog";
@@ -41,6 +42,7 @@ export function TaskRow({
     profile: string;
     region: string;
 }) {
+    const { t } = useTranslation();
     const taskId = task.taskArn.split("/").pop() ?? "";
     const containerName = task.containers[0]?.name ?? "";
     const container = task.containers[0];
@@ -92,7 +94,9 @@ export function TaskRow({
                 <td className="px-4 py-3">
                     <StatusBadge status={task.lastStatus} />
                     {task.lastStatus === "STOPPED" && task.stoppedAt && (
-                        <div className="mt-0.5 text-[11px] text-muted-foreground">{formatAge(task.stoppedAt)} ago</div>
+                        <div className="mt-0.5 text-[11px] text-muted-foreground">
+                            {formatAge(task.stoppedAt)} {t("common.ago")}
+                        </div>
                     )}
                 </td>
                 <td className="px-4 py-3">
@@ -100,7 +104,7 @@ export function TaskRow({
                 </td>
                 <td className="px-3 py-3 text-muted-foreground">{task.launchType}</td>
                 <td className="px-3 py-3 font-mono text-xs text-muted-foreground whitespace-nowrap">
-                    {task.cpu} / {task.memory} MB
+                    {task.cpu} / {task.memory} {t("common.mb")}
                 </td>
                 <td className="px-3 py-3">
                     {task.ec2InstanceId ? (
@@ -109,7 +113,7 @@ export function TaskRow({
                             <span className="font-mono text-xs text-foreground">{task.ec2InstanceId}</span>
                         </div>
                     ) : (
-                        <span className="text-xs text-muted-foreground">Fargate</span>
+                        <span className="text-xs text-muted-foreground">{t("tasks.fargate")}</span>
                     )}
                 </td>
                 <td className="px-3 py-3 text-xs text-muted-foreground whitespace-nowrap">
@@ -124,7 +128,7 @@ export function TaskRow({
                                 openAwsUrl(ecsTaskUrl(region, clusterName, taskId));
                             }}
                             className="rounded p-1 text-muted-foreground hover:bg-accent hover:text-foreground"
-                            title="Open in AWS Console"
+                            title={t("common.openConsole")}
                         >
                             <ExternalLink className="h-3.5 w-3.5" />
                         </button>
@@ -135,7 +139,7 @@ export function TaskRow({
                             }}
                             disabled={isStopping || isStopped}
                             className="rounded p-1 transition-colors text-muted-foreground hover:bg-destructive/20 hover:text-destructive disabled:opacity-30 disabled:cursor-not-allowed"
-                            title="🛑 Stop task"
+                            title={t("tasks.actions.stopTask")}
                         >
                             <Square className="h-3.5 w-3.5" />
                         </button>
@@ -148,7 +152,7 @@ export function TaskRow({
                                     ? "text-muted-foreground/30 cursor-not-allowed"
                                     : "text-muted-foreground hover:bg-accent hover:text-foreground",
                             )}
-                            title={`💻 Shell into ${containerName}`}
+                            title={t("tasks.actions.shell", { name: containerName })}
                         >
                             <Terminal className="h-3.5 w-3.5" />
                         </button>
@@ -162,10 +166,10 @@ export function TaskRow({
                             )}
                             title={
                                 isStopped
-                                    ? "Task is stopped"
+                                    ? t("tasks.actions.taskStopped")
                                     : canStreamLogs
-                                      ? `📜 Live logs for ${containerName}`
-                                      : "Docker logs requires EC2 launch type"
+                                      ? t("tasks.actions.liveLogs", { name: containerName })
+                                      : t("tasks.actions.dockerLogsEc2Only")
                             }
                             disabled={isStopped || !canStreamLogs}
                         >
@@ -181,10 +185,10 @@ export function TaskRow({
                             )}
                             title={
                                 isStopped
-                                    ? "Task is stopped"
+                                    ? t("tasks.actions.taskStopped")
                                     : canHttpCapture
-                                      ? `📡 HTTP capture for ${containerName}`
-                                      : "HTTP capture requires EC2 launch type"
+                                      ? t("tasks.actions.httpCapture", { name: containerName })
+                                      : t("tasks.actions.httpCaptureEc2Only")
                             }
                             disabled={isStopped || !canHttpCapture}
                         >
@@ -199,7 +203,7 @@ export function TaskRow({
                                 "rounded p-1 transition-colors hover:bg-accent",
                                 expanded ? "text-foreground" : "text-muted-foreground",
                             )}
-                            title="📝 Show environment variables"
+                            title={t("tasks.actions.showEnv")}
                         >
                             {expanded ? <ChevronDown className="h-3.5 w-3.5" /> : <FileCode className="h-3.5 w-3.5" />}
                         </button>

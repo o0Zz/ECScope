@@ -1,5 +1,6 @@
 import { type ReactNode, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { useTranslation } from "react-i18next";
 import { useConfigStore } from "@/store/config";
 import { cn } from "@/lib/utils";
 import {
@@ -23,12 +24,15 @@ interface MetricsPanelProps<T> {
 export function MetricsPanel<T>({
     queryKey,
     queryFn,
-    loadingText = "Loading metrics…",
-    emptyText = "No metrics data available.",
+    loadingText,
+    emptyText,
     children,
     className,
     defaultRangeKey = DEFAULT_METRICS_TIME_RANGE_KEY,
 }: MetricsPanelProps<T>) {
+    const { t } = useTranslation();
+    const resolvedLoadingText = loadingText ?? t("metrics.loadingMetrics");
+    const resolvedEmptyText = emptyText ?? t("metrics.noMetrics");
     const refreshIntervalMs = useConfigStore((s) => s.refreshIntervalMs);
     const [selectedRangeKey, setSelectedRangeKey] = useState<MetricsTimeRangeKey>(defaultRangeKey);
     const selectedRange = getMetricsTimeRange(selectedRangeKey);
@@ -43,7 +47,7 @@ export function MetricsPanel<T>({
         <div className={cn(className ?? "mt-2", "space-y-2")}>
             <div className="flex items-center justify-end">
                 <label className="flex items-center gap-2 text-xs text-muted-foreground">
-                    <span>Range</span>
+                    <span>{t("metrics.range")}</span>
                     <select
                         value={selectedRangeKey}
                         onChange={(event) => setSelectedRangeKey(event.target.value as MetricsTimeRangeKey)}
@@ -60,11 +64,11 @@ export function MetricsPanel<T>({
 
             {isLoading ? (
                 <div className="flex items-center justify-center rounded border border-border bg-card py-4 text-xs text-muted-foreground">
-                    {loadingText}
+                    {resolvedLoadingText}
                 </div>
             ) : !data?.length ? (
                 <div className="flex items-center justify-center rounded border border-border bg-card py-4 text-xs text-muted-foreground">
-                    {emptyText}
+                    {resolvedEmptyText}
                 </div>
             ) : (
                 children(data, selectedRange)

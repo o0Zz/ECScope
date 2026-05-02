@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useTranslation } from "react-i18next";
 import { ecsApi } from "@/api";
 import { X, Save, RotateCcw, AlertCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -17,6 +18,7 @@ export function TaskDefinitionEditor({
 }) {
     const [jsonText, setJsonText] = useState("");
     const [parseError, setParseError] = useState<string | null>(null);
+    const { t } = useTranslation();
     const queryClient = useQueryClient();
 
     const {
@@ -39,7 +41,7 @@ export function TaskDefinitionEditor({
         try {
             const parsed = JSON.parse(text);
             if (typeof parsed !== "object" || parsed === null || Array.isArray(parsed)) {
-                setParseError("Must be a JSON object");
+                setParseError(t("taskDefEditor.mustBeObject"));
                 return null;
             }
             setParseError(null);
@@ -95,7 +97,7 @@ export function TaskDefinitionEditor({
                 {/* Header */}
                 <div className="flex items-center justify-between border-b border-border px-4 py-3">
                     <div>
-                        <h3 className="text-sm font-semibold text-foreground">Edit Task Definition</h3>
+                        <h3 className="text-sm font-semibold text-foreground">{t("taskDefEditor.title")}</h3>
                         <p className="text-xs text-muted-foreground font-mono mt-0.5">{taskDefinition}</p>
                     </div>
                     <button
@@ -110,12 +112,12 @@ export function TaskDefinitionEditor({
                 <div className="flex-1 overflow-hidden p-4">
                     {isLoading && (
                         <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
-                            Loading task definition…
+                            {t("taskDefEditor.loading")}
                         </div>
                     )}
                     {fetchError && (
                         <div className="flex h-full items-center justify-center text-sm text-destructive">
-                            Failed to load: {(fetchError as Error).message}
+                            {t("taskDefEditor.failedToLoad")} {(fetchError as Error).message}
                         </div>
                     )}
                     {taskDefJson && (
@@ -157,14 +159,14 @@ export function TaskDefinitionEditor({
                             className="inline-flex items-center gap-1.5 rounded-md border border-border px-3 py-1.5 text-xs font-medium text-muted-foreground hover:bg-accent hover:text-foreground disabled:opacity-50"
                         >
                             <RotateCcw className="h-3 w-3" />
-                            Reset
+                            {t("taskDefEditor.reset")}
                         </button>
                         <button
                             onClick={onClose}
                             disabled={deployMutation.isPending}
                             className="rounded-md px-3 py-1.5 text-xs text-muted-foreground hover:bg-accent"
                         >
-                            Cancel
+                            {t("common.cancel")}
                         </button>
                         <button
                             onClick={handleSave}
@@ -172,7 +174,7 @@ export function TaskDefinitionEditor({
                             className="inline-flex items-center gap-1.5 rounded-md bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
                         >
                             <Save className="h-3 w-3" />
-                            {deployMutation.isPending ? "Deploying…" : "Save & Deploy"}
+                            {deployMutation.isPending ? t("taskDefEditor.deploying") : t("taskDefEditor.saveAndDeploy")}
                         </button>
                     </div>
                 </div>

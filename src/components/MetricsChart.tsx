@@ -1,5 +1,6 @@
 import type { LucideIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useTranslation } from "react-i18next";
 
 function getXAxisTickConfig(totalMs: number): {
     stepMs: number;
@@ -112,6 +113,7 @@ export function MetricsChart<T extends { timestamp: number }>({
     margins,
     className,
 }: MetricsChartProps<T>) {
+    const { t } = useTranslation();
     if (data.length === 0) return null;
 
     const mL = margins?.left ?? 40;
@@ -181,34 +183,34 @@ export function MetricsChart<T extends { timestamp: number }>({
                 {summaryMode === "now-avg-total" ? (
                     <div className="flex items-center gap-2 text-[10px] text-muted-foreground">
                         <span>
-                            Now:{" "}
+                            {t("metrics.now")}{" "}
                             <span className="font-mono font-medium" style={{ color }}>
                                 {formatValue(current)}
                             </span>
                         </span>
                         <span>
-                            Avg: <span className="font-mono">{formatValue(avg)}</span>
+                            {t("metrics.avg")} <span className="font-mono">{formatValue(avg)}</span>
                         </span>
                         <span>
-                            Total: <span className="font-mono">{formatValue(total)}</span>
+                            {t("metrics.total")} <span className="font-mono">{formatValue(total)}</span>
                         </span>
                     </div>
                 ) : (
                     <div className="flex items-center gap-2 text-[10px] text-muted-foreground">
                         <span>
-                            Current:{" "}
+                            {t("metrics.current")}{" "}
                             <span className="font-mono font-medium" style={{ color }}>
                                 {formatValue(current)}
                             </span>
                         </span>
                         <span>
-                            Avg: <span className="font-mono font-medium">{formatValue(avg)}</span>
+                            {t("metrics.avg")} <span className="font-mono font-medium">{formatValue(avg)}</span>
                         </span>
                         <span>
-                            Min: <span className="font-mono">{formatValue(min)}</span>
+                            {t("metrics.min")} <span className="font-mono">{formatValue(min)}</span>
                         </span>
                         <span>
-                            Max: <span className="font-mono">{formatValue(max)}</span>
+                            {t("metrics.max")} <span className="font-mono">{formatValue(max)}</span>
                         </span>
                     </div>
                 )}

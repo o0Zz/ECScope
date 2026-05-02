@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useTranslation } from "react-i18next";
 import type { EcsTask } from "@/api/types";
 import { ecsApi } from "@/api";
 import { FileCode, KeyRound, Pencil } from "lucide-react";
@@ -16,6 +17,7 @@ export function EnvVarPanel({
     clusterName: string;
     serviceName: string;
 }) {
+    const { t } = useTranslation();
     const [filter, setFilter] = useState("");
     const lowerFilter = filter.toLowerCase();
     const [editingSecret, setEditingSecret] = useState<EditSecretInfo | null>(null);
@@ -44,24 +46,20 @@ export function EnvVarPanel({
 
     const totalEnvCount = task.containers.reduce((s, c) => s + c.environment.length + c.secrets.length, 0);
     if (totalEnvCount === 0) {
-        return (
-            <div className="px-4 py-3 text-xs text-muted-foreground">
-                No environment variables found in the task definition.
-            </div>
-        );
+        return <div className="px-4 py-3 text-xs text-muted-foreground">{t("envVars.noVars")}</div>;
     }
 
     return (
         <div className="px-4 py-3 space-y-3">
             <div className="flex items-center gap-2">
                 <FileCode className="h-3.5 w-3.5 text-muted-foreground" />
-                <span className="text-xs font-medium text-foreground">Environment Variables</span>
+                <span className="text-xs font-medium text-foreground">{t("envVars.title")}</span>
                 <input
                     type="text"
                     value={filter}
                     onChange={(e) => setFilter(e.target.value)}
                     onClick={(e) => e.stopPropagation()}
-                    placeholder="Filter…"
+                    placeholder={t("envVars.filterPlaceholder")}
                     className="ml-2 h-6 w-48 rounded border border-border bg-background px-2 text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring"
                 />
             </div>
@@ -100,7 +98,8 @@ export function EnvVarPanel({
                         <div className="border-b border-border bg-muted/30 px-3 py-1.5 text-[11px] font-medium text-muted-foreground">
                             {container.name}
                             <span className="ml-1.5 text-muted-foreground/60">
-                                ({envRows.length} env{secretRows.length > 0 && `, ${secretRows.length} secrets`})
+                                ({envRows.length} {t("envVars.env")}
+                                {secretRows.length > 0 && `, ${secretRows.length} ${t("envVars.secrets")}`})
                             </span>
                         </div>
                         <div className="max-h-64 overflow-auto">
@@ -152,7 +151,7 @@ export function EnvVarPanel({
                                                             });
                                                         }}
                                                         className="ml-1 inline-flex items-center rounded p-0.5 text-muted-foreground hover:text-foreground hover:bg-accent/50 transition-colors"
-                                                        title="Edit secret value"
+                                                        title={t("envVars.editSecret")}
                                                     >
                                                         <Pencil className="h-3 w-3" />
                                                     </button>
@@ -185,11 +184,11 @@ export function EnvVarPanel({
 
             <ConfirmDialog
                 open={showRedeployPrompt}
-                title="Redeploy Service?"
-                message="The secret value has been updated. Redeploy the service to apply the change to running tasks?"
+                title={t("envVars.redeployTitle")}
+                message={t("envVars.redeployMessage")}
                 detail={serviceName}
-                confirmLabel="Redeploy"
-                confirmingLabel="Deploying…"
+                confirmLabel={t("envVars.redeploy")}
+                confirmingLabel={t("envVars.redeploying")}
                 isPending={redeployMutation.isPending}
                 onConfirm={() => redeployMutation.mutate()}
                 onCancel={() => setShowRedeployPrompt(false)}

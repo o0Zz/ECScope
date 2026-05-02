@@ -1,5 +1,6 @@
 import { X } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useTranslation } from "react-i18next";
 
 interface ConfirmDialogProps {
     open: boolean;
@@ -20,14 +21,17 @@ export function ConfirmDialog({
     title,
     message,
     detail,
-    confirmLabel = "Confirm",
-    cancelLabel = "Cancel",
+    confirmLabel,
+    cancelLabel,
     confirmingLabel,
     variant = "default",
     isPending = false,
     onConfirm,
     onCancel,
 }: ConfirmDialogProps) {
+    const { t } = useTranslation();
+    const resolvedConfirmLabel = confirmLabel ?? t("common.confirm");
+    const resolvedCancelLabel = cancelLabel ?? t("common.cancel");
     if (!open) return null;
 
     return (
@@ -50,7 +54,7 @@ export function ConfirmDialog({
                         disabled={isPending}
                         className="rounded-md px-3 py-1.5 text-sm text-muted-foreground hover:bg-accent"
                     >
-                        {cancelLabel}
+                        {resolvedCancelLabel}
                     </button>
                     <button
                         onClick={onConfirm}
@@ -62,7 +66,7 @@ export function ConfirmDialog({
                                 : "bg-primary text-primary-foreground hover:bg-primary/90",
                         )}
                     >
-                        {isPending ? (confirmingLabel ?? confirmLabel) : confirmLabel}
+                        {isPending ? (confirmingLabel ?? resolvedConfirmLabel) : resolvedConfirmLabel}
                     </button>
                 </div>
             </div>

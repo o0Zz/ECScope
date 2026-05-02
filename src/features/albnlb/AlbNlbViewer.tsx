@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { useTranslation } from "react-i18next";
 import { ecsApi } from "@/api";
 import type { AlbInfo } from "@/api/types";
 import { useNavigationStore } from "@/store/navigation";
@@ -26,6 +27,7 @@ function LbTypeBadge({ type }: { type: AlbInfo["lbType"] }) {
 }
 
 function LbRow({ alb, region }: { alb: AlbInfo; region: string }) {
+    const { t } = useTranslation();
     const [expanded, setExpanded] = useState(false);
     const totalHealthy = alb.targetGroups.reduce((s, tg) => s + tg.healthyCount, 0);
     const totalUnhealthy = alb.targetGroups.reduce((s, tg) => s + tg.unhealthyCount, 0);
@@ -69,7 +71,7 @@ function LbRow({ alb, region }: { alb: AlbInfo; region: string }) {
                                 openAwsUrl(albUrl(region, alb.albArn));
                             }}
                             className="rounded p-0.5 text-muted-foreground hover:bg-accent hover:text-foreground"
-                            title="Open in AWS Console"
+                            title={t("common.openConsole")}
                         >
                             <ExternalLink className="h-3 w-3" />
                         </button>
@@ -126,6 +128,7 @@ function LbRow({ alb, region }: { alb: AlbInfo; region: string }) {
 }
 
 function TargetGroupRow({ tg }: { tg: AlbInfo["targetGroups"][number] }) {
+    const { t } = useTranslation();
     const [expanded, setExpanded] = useState(false);
 
     return (
@@ -147,18 +150,32 @@ function TargetGroupRow({ tg }: { tg: AlbInfo["targetGroups"][number] }) {
                     {tg.protocol}:{tg.port}
                 </span>
                 <span className="text-muted-foreground">· {tg.healthCheckPath}</span>
-                <span className="ml-auto text-success">{tg.healthyCount} healthy</span>
-                {tg.unhealthyCount > 0 && <span className="text-destructive">{tg.unhealthyCount} unhealthy</span>}
+                <span className="ml-auto text-success">
+                    {tg.healthyCount} {t("alb.healthy")}
+                </span>
+                {tg.unhealthyCount > 0 && (
+                    <span className="text-destructive">
+                        {tg.unhealthyCount} {t("alb.unhealthy")}
+                    </span>
+                )}
             </div>
             {expanded && (
                 <div className="border-t border-border">
                     <table className="w-full text-xs">
                         <thead>
                             <tr className="border-b border-border bg-muted/30">
-                                <th className="px-3 py-1 text-left font-medium text-muted-foreground">Target</th>
-                                <th className="px-3 py-1 text-left font-medium text-muted-foreground">Port</th>
-                                <th className="px-3 py-1 text-left font-medium text-muted-foreground">Health</th>
-                                <th className="px-3 py-1 text-left font-medium text-muted-foreground">Reason</th>
+                                <th className="px-3 py-1 text-left font-medium text-muted-foreground">
+                                    {t("alb.tgColumns.target")}
+                                </th>
+                                <th className="px-3 py-1 text-left font-medium text-muted-foreground">
+                                    {t("alb.tgColumns.port")}
+                                </th>
+                                <th className="px-3 py-1 text-left font-medium text-muted-foreground">
+                                    {t("alb.tgColumns.health")}
+                                </th>
+                                <th className="px-3 py-1 text-left font-medium text-muted-foreground">
+                                    {t("alb.tgColumns.reason")}
+                                </th>
                             </tr>
                         </thead>
                         <tbody>
@@ -224,6 +241,7 @@ function TargetGroupRow({ tg }: { tg: AlbInfo["targetGroups"][number] }) {
 }
 
 export function AlbNlbViewer() {
+    const { t } = useTranslation();
     const { selectedCluster } = useNavigationStore();
     const refreshIntervalMs = useConfigStore((s) => s.refreshIntervalMs);
     const activeCluster = useConfigStore((s) => s.activeCluster);
@@ -239,16 +257,14 @@ export function AlbNlbViewer() {
     if (isLoading) {
         return (
             <div className="flex items-center justify-center py-12 text-sm text-muted-foreground">
-                Loading load balancers…
+                {t("alb.loading")}
             </div>
         );
     }
 
     if (!albs?.length) {
         return (
-            <div className="flex items-center justify-center py-12 text-sm text-muted-foreground">
-                No load balancers found.
-            </div>
+            <div className="flex items-center justify-center py-12 text-sm text-muted-foreground">{t("alb.noLbs")}</div>
         );
     }
 
@@ -258,10 +274,13 @@ export function AlbNlbViewer() {
     return (
         <div className="p-4">
             <h2 className="mb-4 text-lg font-semibold text-foreground">
-                🔀 Load Balancers
+                {t("alb.title")}
                 <span className="ml-2 text-sm font-normal text-muted-foreground">
-                    ({albs.length} total
-                    {albCount > 0 && nlbCount > 0 ? ` · ${albCount} ALB, ${nlbCount} NLB` : ""})
+                    ({albs.length} {t("alb.total")}
+                    {albCount > 0 && nlbCount > 0
+                        ? ` · ${albCount} ${t("alb.albLabel")}, ${nlbCount} ${t("alb.nlbLabel")}`
+                        : ""}
+                    )
                 </span>
             </h2>
 
@@ -269,14 +288,26 @@ export function AlbNlbViewer() {
                 <table className="w-full text-sm">
                     <thead>
                         <tr className="border-b border-border bg-muted/50">
-                            <th className="px-4 py-2.5 text-left font-medium text-muted-foreground">Name</th>
-                            <th className="px-4 py-2.5 text-left font-medium text-muted-foreground">Scheme</th>
-                            <th className="px-4 py-2.5 text-left font-medium text-muted-foreground">Status</th>
-                            <th className="px-4 py-2.5 text-center font-medium text-muted-foreground">Target Groups</th>
-                            <th className="px-4 py-2.5 text-center font-medium text-muted-foreground">Targets</th>
-                            <th className="px-4 py-2.5 text-center font-medium text-muted-foreground">Reqs / Flows</th>
+                            <th className="px-4 py-2.5 text-left font-medium text-muted-foreground">
+                                {t("alb.columns.name")}
+                            </th>
+                            <th className="px-4 py-2.5 text-left font-medium text-muted-foreground">
+                                {t("alb.columns.scheme")}
+                            </th>
+                            <th className="px-4 py-2.5 text-left font-medium text-muted-foreground">
+                                {t("alb.columns.status")}
+                            </th>
                             <th className="px-4 py-2.5 text-center font-medium text-muted-foreground">
-                                Latency / Bytes
+                                {t("alb.columns.targetGroups")}
+                            </th>
+                            <th className="px-4 py-2.5 text-center font-medium text-muted-foreground">
+                                {t("alb.columns.targets")}
+                            </th>
+                            <th className="px-4 py-2.5 text-center font-medium text-muted-foreground">
+                                {t("alb.columns.reqsFlows")}
+                            </th>
+                            <th className="px-4 py-2.5 text-center font-medium text-muted-foreground">
+                                {t("alb.columns.latencyBytes")}
                             </th>
                         </tr>
                     </thead>

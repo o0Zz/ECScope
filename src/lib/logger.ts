@@ -58,7 +58,6 @@ export const log = {
     ec2: createLogger("ec2"),
     cloudwatch: createLogger("cloudwatch"),
     ssm: createLogger("ssm"),
-    s3: createLogger("s3"),
 };
 
 // ─── Runtime level control ───────────────────────────────

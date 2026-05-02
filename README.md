@@ -15,7 +15,7 @@ ECScope is a modern, cross-platform desktop application for exploring, monitorin
 - **ALB / NLB Viewer** — Inspect load balancers, target groups, health checks, and metrics
 - **Node Viewer** — See EC2 container instances, resource usage, and running tasks
 - **Database Dashboard** — Monitor RDS/Aurora CPU, memory, connections, and performance insights
-- **Diagnostics** — Coredump, tcpdump, file download/upload via SSM + S3
+- **Diagnostics** — Coredump, tcpdump, file download/upload via SSM
 
 
 ## 🚀 Getting Started
@@ -47,13 +47,7 @@ Create an `ecscope.config.json` file at the project root:
             "region": "eu-west-1",
             "clusterName": "my-cluster"
         }
-    ],
-    "storage": {
-        "s3Bucket": "my-diagnostics-bucket",
-        "s3AccessKeyId": "AKIA...",
-        "s3SecretAccessKey": "wJalr...",
-        "s3Region": "eu-west-1"
-    }
+    ]
 }
 ```
 
@@ -65,9 +59,7 @@ Create an `ecscope.config.json` file at the project root:
 | `region` | AWS region of the cluster |
 | `clusterName` | Name of the ECS cluster as shown in the AWS console |
 
-### Storage configuration (optional)
 
-The `storage` section enables diagnostics features (coredump, tcpdump, file download/upload). ECScope uses S3 as temporary storage to transfer files to and from EC2 instances. The configured bucket must be accessible from your EC2 instances.
 
 ## 🚀 Developement
 

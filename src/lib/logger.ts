@@ -71,7 +71,7 @@ export const log = {
  *   window.__setLogLevel(5)   // error
  *   window.__setLogLevel(6)   // fatal (suppress almost everything)
  */
-export function setLogLevel(level: number) {
+function setLogLevel(level: number) {
     rootLogger.settings.minLevel = level;
 }
 

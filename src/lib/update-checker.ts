@@ -6,7 +6,7 @@ interface LatestRelease {
     url: string;
 }
 
-export interface UpdateCheckResult {
+interface UpdateCheckResult {
     hasUpdate: boolean;
     latestVersion: string;
     downloadUrl: string;

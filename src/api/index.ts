@@ -1,6 +1,3 @@
-export { initAwsClients } from "./clients";
-export type * from "./types";
-
 import {
     listServices,
     getService,

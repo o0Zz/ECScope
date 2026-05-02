@@ -18,19 +18,3 @@ export async function paginateAll<TRes, TItem>(
     } while (nextToken);
     return items;
 }
-
-/**
- * Process items in batches of `batchSize`, collecting results from each batch.
- */
-export async function batchProcess<TItem, TResult>(
-    items: TItem[],
-    batchSize: number,
-    processBatch: (batch: TItem[]) => Promise<TResult[]>,
-): Promise<TResult[]> {
-    const results: TResult[] = [];
-    for (let i = 0; i < items.length; i += batchSize) {
-        const batch = items.slice(i, i + batchSize);
-        results.push(...(await processBatch(batch)));
-    }
-    return results;
-}

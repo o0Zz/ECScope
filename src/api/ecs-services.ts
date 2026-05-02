@@ -109,7 +109,7 @@ export async function listAllServiceArns(cluster: string): Promise<string[]> {
 }
 
 /** DescribeServices in batches of 10 (AWS limit) */
-export async function describeServicesBatched(cluster: string, arns: string[]) {
+async function describeServicesBatched(cluster: string, arns: string[]) {
     const results: NonNullable<Awaited<ReturnType<ECSClient["send"]>>>[] = [];
 
     for (let i = 0; i < arns.length; i += 10) {

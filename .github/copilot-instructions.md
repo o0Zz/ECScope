@@ -14,7 +14,10 @@ ECScope is a cross-platform desktop application (like OpenLens but for AWS ECS) 
 | Data fetching | TanStack React Query | 5.x |
 | Styling | TailwindCSS v4 (Vite plugin) + clsx + tailwind-merge | |
 | Icons | lucide-react | |
-| AWS | AWS SDK v3 (ECS, CloudWatch, ELBv2, S3, SSM, STS, Secrets Manager) | |
+| i18n | i18next + react-i18next | |
+| AWS | AWS SDK v3 (ECS, EC2, CloudWatch, ELBv2, RDS, SSM, STS, Secrets Manager, Auto Scaling, Application Auto Scaling) | |
+| Logging | tslog with domain-specific sub-loggers | |
+| Linting | ESLint + typescript-eslint + Prettier + Husky + lint-staged | |
 
 > **Note:** UI is custom Tailwind components — no shadcn/ui registry is used.
 
@@ -24,41 +27,71 @@ ECScope is a cross-platform desktop application (like OpenLens but for AWS ECS) 
 src/
 ├── api/                # AWS SDK clients and domain API modules
 │   ├── clients.ts      # Singleton AWS client init + getters
-│   ├── ecs.ts          # ECS services, tasks, container instances
-│   ├── alb.ts          # ALB/NLB discovery, target health
-│   ├── cloudwatch.ts   # CloudWatch metric queries
-│   ├── ssm.ts          # SSM command send/poll
-│   ├── s3.ts           # S3 transfer helpers
-│   ├── ec2.ts          # EC2 instance listing + SSM-driven file transfer
+│   ├── ecs-services.ts # Service listing, scaling, force deploy, rollback, task-def register
+│   ├── ecs-tasks.ts    # Task listing, container enrichment, secret resolution/update
+│   ├── ecs-instances.ts # Container instances, resource stats, VPC resolution
+│   ├── asg.ts          # ASG discovery from capacity providers, scaling limits
+│   ├── service-autoscaling.ts # ECS service scalable targets (Application Auto Scaling)
+│   ├── alb.ts          # ALB/NLB discovery, target groups, target health, LB metrics
+│   ├── cloudwatch.ts   # Generic metric queries + domain-specific history APIs
+│   ├── ec2.ts          # EC2 instance listing (VPC-filtered)
+│   ├── rds.ts          # RDS instance listing (VPC-filtered)
+│   ├── ssm.ts          # SSM RunShellScript execution + polling
+│   ├── pagination.ts   # Generic paginateAll + batchProcess helpers
 │   ├── index.ts        # Barrel + ecsApi facade
 │   └── types/          # Shared TypeScript types per domain
-├── components/         # Reusable UI primitives (StatusBadge, MetricBar, MetricsChart, etc.)
+├── components/         # Reusable UI primitives
+│   ├── MetricsChart.tsx          # Generic SVG chart with adaptive ticks
+│   ├── MetricsPanel.tsx          # Chart wrapper with range selector + loading state
+│   ├── metrics-chart-presets.ts  # Compact/percent chart config presets
+│   ├── ServiceMetricsChart.tsx   # ECS service CPU/memory charts
+│   ├── AlbMetricsChart.tsx       # ALB request/latency/error charts
+│   ├── NlbMetricsChart.tsx       # NLB flow/bytes/reset charts
+│   ├── Ec2MetricsChart.tsx       # EC2 CPU/network/disk charts
+│   ├── RdsMetricsChart.tsx       # RDS CPU/connections/IOPS charts
+│   ├── StatusBadge.tsx           # Status color + translated emoji
+│   ├── MetricBar.tsx             # Compact percentage bar
+│   ├── ConfirmDialog.tsx         # Reusable confirm/cancel modal
+│   ├── CopyButton.tsx            # Clipboard copy with feedback
+│   ├── DeploymentStatusPanel.tsx # Deployment list with rollback actions
+│   ├── ScalingLimitsDialog.tsx   # Numeric scaling limits modal
+│   ├── ServiceEventsTimeline.tsx # Service events feed with error highlighting
+│   ├── TaskDefinitionEditor.tsx  # JSON task-def editor + validate + deploy
+│   └── ThemeToggle.tsx           # Dark/light theme toggle
 ├── config/
 │   ├── config.ts       # Loads ecscope.config.json via Tauri command
 │   └── aws-credentials.ts  # AWS profile/credential resolution (INI parsing, STS role assumption)
 ├── features/
 │   ├── welcome/        # WelcomeView (shown before cluster selection)
-│   ├── services/       # ServiceList (list, status, CPU/RAM, one-click scaling)
-│   ├── tasks/          # TaskList (details, containers, env/secrets, ECS exec, docker logs)
+│   ├── services/       # ServiceList (status, CPU/RAM, scaling, force deploy, autoscaling)
+│   ├── tasks/          # TaskList, TaskRow, EnvVarPanel, TaskActions, CaptureConfigDialog, EditSecretDialog
 │   ├── albnlb/         # AlbNlbViewer (LBs, target groups, health, metrics)
-│   ├── nodes/          # NodeViewer (EC2 container instances, SSM, file transfer)
-│   └── ec2rds/         # Ec2RdsDashboard (VPC EC2 instances, metrics)
+│   ├── nodes/          # NodeViewer (EC2 instances, SSM, SFTP file transfer, ASG controls)
+│   └── ec2rds/         # Ec2RdsDashboard (VPC EC2 + RDS instances, metrics)
+├── i18n/
+│   ├── index.ts        # i18next init (react-i18next), changeLanguage helper
+│   └── locales/        # Translation files
+│       ├── en.json         # English (default)
+│       └── en-emoji.json   # English with emoji status prefixes
 ├── layout/
 │   ├── Sidebar.tsx     # Cluster list, connect flow, collapse
 │   ├── MainPanel.tsx   # Tab-based feature switching
 │   ├── Breadcrumb.tsx  # Cluster > Service > Task path + theme toggle
 │   └── TabBar.tsx      # Horizontal tab navigation
 ├── store/
-│   ├── config.ts       # Connection/auth/config state (clusters, credentials, status)
+│   ├── config.ts       # Connection/auth/config state (clusters, credentials, theme, language)
 │   └── navigation.ts   # UI navigation (selected cluster/service/task, activeTab, sidebar)
 └── lib/
+    ├── logger.ts       # tslog with sub-loggers, sensitive data masking, wrapped invoke()
+    ├── aws-urls.ts     # AWS Console deep links (ECS, EC2, RDS, ALB) + Tauri opener
+    ├── metrics-time-range.ts # Selectable time windows + CloudWatch period calculation
     ├── utils.ts        # cn() helper
-    └── format.ts       # Formatting utilities
+    └── format.ts       # Number/bytes/percent/relative-age formatters
 src-tauri/
-├── src/lib.rs          # Tauri commands: read_app_config, read_aws_files, open_ssm_session, open_ecs_exec
+├── src/lib.rs          # Tauri commands: config, SSM, ECS exec, SSH keypair, SFTP transfer
 ├── src/main.rs         # Entry point
 ├── tauri.conf.json     # App config, CSP, bundling
-└── capabilities/       # Tauri permissions (filesystem, dialog, shell)
+└── capabilities/       # Tauri permissions (filesystem, dialog, shell, opener)
 ```
 
 ## 🏗️ Architecture & Patterns
@@ -82,10 +115,12 @@ src-tauri/
 - `ecscope.config.json` loaded via Tauri Rust command (`read_app_config`) — searches next to executable and CWD.
 - AWS credential resolution: reads `~/.aws/credentials` + `~/.aws/config` via Tauri command, parses INI, supports static credentials and STS role assumption.
 
-### Diagnostics (SSM + S3)
-- EC2 file transfer orchestrate: SSM RunShellScript → poll completion → S3 transfer → local download via Tauri dialog/fs.
-- Features: file download/upload between EC2 and S3.
+### Diagnostics (SSM + SFTP)
+- EC2 file transfer via SFTP over SSM tunnel (Rust backend handles SSH/SFTP).
+- Features: file download/upload between EC2 and local machine with progress tracking.
 - Rust commands handle terminal sessions: `open_ssm_session`, `open_ecs_exec`.
+- Tauri commands: `read_app_config`, `read_aws_files`, `open_ssm_session`, `open_ecs_exec`, `generate_ssh_keypair`, `sftp_download`, `sftp_upload`, `cancel_transfer`.
+- SFTP transfers emit `sftp-progress` events with percent and transfer rate.
 
 ### Navigation Flow
 1. Sidebar lists configured clusters → user clicks to connect
@@ -102,6 +137,18 @@ src-tauri/
 - Feature-based folder organization
 - Path alias: `@` → `src/`
 - One feature component per file, colocated with its feature folder
+- camelCase for functions/variables, PascalCase for components/types, prefix hooks with `use`
+- Use `import type` for type-only imports
+- ESLint + Prettier configured — run `npm run lint` and `npm run format`
+- Husky + lint-staged for pre-commit hooks
+
+### i18n
+- All user-facing strings use `useTranslation()` hook from react-i18next
+- Access translations via `t("section.key")` — e.g., `t("services.title")`
+- Translation keys organized by feature/domain in locale JSON files
+- Language set via `ecscope.config.json` (`language` field) and applied in config store
+- Two locales: `en` (clean English) and `en-emoji` (emoji-prefixed statuses)
+- Add new keys to both locale files when adding UI text
 
 ## 🎨 UI Guidelines
 
@@ -117,19 +164,23 @@ src-tauri/
 ## ✅ Implemented Features
 
 - [x] Cluster explorer — list, select, connect, resource overview
-- [x] Service viewer — list, status, CPU/RAM, one-click scale up/down
+- [x] Service viewer — list, status, CPU/RAM, one-click scale up/down, force deploy, autoscaling
 - [x] Task inspector — details, containers, health, env/secrets, ECS exec, docker logs via SSM
+- [x] Task definition editor — JSON editor with validation and deploy
+- [x] Secret management — view/edit secret values, redeploy prompt
 - [x] ALB/NLB viewer — load balancers, target groups, health checks, request/latency metrics
-- [x] Node viewer — EC2 container instances, SSM connect, diagnostics, file transfer
-- [x] Diagnostics — file download/upload via SSM + S3
-- [x] Metrics charting — generic framework with domain specializations (service, ALB, NLB)
-- [x] Multi-cluster config — multiple clusters with per-cluster profile/region
+- [x] Node viewer — EC2 container instances, SSM connect, SFTP file transfer, ASG controls
+- [x] EC2/RDS dashboard — VPC EC2 + RDS instances with metrics
+- [x] Diagnostics — file download/upload via SFTP over SSM tunnel with progress tracking
+- [x] Metrics charting — generic framework with domain specializations (service, ALB, NLB, EC2, RDS)
+- [x] Multi-cluster config — multiple clusters with per-cluster profile/region/color/group/icon
 - [x] AWS credential resolution — static credentials + STS role assumption
+- [x] i18n — i18next with two locales (en, en-emoji)
 - [x] CI/CD — GitHub Actions release workflow
 
 ## 🚧 Known Gaps / TODO
 
-- [ ] **EC2/RDS dashboard** — EC2 instances shown, RDS backend not yet implemented
+- [ ] **Testing** — No test framework configured yet
 
 ## 💡 Guidelines
 

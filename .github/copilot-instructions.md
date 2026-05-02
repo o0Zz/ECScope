@@ -56,8 +56,7 @@ src/
 │   ├── DeploymentStatusPanel.tsx # Deployment list with rollback actions
 │   ├── ScalingLimitsDialog.tsx   # Numeric scaling limits modal
 │   ├── ServiceEventsTimeline.tsx # Service events feed with error highlighting
-│   ├── TaskDefinitionEditor.tsx  # JSON task-def editor + validate + deploy
-│   └── ThemeToggle.tsx           # Dark/light theme toggle
+│   └── TaskDefinitionEditor.tsx  # JSON task-def editor + validate + deploy
 ├── config/
 │   ├── config.ts       # Loads ecscope.config.json via Tauri command
 │   └── aws-credentials.ts  # AWS profile/credential resolution (INI parsing, STS role assumption)
@@ -76,7 +75,7 @@ src/
 ├── layout/
 │   ├── Sidebar.tsx     # Cluster list, connect flow, collapse
 │   ├── MainPanel.tsx   # Tab-based feature switching
-│   ├── Breadcrumb.tsx  # Cluster > Service > Task path + theme toggle
+│   ├── Breadcrumb.tsx  # Cluster > Service > Task path
 │   └── TabBar.tsx      # Horizontal tab navigation
 ├── store/
 │   ├── config.ts       # Connection/auth/config state (clusters, credentials, theme, language)
@@ -152,7 +151,7 @@ src-tauri/
 
 ## 🎨 UI Guidelines
 
-- Dark mode by default (theme toggle available)
+- Dark mode by default (theme configurable via config file)
 - Sidebar navigation with collapsible cluster list
 - Tab-based feature navigation (Services, Tasks, ALB/NLB, Nodes, EC2/RDS)
 - Tables for resource listing with inline actions

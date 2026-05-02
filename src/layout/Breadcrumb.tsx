@@ -3,7 +3,6 @@ import { useConfigStore } from "@/store/config";
 import { useQueryClient, useIsFetching } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
 import { ArrowLeft, RefreshCw } from "lucide-react";
-import { ThemeToggle } from "@/components/ThemeToggle";
 import { cn } from "@/lib/utils";
 
 export function Breadcrumb() {
@@ -69,7 +68,6 @@ export function Breadcrumb() {
                         <RefreshCw className={cn("h-4 w-4", isFetching > 0 && "animate-spin")} />
                         <span className="sr-only">{t("common.refreshing")}</span>
                     </button>
-                    <ThemeToggle />
                 </div>
             </div>
         </>

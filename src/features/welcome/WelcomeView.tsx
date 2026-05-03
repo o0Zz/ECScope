@@ -1,6 +1,7 @@
 import { Box, Loader2, AlertTriangle } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { useConfigStore } from "@/store/config";
+import exampleConfig from "../../../ecscope.config.json";
 
 export function WelcomeView() {
     const { t } = useTranslation();
@@ -27,7 +28,9 @@ export function WelcomeView() {
                         <div className="mt-4 rounded-lg border border-border bg-card p-4 text-left text-xs">
                             <p className="font-medium text-foreground">{t("welcome.configFileExpected")}</p>
                             <pre className="mt-1 text-muted-foreground">ecscope.config.json</pre>
-                            <pre className="mt-2 rounded bg-muted p-2 text-muted-foreground">{`[\n  {\n    "profile": "your-aws-profile",\n    "region": "eu-west-1",\n    "clusterName": "your-cluster"\n  }\n]`}</pre>
+                            <pre className="mt-2 rounded bg-muted p-2 text-muted-foreground">
+                                {JSON.stringify(exampleConfig, null, 2)}
+                            </pre>
                         </div>
                     </div>
                 </>

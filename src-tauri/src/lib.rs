@@ -30,15 +30,25 @@ fn read_app_config() -> Result<String, String> {
             .map(|d| d.join("ecscope.config.json")),
     ];
 
-    for candidate in candidates.into_iter().flatten() {
+    let resolved: Vec<_> = candidates.into_iter().flatten().collect();
+
+    for candidate in &resolved {
         if candidate.exists() {
-            return fs::read_to_string(&candidate).map_err(|e| {
+            return fs::read_to_string(candidate).map_err(|e| {
                 format!("Failed to read {}: {}", candidate.display(), e)
             });
         }
     }
 
-    Err("ecscope.config.json not found. Place it next to the ECScope executable or in the working directory.".to_string())
+    let searched = resolved
+        .iter()
+        .map(|p| format!("  - {}", p.display()))
+        .collect::<Vec<_>>()
+        .join("\n");
+    Err(format!(
+        "ecscope.config.json not found.\nSearched locations:\n{}\nPlace the file in one of these locations.",
+        searched
+    ))
 }
 
 #[tauri::command]

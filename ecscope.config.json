@@ -1,7 +1,7 @@
 {
     "refreshPeriodSeconds": 10,
     "theme": "light",
-    "language": "en-emoji",
+    "language": "en",
     "updateUrl": "https://raw.githubusercontent.com/o0Zz/ECScope/main/latest.json",
     "clusters": [
         {

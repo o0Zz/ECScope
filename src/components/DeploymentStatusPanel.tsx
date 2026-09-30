@@ -6,7 +6,8 @@ import type { EcsDeployment } from "@/api/types";
 import { useConfigStore } from "@/store/config";
 import { StatusBadge } from "@/components/StatusBadge";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
-import { ChevronDown, ChevronRight, RotateCcw } from "lucide-react";
+import { TaskDefinitionDiff } from "@/components/TaskDefinitionDiff";
+import { ChevronDown, ChevronRight, RotateCcw, GitCompare } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { formatAge } from "@/lib/format";
 
@@ -22,6 +23,7 @@ export function DeploymentStatusPanel({ clusterName, serviceName }: { clusterNam
     const { t } = useTranslation();
     const [expanded, setExpanded] = useState(true);
     const [rollbackTarget, setRollbackTarget] = useState<EcsDeployment | null>(null);
+    const [diffBase, setDiffBase] = useState<EcsDeployment | null>(null);
     const refreshIntervalMs = useConfigStore((s) => s.refreshIntervalMs);
     const queryClient = useQueryClient();
 
@@ -46,6 +48,7 @@ export function DeploymentStatusPanel({ clusterName, serviceName }: { clusterNam
     if (deployments.length === 0) return null;
 
     const hasMultiple = deployments.length > 1;
+    const primary = deployments.find((d) => d.status === "PRIMARY");
 
     return (
         <div className="mt-4 overflow-hidden rounded-lg border border-border">
@@ -83,6 +86,16 @@ export function DeploymentStatusPanel({ clusterName, serviceName }: { clusterNam
                                     <span className="ml-auto text-muted-foreground">
                                         {formatAge(dep.createdAt)} {t("common.ago")}
                                     </span>
+                                    {isActive && primary && primary.taskDefinition !== dep.taskDefinition && (
+                                        <button
+                                            onClick={() => setDiffBase(dep)}
+                                            className="ml-2 inline-flex items-center gap-1 rounded-md border border-border px-2 py-1 text-xs font-medium text-foreground hover:bg-accent transition-colors"
+                                            title={t("deployments.diffTitle")}
+                                        >
+                                            <GitCompare className="h-3 w-3" />
+                                            {t("deployments.diff")}
+                                        </button>
+                                    )}
                                     {isActive && (
                                         <button
                                             onClick={() => setRollbackTarget(dep)}
@@ -116,6 +129,14 @@ export function DeploymentStatusPanel({ clusterName, serviceName }: { clusterNam
                         );
                     })}
                 </div>
+            )}
+
+            {diffBase && primary && (
+                <TaskDefinitionDiff
+                    base={diffBase.taskDefinition}
+                    target={primary.taskDefinition}
+                    onClose={() => setDiffBase(null)}
+                />
             )}
 
             <ConfirmDialog

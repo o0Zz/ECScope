@@ -11,7 +11,11 @@ ECScope is a modern, cross-platform desktop application for exploring, monitorin
 - **Cluster Explorer** — Browse and connect to multiple clusters with group/color/icon customization
 - **Service Viewer** — Monitor status, CPU & memory usage; one-click scale up/down, force deploy, autoscaling controls
 - **Task Inspector** — View task details, container health, environment variables & secrets; ECS exec shell, live container logs, HTTP traffic capture
+- **CloudWatch Logs Viewer** — Tail and filter `awslogs` logs per task (Fargate & EC2, running or stopped) or across a whole service
+- **Stopped Task Insights** — Stop code, stopped reason, and per-container exit codes with hints (OOM kill, SIGTERM, segfault…)
 - **Task Definition Editor** — Edit task definitions as JSON with validation and one-click deploy
+- **Task Definition Diff** — Compare any two revisions of a family (or an active deployment against the primary one)
+- **Scheduled Tasks** — EventBridge rules and EventBridge Scheduler schedules targeting the cluster: enable/disable, run now
 - **Secret Management** — View and edit secret values in Secrets Manager, redeploy on change
 - **ALB / NLB Viewer** — Inspect load balancers, target groups, health checks, and request/latency/error metrics
 - **Node Viewer** — EC2 container instances, SSM terminal, SFTP file transfer, ASG scaling controls
@@ -31,7 +35,24 @@ ECScope is a modern, cross-platform desktop application for exploring, monitorin
 | **AWS CLI** | `msiexec.exe /i https://awscli.amazonaws.com/AWSCLIV2.msi` |
 | **SSM Plugin** | `winget install Amazon.SessionManagerPlugin` |
 
-You need valid AWS credentials in `~/.aws/credentials` and `~/.aws/config`. STS role assumption (`role_arn` + `source_profile`) is supported.
+You need an AWS profile in `~/.aws/config` / `~/.aws/credentials`. Supported profile types:
+
+- Static access keys (optionally with `aws_session_token`)
+- STS role assumption (`role_arn` + `source_profile`)
+- Anything else the AWS CLI understands — **IAM Identity Center / SSO** (`sso_session`, `sso_start_url`), `credential_process`, `credential_source`, web identity, chained roles — resolved through `aws configure export-credentials` (AWS CLI v2.9+). When an SSO session is missing or expired, ECScope offers a **Sign in with AWS SSO** button that runs `aws sso login`.
+
+Temporary credentials are refreshed automatically before they expire.
+
+### IAM permissions
+
+On top of read access to ECS, EC2, ELBv2, RDS, CloudWatch, SSM and Secrets Manager, the newer features use:
+
+| Feature | Actions |
+|---------|---------|
+| CloudWatch Logs viewer | `logs:GetLogEvents`, `logs:FilterLogEvents` |
+| Task definition diff | `ecs:ListTaskDefinitions`, `ecs:DescribeTaskDefinition` |
+| Scheduled tasks (list) | `ecs:DescribeClusters`, `events:ListRuleNamesByTarget`, `events:DescribeRule`, `events:ListTargetsByRule`, `scheduler:ListSchedules`, `scheduler:GetSchedule` |
+| Scheduled tasks (actions) | `events:EnableRule`, `events:DisableRule`, `scheduler:UpdateSchedule`, `ecs:RunTask`, `iam:PassRole` (task/execution roles) |
 
 ### Installation
 

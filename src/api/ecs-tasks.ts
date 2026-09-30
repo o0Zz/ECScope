@@ -215,6 +215,7 @@ export async function listTasks(clusterName: string, serviceName: string): Promi
                 startedAt: t.startedAt?.toISOString?.() ?? "",
                 stoppedAt: t.stoppedAt?.toISOString?.() ?? "",
                 stoppedReason: t.stoppedReason ?? "",
+                stopCode: t.stopCode ?? "",
                 group: t.group ?? "",
                 healthStatus: t.healthStatus ?? "UNKNOWN",
                 containerInstanceArn: t.containerInstanceArn ?? "",

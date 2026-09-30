@@ -2,13 +2,22 @@ import { create } from "zustand";
 import type { ClusterConfig } from "@/config/config";
 import type { ResolvedCredentials } from "@/config/aws-credentials";
 import { loadConfig, loadAwsFiles } from "@/config/config";
-import { resolveCredentials } from "@/config/aws-credentials";
+import { resolveCredentials, createCredentialProvider, SsoLoginRequiredError } from "@/config/aws-credentials";
 import { initAwsClients } from "@/api/clients";
+import { invoke } from "@tauri-apps/api/core";
+import { useNavigationStore } from "@/store/navigation";
 import { log } from "@/lib/logger";
 import { changeLanguage } from "@/i18n";
 import { checkForUpdates } from "@/lib/update-checker";
 
 type ConnectionStatus = "idle" | "loading" | "connected" | "error";
+
+/** Provider of the active connection — kept to reset its back-off after an SSO login */
+let activeProvider: ReturnType<typeof createCredentialProvider> | null = null;
+
+function errorMessage(err: unknown): string {
+    return err instanceof Error ? err.message : String(err);
+}
 
 interface ConfigState {
     clusters: ClusterConfig[];
@@ -25,11 +34,20 @@ interface ConfigState {
     error: string | null;
     /** Available update info, null if no update or not checked */
     updateAvailable: { version: string; url: string } | null;
+    /** Cluster of the last connection attempt (used to retry after an SSO login) */
+    lastClusterName: string | null;
+    /** Set when the connection (or a credential refresh) needs `aws sso login` */
+    ssoLoginRequired: boolean;
+    ssoLoginPending: boolean;
+    /** Credential refresh failure while connected (session expired, SSO token gone…) */
+    sessionError: string | null;
 
     /** Load all cluster configs from the config file */
     initialize: () => Promise<void>;
     /** Connect to a specific cluster by name */
     connectToCluster: (clusterName: string) => Promise<void>;
+    /** Run `aws sso login` for the current/last profile, then reconnect */
+    ssoLogin: () => Promise<void>;
 }
 
 export const useConfigStore = create<ConfigState>((set, get) => ({
@@ -42,6 +60,10 @@ export const useConfigStore = create<ConfigState>((set, get) => ({
     status: "idle",
     error: null,
     updateAvailable: null,
+    lastClusterName: null,
+    ssoLoginRequired: false,
+    ssoLoginPending: false,
+    sessionError: null,
 
     initialize: async () => {
         if (get().status === "loading") return;
@@ -84,7 +106,13 @@ export const useConfigStore = create<ConfigState>((set, get) => ({
             return;
         }
 
-        set({ status: "loading", error: null });
+        set({
+            status: "loading",
+            error: null,
+            lastClusterName: clusterName,
+            ssoLoginRequired: false,
+            sessionError: null,
+        });
         log.config.debug(`Resolving credentials for profile ${clusterConfig.profile}`);
 
         try {
@@ -92,14 +120,58 @@ export const useConfigStore = create<ConfigState>((set, get) => ({
             log.config.debug(`AWS config files loaded`);
             const credentials = await resolveCredentials(clusterConfig, awsFiles);
             log.config.info(`Credentials resolved for region ${credentials.region}`);
-            initAwsClients(credentials, clusterConfig.clusterName);
+            activeProvider = createCredentialProvider(clusterConfig, credentials, (result) => {
+                if ("credentials" in result) {
+                    log.config.info(`Credentials refreshed for profile ${clusterConfig.profile}`);
+                    set({ credentials: result.credentials, sessionError: null, ssoLoginRequired: false });
+                } else {
+                    log.config.error(`Credential refresh failed: ${errorMessage(result.error)}`);
+                    set({
+                        sessionError: errorMessage(result.error),
+                        ssoLoginRequired: result.error instanceof SsoLoginRequiredError,
+                    });
+                }
+            });
+            initAwsClients(activeProvider, credentials.region, clusterConfig.clusterName);
             log.config.info(`AWS clients initialized`);
             set({ credentials, activeCluster: clusterConfig, status: "connected" });
             log.config.info(`Connected to cluster ${clusterName}`);
         } catch (err) {
-            const message = err instanceof Error ? err.message : String(err);
+            const message = errorMessage(err);
             log.config.error(`Failed to connect to cluster ${clusterName}: ${message}`);
-            set({ status: "error", error: message, activeCluster: null, credentials: null });
+            set({
+                status: "error",
+                error: message,
+                activeCluster: null,
+                credentials: null,
+                ssoLoginRequired: err instanceof SsoLoginRequiredError,
+            });
         }
+    },
+
+    ssoLogin: async () => {
+        const { activeCluster, lastClusterName, clusters, status } = get();
+        const target = activeCluster ?? clusters.find((c) => c.clusterName === lastClusterName);
+        if (!target) return;
+
+        log.config.info(`Starting AWS SSO login for profile ${target.profile}`);
+        set({ ssoLoginPending: true });
+        try {
+            await invoke("aws_sso_login", { profile: target.profile });
+        } catch (err) {
+            log.config.error(`AWS SSO login failed: ${errorMessage(err)}`);
+            set({ ssoLoginPending: false, sessionError: errorMessage(err) });
+            return;
+        }
+        set({ ssoLoginPending: false });
+
+        if (status === "connected" && activeProvider) {
+            // Session refresh: the next SDK call re-resolves credentials with the new SSO token
+            activeProvider.retryNow();
+            set({ sessionError: null, ssoLoginRequired: false });
+            return;
+        }
+        await get().connectToCluster(target.clusterName);
+        if (get().status === "connected") useNavigationStore.getState().selectCluster(target.clusterName);
     },
 }));

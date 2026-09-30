@@ -7,7 +7,10 @@ import { useConfigStore } from "@/store/config";
 import { ServiceMetricsChart } from "@/components/ServiceMetricsChart";
 import { ServiceEventsTimeline } from "@/components/ServiceEventsTimeline";
 import { DeploymentStatusPanel } from "@/components/DeploymentStatusPanel";
-import { Pencil } from "lucide-react";
+import { Pencil, FileText, GitCompare } from "lucide-react";
+import { TaskDefinitionDiff } from "@/components/TaskDefinitionDiff";
+import { LogViewer, type LogTarget } from "./LogViewer";
+import { cn } from "@/lib/utils";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { TaskDefinitionEditor } from "@/components/TaskDefinitionEditor";
 import { TaskRow } from "./TaskRow";
@@ -20,6 +23,9 @@ export function TaskList() {
     const [expandedTask, setExpandedTask] = useState<string | null>(null);
     const [confirmStopTask, setConfirmStopTask] = useState<string | null>(null);
     const [showTaskDefEditor, setShowTaskDefEditor] = useState(false);
+    const [showDiff, setShowDiff] = useState(false);
+    const [showServiceLogs, setShowServiceLogs] = useState(false);
+    const [showStopped, setShowStopped] = useState(true);
     const queryClient = useQueryClient();
 
     const stopMutation = useMutation({
@@ -57,21 +63,80 @@ export function TaskList() {
         );
     }
 
+    // Running tasks first, then stopped ones, most recently stopped first
+    const running = tasks.filter((task) => task.lastStatus !== "STOPPED");
+    const stopped = tasks
+        .filter((task) => task.lastStatus === "STOPPED")
+        .sort((a, b) => b.stoppedAt.localeCompare(a.stoppedAt));
+    const visibleTasks = showStopped ? [...running, ...stopped] : running;
+
+    // Service-wide logs: every stream of each container under its awslogs prefix
+    const currentTask = running[0] ?? tasks[0];
+    const serviceLogTargets: LogTarget[] = currentTask.containers
+        .filter((c) => c.logGroup && c.logStreamPrefix)
+        .map((c) => ({
+            label: c.name,
+            logGroup: c.logGroup!,
+            source: { kind: "prefix", prefix: `${c.logStreamPrefix}/${c.name}/` },
+        }));
+
+    const headerButton =
+        "inline-flex items-center gap-1.5 rounded-md border border-border px-2.5 py-1.5 text-xs font-medium text-muted-foreground hover:bg-accent hover:text-foreground transition-colors disabled:opacity-40 disabled:cursor-not-allowed";
+
     return (
         <div className="p-4">
             <div className="mb-4 flex items-center justify-between">
                 <h2 className="text-lg font-semibold text-foreground">
                     {t("tasks.title")}
-                    <span className="ml-2 text-sm font-normal text-muted-foreground">({tasks.length})</span>
+                    <span className="ml-2 text-sm font-normal text-muted-foreground">({running.length})</span>
+                    {stopped.length > 0 && (
+                        <button
+                            onClick={() => setShowStopped(!showStopped)}
+                            className={cn(
+                                "ml-3 rounded-full border px-2 py-0.5 text-xs font-normal transition-colors",
+                                showStopped
+                                    ? "border-warning/40 bg-warning/10 text-warning"
+                                    : "border-border text-muted-foreground hover:bg-accent",
+                            )}
+                            title={t("tasks.stoppedRetention")}
+                        >
+                            {showStopped
+                                ? t("tasks.hideStopped", { count: stopped.length })
+                                : t("tasks.showStopped", { count: stopped.length })}
+                        </button>
+                    )}
                 </h2>
-                <button
-                    onClick={() => setShowTaskDefEditor(true)}
-                    className="inline-flex items-center gap-1.5 rounded-md border border-border px-2.5 py-1.5 text-xs font-medium text-muted-foreground hover:bg-accent hover:text-foreground transition-colors"
-                    title={t("tasks.editTaskDef")}
-                >
-                    <Pencil className="h-3.5 w-3.5" />
-                    {t("tasks.editTaskDef")}
-                </button>
+                <div className="flex items-center gap-2">
+                    <button
+                        onClick={() => setShowServiceLogs(true)}
+                        disabled={serviceLogTargets.length === 0}
+                        className={headerButton}
+                        title={
+                            serviceLogTargets.length > 0
+                                ? t("tasks.serviceLogs")
+                                : t("tasks.actions.cloudwatchLogsUnavailable")
+                        }
+                    >
+                        <FileText className="h-3.5 w-3.5" />
+                        {t("tasks.serviceLogs")}
+                    </button>
+                    <button
+                        onClick={() => setShowDiff(true)}
+                        className={headerButton}
+                        title={t("tasks.compareRevisions")}
+                    >
+                        <GitCompare className="h-3.5 w-3.5" />
+                        {t("tasks.compareRevisions")}
+                    </button>
+                    <button
+                        onClick={() => setShowTaskDefEditor(true)}
+                        className="inline-flex items-center gap-1.5 rounded-md border border-border px-2.5 py-1.5 text-xs font-medium text-muted-foreground hover:bg-accent hover:text-foreground transition-colors"
+                        title={t("tasks.editTaskDef")}
+                    >
+                        <Pencil className="h-3.5 w-3.5" />
+                        {t("tasks.editTaskDef")}
+                    </button>
+                </div>
             </div>
             <div className="overflow-x-auto rounded-lg border border-border">
                 <table className="w-full text-sm">
@@ -108,7 +173,7 @@ export function TaskList() {
                         </tr>
                     </thead>
                     <tbody>
-                        {tasks.map((task) => (
+                        {visibleTasks.map((task) => (
                             <TaskRow
                                 key={task.taskArn}
                                 task={task}
@@ -149,12 +214,24 @@ export function TaskList() {
             {/* Service events timeline */}
             <ServiceEventsTimeline clusterName={selectedCluster!} serviceName={selectedService!} />
 
+            {showServiceLogs && (
+                <LogViewer
+                    title={t("logs.serviceTitle", { name: selectedService })}
+                    targets={serviceLogTargets}
+                    onClose={() => setShowServiceLogs(false)}
+                />
+            )}
+
+            {showDiff && (
+                <TaskDefinitionDiff target={currentTask.taskDefinitionArn} onClose={() => setShowDiff(false)} />
+            )}
+
             {/* Task definition editor modal */}
-            {showTaskDefEditor && tasks[0] && (
+            {showTaskDefEditor && (
                 <TaskDefinitionEditor
                     clusterName={selectedCluster!}
                     serviceName={selectedService!}
-                    taskDefinition={tasks[0].taskDefinitionArn}
+                    taskDefinition={currentTask.taskDefinitionArn}
                     onClose={() => setShowTaskDefEditor(false)}
                 />
             )}

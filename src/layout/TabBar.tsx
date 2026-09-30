@@ -5,6 +5,7 @@ import { cn } from "@/lib/utils";
 const TAB_KEYS: { id: ActiveTab; key: string }[] = [
     { id: "services", key: "tabs.services" },
     { id: "tasks", key: "tabs.tasks" },
+    { id: "scheduled", key: "tabs.scheduled" },
     { id: "albnlb", key: "tabs.albnlb" },
     { id: "nodes", key: "tabs.nodes" },
     { id: "ec2rds", key: "tabs.ec2rds" },

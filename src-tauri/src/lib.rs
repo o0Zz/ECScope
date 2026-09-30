@@ -68,6 +68,56 @@ fn read_aws_files() -> Result<AwsFiles, String> {
     Ok(AwsFiles { credentials, config })
 }
 
+/// AWS profile names are passed as a single argv entry (no shell), but reject anything unusual anyway.
+fn validate_profile(profile: &str) -> Result<(), String> {
+    let ok = !profile.is_empty()
+        && profile.len() <= 128
+        && profile.chars().all(|c| c.is_ascii_alphanumeric() || "-_.@+/".contains(c));
+    if ok { Ok(()) } else { Err(format!("Invalid AWS profile name: {}", profile)) }
+}
+
+/// `aws` CLI command that doesn't flash a console window on Windows.
+fn aws_cli() -> tokio::process::Command {
+    #[allow(unused_mut)]
+    let mut cmd = tokio::process::Command::new("aws");
+    #[cfg(target_os = "windows")]
+    cmd.creation_flags(0x0800_0000); // CREATE_NO_WINDOW
+    cmd
+}
+
+/// Resolve credentials for any profile type the AWS CLI understands (SSO, credential_process,
+/// role chains, web identity…). Returns the CLI's `process` JSON format.
+#[tauri::command]
+async fn export_aws_credentials(profile: String) -> Result<String, String> {
+    validate_profile(&profile)?;
+    let out = aws_cli()
+        .args(["configure", "export-credentials", "--profile", &profile, "--format", "process"])
+        .stdin(std::process::Stdio::null())
+        .output()
+        .await
+        .map_err(|e| format!("Failed to run AWS CLI (is it installed and on PATH?): {}", e))?;
+    if !out.status.success() {
+        return Err(String::from_utf8_lossy(&out.stderr).trim().to_string());
+    }
+    Ok(String::from_utf8_lossy(&out.stdout).to_string())
+}
+
+/// Run `aws sso login` for a profile and wait for it to finish (the CLI opens the browser itself).
+#[tauri::command]
+async fn aws_sso_login(profile: String) -> Result<(), String> {
+    validate_profile(&profile)?;
+    let out = aws_cli()
+        .args(["sso", "login", "--profile", &profile])
+        .stdin(std::process::Stdio::null())
+        .output()
+        .await
+        .map_err(|e| format!("Failed to run AWS CLI (is it installed and on PATH?): {}", e))?;
+    if !out.status.success() {
+        return Err(String::from_utf8_lossy(&out.stderr).trim().to_string());
+    }
+    Ok(())
+}
+
 #[tauri::command]
 async fn fetch_url(url: String) -> Result<String, String> {
     let client = reqwest::Client::builder()
@@ -614,6 +664,8 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             read_app_config,
             read_aws_files,
+            export_aws_credentials,
+            aws_sso_login,
             fetch_url,
             open_ssm_session,
             open_ecs_exec,

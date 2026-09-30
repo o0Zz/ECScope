@@ -1,11 +1,12 @@
 import { Box, Loader2, AlertTriangle } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { useConfigStore } from "@/store/config";
+import { SsoLoginButton } from "@/components/SsoLoginButton";
 import exampleConfig from "../../../ecscope.config.json";
 
 export function WelcomeView() {
     const { t } = useTranslation();
-    const { status, error, clusters, activeCluster } = useConfigStore();
+    const { status, error, clusters, activeCluster, ssoLoginRequired } = useConfigStore();
 
     return (
         <div className="flex h-full flex-col items-center justify-center gap-4 text-muted-foreground">
@@ -25,13 +26,20 @@ export function WelcomeView() {
                     <div className="text-center max-w-md">
                         <h2 className="text-xl font-semibold text-destructive">{t("welcome.failedTitle")}</h2>
                         <p className="mt-2 text-sm text-destructive/80">{error}</p>
-                        <div className="mt-4 rounded-lg border border-border bg-card p-4 text-left text-xs">
-                            <p className="font-medium text-foreground">{t("welcome.configFileExpected")}</p>
-                            <pre className="mt-1 text-muted-foreground">ecscope.config.json</pre>
-                            <pre className="mt-2 rounded bg-muted p-2 text-muted-foreground">
-                                {JSON.stringify(exampleConfig, null, 2)}
-                            </pre>
-                        </div>
+                        {ssoLoginRequired ? (
+                            <div className="mt-4 flex flex-col items-center gap-2">
+                                <p className="text-xs">{t("auth.ssoLoginHint")}</p>
+                                <SsoLoginButton />
+                            </div>
+                        ) : (
+                            <div className="mt-4 rounded-lg border border-border bg-card p-4 text-left text-xs">
+                                <p className="font-medium text-foreground">{t("welcome.configFileExpected")}</p>
+                                <pre className="mt-1 text-muted-foreground">ecscope.config.json</pre>
+                                <pre className="mt-2 rounded bg-muted p-2 text-muted-foreground">
+                                    {JSON.stringify(exampleConfig, null, 2)}
+                                </pre>
+                            </div>
+                        )}
                     </div>
                 </>
             )}

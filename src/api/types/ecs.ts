@@ -53,6 +53,8 @@ export interface EcsTask {
     startedAt: string;
     stoppedAt: string;
     stoppedReason: string;
+    /** e.g. EssentialContainerExited, TaskFailedToStart, UserInitiated, SpotInterruption */
+    stopCode: string;
     group: string;
     containers: EcsContainer[];
     healthStatus: string;

@@ -24,6 +24,24 @@ export function albUrl(region: string, albArn: string): string {
     return `https://${region}.console.aws.amazon.com/ec2/home?region=${region}#LoadBalancer:loadBalancerArn=${albArn}`;
 }
 
+/** CloudWatch console uses its own escaping: URL-encode, then turn every "%" into "$25" */
+function cwEscape(value: string): string {
+    return encodeURIComponent(value).replace(/%/g, "$25");
+}
+
+export function cloudwatchLogsUrl(region: string, logGroup: string, logStream?: string): string {
+    const base = `https://${region}.console.aws.amazon.com/cloudwatch/home?region=${region}#logsV2:log-groups/log-group/${cwEscape(logGroup)}`;
+    return logStream ? `${base}/log-events/${cwEscape(logStream)}` : base;
+}
+
+export function ecsScheduledTasksUrl(region: string, clusterName: string): string {
+    return `https://${region}.console.aws.amazon.com/ecs/v2/clusters/${clusterName}/scheduled-tasks?region=${region}`;
+}
+
+export function schedulerScheduleUrl(region: string, groupName: string, name: string): string {
+    return `https://${region}.console.aws.amazon.com/scheduler/home?region=${region}#schedules/${groupName}/${name}`;
+}
+
 export function openAwsUrl(url: string) {
     openUrl(url);
 }

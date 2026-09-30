@@ -8,7 +8,14 @@
       "runtimeExecutable": "npx",
       "runtimeArgs": ["tauri", "dev"],
       "cwd": "${workspaceFolder}",
-      "console": "integratedTerminal"
+      "console": "integratedTerminal",
+      "windows": {
+        // ~/.cargo/bin/cargo.exe is a symlink to rustup.exe, which processes started by VS Code
+        // may not follow (os error 448 "untrusted mount point"). Use the toolchain's real binaries.
+        "env": {
+          "PATH": "${env:USERPROFILE}\\.rustup\\toolchains\\stable-x86_64-pc-windows-msvc\\bin;${env:PATH}"
+        }
+      }
     }
   ]
 }

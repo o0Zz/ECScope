@@ -12,7 +12,9 @@
     "stopped": "",
     "inactive": "",
     "unhealthy": "",
-    "unknown": ""
+    "unknown": "",
+    "enabled": "",
+    "disabled": ""
   },
   "common": {
     "cancel": "Cancel",
@@ -30,7 +32,8 @@
     "units": "units",
     "mb": "MB",
     "gb": "GB",
-    "copyValue": "Copy value"
+    "copyValue": "Copy value",
+    "working": "Working…"
   },
   "sidebar": {
     "brand": "ECScope",
@@ -46,6 +49,7 @@
   "tabs": {
     "services": "Services",
     "tasks": "Tasks",
+    "scheduled": "Scheduled",
     "albnlb": "ALB / NLB",
     "nodes": "Nodes",
     "ec2rds": "EC2 / RDS"
@@ -129,12 +133,30 @@
       "ssmConnect": "SSM connect to {{id}}",
       "taskStopped": "Task is stopped",
       "dockerLogsEc2Only": "Docker logs requires EC2 launch type",
-      "httpCaptureEc2Only": "HTTP capture requires EC2 launch type"
+      "httpCaptureEc2Only": "HTTP capture requires EC2 launch type",
+      "cloudwatchLogs": "CloudWatch logs",
+      "cloudwatchLogsUnavailable": "No awslogs log configuration for this container"
     },
     "dialogs": {
       "stopMessage": "Are you sure you want to stop this task?",
       "stopConfirm": "Stop Task",
       "stopPending": "Stopping…"
+    },
+    "serviceLogs": "Service Logs",
+    "compareRevisions": "Compare Revisions",
+    "showStopped": "Show {{count}} stopped",
+    "hideStopped": "Hide {{count}} stopped",
+    "stoppedRetention": "ECS keeps stopped tasks for about 1 hour",
+    "exitCode": "exit {{code}}",
+    "exitHints": {
+      "ok": "success",
+      "error": "application error",
+      "notExecutable": "command not executable",
+      "notFound": "command not found",
+      "abort": "aborted (SIGABRT)",
+      "sigkill": "killed (SIGKILL, often OOM)",
+      "segfault": "segfault (SIGSEGV)",
+      "sigterm": "terminated (SIGTERM)"
     }
   },
   "envVars": {
@@ -301,7 +323,9 @@
     "rollbackMessage": "Roll back to the previous task definition?",
     "rollingBack": "Rolling back…",
     "running": "Running",
-    "pending": "Pending"
+    "pending": "Pending",
+    "diff": "Diff",
+    "diffTitle": "Compare with the primary deployment's task definition"
   },
   "events": {
     "title": "Service Events",
@@ -366,5 +390,70 @@
     "writeLatency": "Write Latency",
     "freeableMemory": "Freeable Memory",
     "freeStorageSpace": "Free Storage Space"
+  },
+  "auth": {
+    "ssoLogin": "Sign in with AWS SSO",
+    "ssoLoginPending": "Waiting for browser sign-in…",
+    "ssoLoginHint": "This profile uses AWS IAM Identity Center. Sign in to refresh the SSO session.",
+    "sessionExpired": "AWS session expired",
+    "reconnect": "Reconnect"
+  },
+  "logs": {
+    "taskTitle": "Logs — task {{id}}",
+    "serviceTitle": "Logs — service {{name}}",
+    "loading": "Loading log events…",
+    "noEvents": "No log events.",
+    "streamNotFound": "Log stream not found (the container may never have started, or the logs expired).",
+    "filterPlaceholder": "Filter lines…",
+    "since": "Since",
+    "follow": "Follow new lines",
+    "pause": "Pause tailing",
+    "following": "Live",
+    "paused": "Paused",
+    "wrap": "Wrap",
+    "count": "{{count}} lines",
+    "countFiltered": "{{shown}} / {{total}} lines",
+    "copyVisible": "Copy visible lines",
+    "loadOlder": "Load older",
+    "truncated": "Too many events in this window: showing the oldest 10,000. Pick a shorter window.",
+    "renderCapped": "Showing the last {{count}} matching lines."
+  },
+  "taskDefDiff": {
+    "title": "Compare Task Definitions",
+    "loading": "Loading task definitions…",
+    "showAll": "Show unchanged lines",
+    "unchanged": "… {{count}} unchanged lines",
+    "identical": "No differences.",
+    "noPrevious": "No earlier revision to compare with."
+  },
+  "scheduled": {
+    "title": "Scheduled Tasks",
+    "loading": "Loading scheduled tasks…",
+    "noTasks": "No EventBridge rules or schedules target this cluster.",
+    "rulesFailed": "EventBridge rules:",
+    "schedulerFailed": "EventBridge Scheduler:",
+    "started": "Started {{count}} task(s) for {{name}}:",
+    "columns": {
+      "name": "Name",
+      "schedule": "Schedule",
+      "state": "State",
+      "taskDef": "Task Def",
+      "launch": "Launch",
+      "actions": "Actions"
+    },
+    "sourceRule": "Rule",
+    "sourceScheduler": "Scheduler · {{group}}",
+    "eventPattern": "event pattern",
+    "network": "{{subnets}} subnet(s), {{sgs}} SG(s)",
+    "publicIp": "public IP",
+    "runNow": "Run Now",
+    "runNowTitle": "Run Scheduled Task Now",
+    "runNowMessage": "Start {{count}} task(s) now with the schedule's task definition, network and overrides?",
+    "enable": "Enable",
+    "disable": "Disable",
+    "enableTitle": "Enable Schedule",
+    "disableTitle": "Disable Schedule",
+    "enableMessage": "Resume this schedule?",
+    "disableMessage": "Pause this schedule? No new tasks will start until it is re-enabled."
   }
 }

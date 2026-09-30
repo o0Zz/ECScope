@@ -6,6 +6,7 @@ import { cn } from "@/lib/utils";
 import { createLogger } from "@/lib/logger";
 import { Server, ChevronLeft, ChevronRight, Box, AlertCircle, Loader2, ArrowUpCircle } from "lucide-react";
 import { openUrl } from "@tauri-apps/plugin-opener";
+import { SsoLoginButton } from "@/components/SsoLoginButton";
 
 const logger = createLogger("Sidebar");
 
@@ -27,7 +28,7 @@ function UpdateBanner() {
 
 function SidebarFooter({ lastClickedCluster }: { lastClickedCluster: string | null }) {
     const { t } = useTranslation();
-    const { activeCluster, credentials, status, error } = useConfigStore();
+    const { activeCluster, credentials, status, error, ssoLoginRequired } = useConfigStore();
     if (status === "connected" && activeCluster) {
         return (
             <div className="border-t border-border px-3 py-2 text-xs text-muted-foreground">
@@ -50,6 +51,11 @@ function SidebarFooter({ lastClickedCluster }: { lastClickedCluster: string | nu
                     <div className="mt-0.5 truncate text-[11px] opacity-70">{lastClickedCluster}</div>
                 )}
                 {error && <div className="mt-0.5 break-words text-[11px] leading-tight opacity-80">{error}</div>}
+                {ssoLoginRequired && (
+                    <div className="mt-2">
+                        <SsoLoginButton />
+                    </div>
+                )}
             </div>
         );
     }

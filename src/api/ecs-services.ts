@@ -4,6 +4,7 @@ import {
     UpdateServiceCommand,
     DescribeTaskDefinitionCommand,
     RegisterTaskDefinitionCommand,
+    ListTaskDefinitionsCommand,
     ListContainerInstancesCommand,
     DescribeContainerInstancesCommand,
 } from "@aws-sdk/client-ecs";
@@ -308,6 +309,17 @@ export async function getTaskDefinitionJson(taskDefinition: string): Promise<Rec
     delete raw.registeredBy;
     delete raw.deregisteredAt;
     return raw;
+}
+
+/** Latest revisions of a task definition family, newest first, as "family:revision" */
+export async function listTaskDefinitionRevisions(family: string, max = 100): Promise<string[]> {
+    const res = await getEcsClient().send(
+        new ListTaskDefinitionsCommand({ familyPrefix: family, sort: "DESC", maxResults: max, status: "ACTIVE" }),
+    );
+    // familyPrefix is a prefix match ("app" also returns "app-worker") — keep the exact family only
+    return (res.taskDefinitionArns ?? [])
+        .map((arn) => arn.split("/").pop() ?? arn)
+        .filter((name) => name.slice(0, name.lastIndexOf(":")) === family);
 }
 
 /** Register a new task definition revision from JSON and update the service */

@@ -7,7 +7,10 @@ import { EC2Client } from "@aws-sdk/client-ec2";
 import { RDSClient } from "@aws-sdk/client-rds";
 import { AutoScalingClient } from "@aws-sdk/client-auto-scaling";
 import { ApplicationAutoScalingClient } from "@aws-sdk/client-application-auto-scaling";
-import type { ResolvedCredentials } from "@/config/aws-credentials";
+import { CloudWatchLogsClient } from "@aws-sdk/client-cloudwatch-logs";
+import { EventBridgeClient } from "@aws-sdk/client-eventbridge";
+import { SchedulerClient } from "@aws-sdk/client-scheduler";
+import type { CredentialProvider } from "@/config/aws-credentials";
 import { log } from "@/lib/logger";
 
 let ecsClient: ECSClient;
@@ -19,24 +22,26 @@ let ec2Client: EC2Client;
 let rdsClient: RDSClient;
 let asgClient: AutoScalingClient;
 let appAsClient: ApplicationAutoScalingClient;
+let logsClient: CloudWatchLogsClient;
+let eventsClient: EventBridgeClient;
+let schedulerClient: SchedulerClient;
 
-export function initAwsClients(creds: ResolvedCredentials, clusterName: string) {
-    log.aws.info(`Initializing AWS clients for cluster ${clusterName} (Region: ${creds.region})`);
-    const credentials = {
-        accessKeyId: creds.accessKeyId,
-        secretAccessKey: creds.secretAccessKey,
-        sessionToken: creds.sessionToken,
-    };
+/** `credentials` is called by the SDK before requests, so temporary credentials refresh transparently */
+export function initAwsClients(credentials: CredentialProvider, region: string, clusterName: string) {
+    log.aws.info(`Initializing AWS clients for cluster ${clusterName} (Region: ${region})`);
 
-    ecsClient = new ECSClient({ region: creds.region, credentials });
-    cwClient = new CloudWatchClient({ region: creds.region, credentials });
-    ssmClient = new SSMClient({ region: creds.region, credentials });
-    smClient = new SecretsManagerClient({ region: creds.region, credentials });
-    elbv2Client = new ElasticLoadBalancingV2Client({ region: creds.region, credentials });
-    ec2Client = new EC2Client({ region: creds.region, credentials });
-    rdsClient = new RDSClient({ region: creds.region, credentials });
-    asgClient = new AutoScalingClient({ region: creds.region, credentials });
-    appAsClient = new ApplicationAutoScalingClient({ region: creds.region, credentials });
+    ecsClient = new ECSClient({ region, credentials });
+    cwClient = new CloudWatchClient({ region, credentials });
+    ssmClient = new SSMClient({ region, credentials });
+    smClient = new SecretsManagerClient({ region, credentials });
+    elbv2Client = new ElasticLoadBalancingV2Client({ region, credentials });
+    ec2Client = new EC2Client({ region, credentials });
+    rdsClient = new RDSClient({ region, credentials });
+    asgClient = new AutoScalingClient({ region, credentials });
+    appAsClient = new ApplicationAutoScalingClient({ region, credentials });
+    logsClient = new CloudWatchLogsClient({ region, credentials });
+    eventsClient = new EventBridgeClient({ region, credentials });
+    schedulerClient = new SchedulerClient({ region, credentials });
     log.aws.info(`AWS clients initialized for cluster ${clusterName}`);
 }
 
@@ -66,4 +71,13 @@ export function getAsgClient(): AutoScalingClient {
 }
 export function getAppAsClient(): ApplicationAutoScalingClient {
     return appAsClient;
+}
+export function getLogsClient(): CloudWatchLogsClient {
+    return logsClient;
+}
+export function getEventsClient(): EventBridgeClient {
+    return eventsClient;
+}
+export function getSchedulerClient(): SchedulerClient {
+    return schedulerClient;
 }

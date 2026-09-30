@@ -170,7 +170,7 @@ src-tauri/
 - Triggers on tagged releases
 - Parallel build jobs: Windows (NSIS/MSI), macOS ARM64 (DMG), macOS x64 (DMG), Linux (DEB/AppImage/RPM)
 - Drafts GitHub releases with build artifacts
-- Node 22, Rust stable
+- Node 24, Rust stable
 
 ## Configuration
 

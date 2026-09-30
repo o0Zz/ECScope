@@ -275,7 +275,7 @@ export async function updateSecretValue(valueFrom: string, newValue: string): Pr
             // Read existing JSON, update the specific key, write back
             log.ecs.info(`Updating Secrets Manager JSON key '${jsonKey}' for ${baseArn}`);
             const existing = await getSmClient().send(new GetSecretValueCommand({ SecretId: baseArn }));
-            let parsed: Record<string, unknown> = {};
+            let parsed: Record<string, unknown>;
             try {
                 parsed = JSON.parse(existing.SecretString ?? "{}");
             } catch {

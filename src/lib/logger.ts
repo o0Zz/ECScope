@@ -16,36 +16,47 @@ const NAME_COL = 22; // enough for [ECScope:FileTransfer]
 const rootLogger = new Logger<ILogObj>({
     name: "ECScope",
     minLevel: isDev ? 2 : 4, // 2 = debug, 4 = warn
-    type: "pretty",
-    stylePrettyLogs: false,
-    maskValuesOfKeys: ["accessKeyId", "secretAccessKey", "sessionToken", "password"],
-    maskValuesOfKeysCaseInsensitive: true,
-    overwrite: {
-        transportFormatted: (_logMetaMarkup, logArgs, logErrors, logMeta) => {
-            const d = logMeta?.date instanceof Date ? logMeta.date : new Date();
-            const ts = formatDate(d);
-            const level = (logMeta?.logLevelName ?? "LOG").padEnd(5);
-            const parts = logMeta?.parentNames ? [...logMeta.parentNames, logMeta.name] : [logMeta?.name ?? ""];
-            const tag = `[${parts.join(":")}]`.padEnd(NAME_COL);
-            const prefix = `${ts} ${level} ${tag}`;
-
-            const fn =
-                logMeta?.logLevelName === "ERROR" || logMeta?.logLevelName === "FATAL"
-                    ? console.error
-                    : logMeta?.logLevelName === "WARN"
-                      ? console.warn
-                      : logMeta?.logLevelName === "INFO"
-                        ? console.info
-                        : console.log;
-
-            fn(prefix, ...logArgs, ...logErrors);
-        },
+    type: "hidden", // built-in output suppressed — the console transport below prints instead
+    argumentsArrayName: "args",
+    mask: {
+        keys: ["accessKeyId", "secretAccessKey", "sessionToken", "password"],
+        caseInsensitive: true,
     },
+    attachedTransports: [
+        {
+            name: "console",
+            write: (record) => {
+                const logMeta = record._logMeta;
+                const ts = formatDate(logMeta?.date instanceof Date ? logMeta.date : new Date());
+                const level = (logMeta?.logLevelName ?? "LOG").padEnd(5);
+                const parts = logMeta?.parentNames ? [...logMeta.parentNames, logMeta.name] : [logMeta?.name ?? ""];
+                const tag = `[${parts.join(":")}]`.padEnd(NAME_COL);
+                const prefix = `${ts} ${level} ${tag}`;
+
+                const fn =
+                    logMeta?.logLevelName === "ERROR" || logMeta?.logLevelName === "FATAL"
+                        ? console.error
+                        : logMeta?.logLevelName === "WARN"
+                          ? console.warn
+                          : logMeta?.logLevelName === "INFO"
+                            ? console.info
+                            : console.log;
+
+                // Errors arrive as tslog IErrorObject — hand the native Error back to the console
+                const args = Array.isArray(record.args) ? record.args : [];
+                fn(prefix, ...args.map((a) => (a && typeof a === "object" && "nativeError" in a ? a.nativeError : a)));
+            },
+        },
+    ],
 });
+
+const allLoggers: Logger<ILogObj>[] = [rootLogger];
 
 /** Create a named sub-logger for a module */
 export function createLogger(name: string): Logger<ILogObj> {
-    return rootLogger.getSubLogger({ name });
+    const logger = rootLogger.getSubLogger({ name });
+    allLoggers.push(logger);
+    return logger;
 }
 
 // ─── Pre-built sub-loggers per domain ────────────────────
@@ -72,7 +83,7 @@ export const log = {
  *   window.__setLogLevel(6)   // fatal (suppress almost everything)
  */
 function setLogLevel(level: number) {
-    rootLogger.settings.minLevel = level;
+    for (const logger of allLoggers) logger.setMinLevel(level);
 }
 
 if (typeof window !== "undefined") {

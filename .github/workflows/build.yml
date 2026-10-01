@@ -18,12 +18,16 @@ jobs:
       matrix:
         include:
           - platform: windows-latest
+            name: windows
             args: ""
           - platform: macos-latest
+            name: macos-arm64
             args: "--target aarch64-apple-darwin"
           - platform: macos-latest
+            name: macos-x64
             args: "--target x86_64-apple-darwin"
           - platform: ubuntu-22.04
+            name: linux
             args: ""
 
     runs-on: ${{ matrix.platform }}
@@ -70,19 +74,45 @@ jobs:
       - name: Build Tauri app
         uses: tauri-apps/tauri-action@v1
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           ECSCOPE_VERSION: ${{ github.ref_name }}
         with:
           args: ${{ matrix.args }}
-          tagName: ${{ startsWith(github.ref, 'refs/tags/v') && github.ref_name || '' }}
-          releaseName: "ECScope ${{ github.ref_name }}"
-          releaseBody: "See the assets below to download and install ECScope."
-          releaseDraft: true
-          prerelease: false
 
       - name: Upload build artifacts
-        if: "!startsWith(github.ref, 'refs/tags/v')"
         uses: actions/upload-artifact@v4
         with:
-          name: ecscope-${{ matrix.platform }}-${{ strategy.job-index }}
-          path: src-tauri/target/**/release/bundle/**
+          name: ecscope-${{ github.ref_name }}-${{ matrix.name }}
+          path: |
+            src-tauri/target/**/release/bundle/msi/*.msi
+            src-tauri/target/**/release/bundle/nsis/*.exe
+            src-tauri/target/**/release/bundle/dmg/*.dmg
+            src-tauri/target/**/release/bundle/deb/*.deb
+            src-tauri/target/**/release/bundle/rpm/*.rpm
+            src-tauri/target/**/release/bundle/appimage/*.AppImage
+          if-no-files-found: error
+
+  release:
+    if: github.ref_type == 'tag'
+    needs: build
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Download build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: dist
+
+      - name: Draft GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          draft: true
+          name: "ECScope ${{ github.ref_name }}"
+          tag_name: ${{ github.ref_name }}
+          body: "See the assets below to download and install ECScope."
+          files: |
+            dist/**/*.msi
+            dist/**/*.exe
+            dist/**/*.dmg
+            dist/**/*.deb
+            dist/**/*.rpm
+            dist/**/*.AppImage

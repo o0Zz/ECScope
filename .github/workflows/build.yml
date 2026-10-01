@@ -2,6 +2,8 @@ name: Build & Release
 
 on:
   push:
+    branches:
+      - main
     tags:
       - "v*"
   workflow_dispatch:
@@ -72,8 +74,15 @@ jobs:
           ECSCOPE_VERSION: ${{ github.ref_name }}
         with:
           args: ${{ matrix.args }}
-          tagName: ${{ github.ref_name }}
+          tagName: ${{ startsWith(github.ref, 'refs/tags/v') && github.ref_name || '' }}
           releaseName: "ECScope ${{ github.ref_name }}"
           releaseBody: "See the assets below to download and install ECScope."
           releaseDraft: true
           prerelease: false
+
+      - name: Upload build artifacts
+        if: "!startsWith(github.ref, 'refs/tags/v')"
+        uses: actions/upload-artifact@v4
+        with:
+          name: ecscope-${{ matrix.platform }}-${{ strategy.job-index }}
+          path: src-tauri/target/**/release/bundle/**

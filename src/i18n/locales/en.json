@@ -295,6 +295,25 @@
     "copyPublicIp": "Copy public IP",
     "metricsUnavailable": "Metrics unavailable — instance is {{state}}."
   },
+  "securityGroups": {
+    "title": "Security groups — inbound rules",
+    "allTraffic": "all traffic",
+    "ipPlaceholder": "IP or CIDR (e.g. 1.2.3.4)",
+    "port": "TCP port",
+    "descriptionPlaceholder": "Description (your name)",
+    "add": "Add rule",
+    "remove": "Remove rule",
+    "removeTitle": "Remove inbound rule",
+    "removeMessage": "This rule will be revoked from the security group immediately."
+  },
+  "prefixList": {
+    "summary": "{{count}}/{{max}} entries · v{{version}}",
+    "sharedWarning": "Shared list — changes apply to every security group using it.",
+    "add": "Add to list",
+    "remove": "Remove entry",
+    "removeTitle": "Remove prefix list entry",
+    "removeMessage": "This CIDR will be removed from the prefix list, for every security group that references it."
+  },
   "rds": {
     "title": "RDS Databases",
     "noRds": "No RDS instances found in the cluster VPC.",

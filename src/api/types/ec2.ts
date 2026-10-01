@@ -25,4 +25,25 @@ export interface VpcEc2Instance {
     name: string;
     launchTime: string;
     platform: string;
+    securityGroups: { groupId: string; groupName: string }[];
+}
+
+export interface SecurityGroupRule {
+    ruleId: string;
+    groupId: string;
+    protocol: string;
+    fromPort: number;
+    toPort: number;
+    source: string;
+    description: string;
+}
+
+export interface PrefixList {
+    prefixListId: string;
+    name: string;
+    version: number;
+    maxEntries: number;
+    state: string;
+    awsManaged: boolean;
+    entries: { cidr: string; description: string }[];
 }

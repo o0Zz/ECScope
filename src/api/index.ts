@@ -23,6 +23,13 @@ import {
 } from "./cloudwatch";
 import { listAlbs } from "./alb";
 import { listEc2 } from "./ec2";
+import {
+    listIngressRules,
+    addIngressRule,
+    removeIngressRule,
+    getPrefixList,
+    modifyPrefixList,
+} from "./security-groups";
 import { listRdsInstances } from "./rds";
 import { getLogStreamEvents, filterLogEvents } from "./logs";
 import { listScheduledTasks, setScheduledTaskEnabled, runScheduledTaskNow } from "./scheduled";
@@ -50,6 +57,11 @@ export const ecsApi = {
     getServiceScalingTargets,
     updateServiceScalingTarget,
     listEc2,
+    listIngressRules,
+    addIngressRule,
+    removeIngressRule,
+    getPrefixList,
+    modifyPrefixList,
     getEc2MetricsHistory,
     getRdsMetricsHistory,
     getServiceMetricsHistory,

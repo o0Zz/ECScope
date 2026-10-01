@@ -13,6 +13,7 @@ import { cn } from "@/lib/utils";
 import { formatAge } from "@/lib/format";
 import { useState, memo } from "react";
 import { ec2InstanceUrl, rdsInstanceUrl, openAwsUrl } from "@/lib/aws-urls";
+import { SecurityGroupsPanel } from "./SecurityGroupsPanel";
 
 export function Ec2RdsDashboard() {
     const { t } = useTranslation();
@@ -240,7 +241,7 @@ const Ec2InstanceRow = memo(function Ec2InstanceRow({
 
             {expanded && (
                 <tr className="border-b border-border">
-                    <td colSpan={9} className="px-4 py-4">
+                    <td colSpan={9} className="space-y-4 px-4 py-4">
                         {inst.state !== "running" ? (
                             <div className="text-xs text-muted-foreground italic">
                                 {t("ec2.metricsUnavailable", { state: inst.state })}
@@ -248,6 +249,7 @@ const Ec2InstanceRow = memo(function Ec2InstanceRow({
                         ) : (
                             <Ec2MetricsChart instanceId={inst.instanceId} />
                         )}
+                        <SecurityGroupsPanel instance={inst} />
                     </td>
                 </tr>
             )}

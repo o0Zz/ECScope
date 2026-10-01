@@ -35,6 +35,10 @@ export async function listEc2(filterVpcId?: string): Promise<VpcEc2Instance[]> {
                     name,
                     launchTime: inst.LaunchTime?.toISOString?.() ?? "",
                     platform: inst.PlatformDetails ?? inst.Platform ?? "Linux/UNIX",
+                    securityGroups: (inst.SecurityGroups ?? []).map((g) => ({
+                        groupId: g.GroupId ?? "",
+                        groupName: g.GroupName ?? "",
+                    })),
                 });
             }
         }
